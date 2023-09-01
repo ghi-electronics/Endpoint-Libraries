@@ -5,19 +5,15 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GHIElectronic.Endpoint.Libraries
-{
-    public class Script
-    {
+namespace GHIElectronic.Endpoint.Libraries {
+    public class Script {
         private Process process;
         private string error = string.Empty;
         private string output = string.Empty;
         private int exit_code = 0;
-        public Script(string filename, string workingdir, string arguments) 
-        {
+        public Script(string filename, string workingdir, string arguments) {
             this.process = new Process();
-            var processStartInfo = new ProcessStartInfo()
-            {
+            var processStartInfo = new ProcessStartInfo() {
                 WindowStyle = ProcessWindowStyle.Hidden,
                 FileName = filename,
                 WorkingDirectory = workingdir ?? null,
@@ -30,17 +26,18 @@ namespace GHIElectronic.Endpoint.Libraries
             this.process.StartInfo = processStartInfo;
         }
 
-        public void Start()
-        {
-            try
-            {
+        public void Start(bool waitforexit = true) {
+            try {
                 this.process.Start();
 
-                this.error = this.process.StandardError.ReadToEnd();
-                this.output = this.process.StandardOutput.ReadToEnd();
+                if (waitforexit) {
+                    this.error = this.process.StandardError.ReadToEnd();
+                    this.output = this.process.StandardOutput.ReadToEnd();
 
-                this.process.WaitForExit();
-                this.exit_code = this.process.ExitCode;
+
+                    this.process.WaitForExit();
+                    this.exit_code = this.process.ExitCode;
+                }
             }
             catch (Exception ex) {
                 this.error = "\nException: " + ex.ToString();

@@ -1,3 +1,5 @@
+#pragma warning disable CS8602
+#pragma warning disable CS8604
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -66,7 +68,7 @@ namespace GHIElectronic.Endpoint.Devices.Can {
         }
 
         public CanMessage(uint arbitrationId)
-            : this(arbitrationId, null, 0, 0) {
+            : this(arbitrationId, null!, 0, 0) {
         }
 
         public CanMessage(uint arbitrationId, byte[] data)
