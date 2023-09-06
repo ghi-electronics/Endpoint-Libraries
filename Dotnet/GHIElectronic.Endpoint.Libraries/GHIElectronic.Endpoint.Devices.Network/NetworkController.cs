@@ -1,5 +1,6 @@
 using System.Net;
 using System.Numerics;
+using System.Xml.Linq;
 using GHIElectronic.Endpoint.Libraries;
 
 namespace GHIElectronic.Endpoint.Devices.Network {
@@ -19,7 +20,18 @@ namespace GHIElectronic.Endpoint.Devices.Network {
     public class NetworkAddressChangedEventArgs : EventArgs {
         public DateTime Timestamp { get; }
 
-        internal NetworkAddressChangedEventArgs(DateTime timestamp) => this.Timestamp = timestamp;
+        public IPAddress Address { get; }
+        public IPAddress Gateway { get; }
+        public IPAddress[] Dns { get; }
+
+        public string MACAddress { get; }
+        internal NetworkAddressChangedEventArgs(IPAddress address, IPAddress gateway, IPAddress[] dns, string MAC, DateTime timestamp) {
+            this.Timestamp = timestamp;
+            this.Gateway = gateway;
+            this.Address = address;
+            this.Dns = dns;
+            this.MACAddress = MAC;
+        }
     }
     public enum NetworkInterfaceType {
         Ethernet = 0,
@@ -45,10 +57,11 @@ namespace GHIElectronic.Endpoint.Devices.Network {
     public class NetworkController : IDisposable {
         static int initializeCount;
 
-        private NetworkLinkConnectedChangedEventHandler networkLinkConnectedChangedCallbacks;
-        private NetworkAddressChangedEventHandler networkAddressChangedCallbacks;
+        private NetworkLinkConnectedChangedEventHandler? networkLinkConnectedChangedCallbacks = null!;
+        private NetworkAddressChangedEventHandler? networkAddressChangedCallbacks = null!;
 
         private bool disposed = false;
+        private bool enabled = false;
 
         public NetworkInterfaceSettings ActiveInterfaceSettings { get; private set; }
 
@@ -130,14 +143,26 @@ namespace GHIElectronic.Endpoint.Devices.Network {
 
             }
 
+            this.enabled = true;
+
+            this.InitializeEventDetectionTask();
+
         }
 
         public void Disable() {
+
+            this.enabled = false;
+
+            Thread.Sleep(1000); // disable event
+
             var name = this.interfaceName.ToString() + this.controllerId.ToString();
 
             var script = new Script("ifconfig", "/sbin/", name + " down");
 
+
+
             script.Start();
+
         }
 
         private void LoadResources() {
@@ -150,8 +175,8 @@ namespace GHIElectronic.Endpoint.Devices.Network {
                 script.Start();
 
                 if (script.Output.IndexOf("8188eu") < 0) {
-                    var ssid = setting.Ssid;
-                    var pass = setting.Password;
+                    var ssid = setting?.Ssid;
+                    var pass = setting?.Password;
 
                     var argument = string.Format("{0} {1}", ssid, pass);
                     script = new Script("init_wifi.sh", "/sbin/", argument);
@@ -168,8 +193,6 @@ namespace GHIElectronic.Endpoint.Devices.Network {
                     }
                 }
             }
-
-
         }
 
         private void UnLoadResources() {
@@ -187,6 +210,128 @@ namespace GHIElectronic.Endpoint.Devices.Network {
                     script.Start();
                 }
             }
+        }
+
+        public event NetworkLinkConnectedChangedEventHandler NetworkLinkConnectedChanged {
+            add => this.networkLinkConnectedChangedCallbacks += value;
+            remove => this.networkLinkConnectedChangedCallbacks -= value;
+        }
+
+        public event NetworkAddressChangedEventHandler NetworkAddressChanged {
+            add => this.networkAddressChangedCallbacks += value;
+            remove => this.networkAddressChangedCallbacks -= value;
+        }
+        private Task InitializeEventDetectionTask() {
+
+            return Task.Run(() => {
+                var lastEvent = string.Empty;
+
+                var current_ipaddress = "0.0.0.0";
+                var detect_connection_changed = false;
+                var connected = false;
+
+                while (this.enabled || !this.disposed) {
+
+ 
+
+                    var argument = string.Format("{0}{1}", this.interfaceName, this.controllerId.ToString());
+                    var script = new Script("getevent.sh", "/usr/sbin/", argument);
+
+                    script.Start();
+
+                    if (script.Output.CompareTo(lastEvent) != 0) {
+                        lastEvent = script.Output;
+                        detect_connection_changed = true;
+
+                        if (script.Output.Contains("Link is Up") || script.Output.Contains("link becomes ready")) {
+                            connected = true;
+
+                        }
+                        else {
+                            connected = false;
+                        }
+
+                        this.networkLinkConnectedChangedCallbacks?.Invoke(this, new NetworkLinkConnectedChangedEventArgs(connected, DateTime.Now));
+                    }
+                    var try_ipv4_cnt = 10;
+                    if (detect_connection_changed) {
+                        try {
+
+
+                            // get MAC address
+                            argument = string.Format("{0}{1}", this.interfaceName, this.controllerId.ToString());
+
+                            script = new Script("getmacadd.sh", "/sbin/", argument);
+
+                            script.Start();
+
+                            var macaddress = script.Output.Substring(0, script.Output.Length - 1); // remove '\n'
+
+                            if (connected) {
+// Get IP
+try_get_ipv4:
+                                Thread.Sleep(1000);
+                                argument = string.Format("{0}{1}", this.interfaceName, this.controllerId.ToString());
+                                script = new Script("getadd_ip4.sh", "/sbin/", argument);
+
+                                script.Start();
+
+                                var ip_out = script.Output;
+
+                                if (ip_out.Length == 0) { // no ipv4 found yet
+                                    if (try_ipv4_cnt > 0) {
+                                        goto try_get_ipv4;
+                                    }
+                                    else {
+                                        ip_out = "0.0.0.0\n";
+                                    }
+                                }
+
+                                var ip = ip_out.Substring(0, script.Output.Length - 1); // remove '\n'
+
+
+
+                                // Get gateway
+                                argument = "";
+
+                                script = new Script("getgateway.sh", "/sbin/", argument);
+
+                                script.Start();
+
+                                var getway = script.Output.Substring(0, script.Output.Length - 1); // remove '\n'
+
+                                // Get DNS
+                                argument = "";
+
+                                script = new Script("getdns.sh", "/sbin/", argument);
+
+                                script.Start();
+
+                                var dns = script.Output.Substring(0, script.Output.Length - 1); // remove '\n'
+
+                                this.networkAddressChangedCallbacks?.Invoke(this, new NetworkAddressChangedEventArgs(IPAddress.Parse(ip), IPAddress.Parse(getway), new IPAddress[] { IPAddress.Parse(dns) }, macaddress, DateTime.Now));
+                            }
+                            else {
+                                // assuming default "0.0.0.0"
+                                var ipdefault = "0.0.0.0";
+                                this.networkAddressChangedCallbacks?.Invoke(this, new NetworkAddressChangedEventArgs(IPAddress.Parse(ipdefault), IPAddress.Parse(ipdefault), new IPAddress[] { IPAddress.Parse(ipdefault) }, macaddress, DateTime.Now));
+                            }
+
+                            detect_connection_changed = false;
+                        }
+                        catch (Exception ex) {
+
+                        }
+
+
+                    }
+
+                    Thread.Sleep(2000);
+
+                }
+            }
+            ); ;
+
         }
         ~NetworkController() {
             this.Dispose(disposing: false);
