@@ -226,7 +226,6 @@ namespace GHIElectronic.Endpoint.Devices.Network {
             return Task.Run(() => {
                 var lastEvent = string.Empty;
 
-                var current_ipaddress = "0.0.0.0";
                 var detect_connection_changed = false;
                 var connected = false;
 
@@ -256,8 +255,6 @@ namespace GHIElectronic.Endpoint.Devices.Network {
                     var try_ipv4_cnt = 10;
                     if (detect_connection_changed) {
                         try {
-
-
                             // get MAC address
                             argument = string.Format("{0}{1}", this.interfaceName, this.controllerId.ToString());
 
@@ -319,7 +316,7 @@ try_get_ipv4:
 
                             detect_connection_changed = false;
                         }
-                        catch (Exception ex) {
+                        catch  {
 
                         }
 
