@@ -1,7 +1,7 @@
 using System.Net;
 using System.Numerics;
 using System.Xml.Linq;
-using GHIElectronic.Endpoint.Libraries;
+using GHIElectronic.Endpoint.Core;
 
 namespace GHIElectronic.Endpoint.Devices.Network {
     public delegate void NetworkLinkConnectedChangedEventHandler(NetworkController sender, NetworkLinkConnectedChangedEventArgs e);
@@ -87,6 +87,10 @@ namespace GHIElectronic.Endpoint.Devices.Network {
         }
         private void Acquire() {
             if (initializeCount == 0) {
+
+                Core.Events.SystemEventChanged += this.NetworkEventChanged;
+                Core.Events.StartSystemEventDetectionTask();
+
                 this.LoadResources();
             }
 
@@ -97,6 +101,10 @@ namespace GHIElectronic.Endpoint.Devices.Network {
             initializeCount--;
 
             if (initializeCount == 0) {
+
+                Core.Events.SystemEventChanged -= this.NetworkEventChanged;
+                Core.Events.StopSystemEventDetectionTask();
+
                 this.UnLoadResources();
             }
         }
@@ -144,12 +152,14 @@ namespace GHIElectronic.Endpoint.Devices.Network {
             }
 
             this.enabled = true;
-
-            this.InitializeEventDetectionTask();
+            
 
         }
 
         public void Disable() {
+            if (this.enabled == false) {
+                return;
+            }
 
             this.enabled = false;
 
@@ -158,8 +168,6 @@ namespace GHIElectronic.Endpoint.Devices.Network {
             var name = this.interfaceName.ToString() + this.controllerId.ToString();
 
             var script = new Script("ifconfig", "/sbin/", name + " down");
-
-
 
             script.Start();
 
@@ -214,122 +222,208 @@ namespace GHIElectronic.Endpoint.Devices.Network {
 
         public event NetworkLinkConnectedChangedEventHandler NetworkLinkConnectedChanged {
             add => this.networkLinkConnectedChangedCallbacks += value;
-            remove => this.networkLinkConnectedChangedCallbacks -= value;
+            remove {
+                if (this.networkLinkConnectedChangedCallbacks != null)
+                    this.networkLinkConnectedChangedCallbacks -= value;
+            }
         }
 
         public event NetworkAddressChangedEventHandler NetworkAddressChanged {
             add => this.networkAddressChangedCallbacks += value;
-            remove => this.networkAddressChangedCallbacks -= value;
+            remove {
+                if (this.networkAddressChangedCallbacks != null)
+                    this.networkAddressChangedCallbacks -= value;
+            }
         }
-        private Task InitializeEventDetectionTask() {
 
-            return Task.Run(() => {
-                var lastEvent = string.Empty;
+        private void NetworkEventChanged(string eventlog) {
+            var connected = false;
 
-                var detect_connection_changed = false;
-                var connected = false;
 
-                while (this.enabled || !this.disposed) {
+            if (eventlog.Contains(string.Format("{0}{1}: Link is Up", this.interfaceName, this.controllerId.ToString()))) {
+                connected = true;
 
- 
+            }
+            else if (eventlog.Contains(string.Format("{0}{1}: Link is Down", this.interfaceName, this.controllerId.ToString()))) {
+                connected = false;
+            }
 
-                    var argument = string.Format("{0}{1}", this.interfaceName, this.controllerId.ToString());
-                    var script = new Script("getevent.sh", "/usr/sbin/", argument);
+            this.networkLinkConnectedChangedCallbacks?.Invoke(this, new NetworkLinkConnectedChangedEventArgs(connected, DateTime.Now));
+
+            Task.Run(() => {
+                // get MAC address
+                var argument = string.Format("{0}{1}", this.interfaceName, this.controllerId.ToString());
+
+                var script = new Script("getmacadd.sh", "/sbin/", argument);
+
+                script.Start();
+
+                var macaddress = script.Output.Substring(0, script.Output.Length - 1); // remove '\n'
+
+                var try_ipv4_cnt = 10;
+
+                if (connected) {
+// Get IP
+try_get_ipv4:
+                    Thread.Sleep(1000);
+                    argument = string.Format("{0}{1}", this.interfaceName, this.controllerId.ToString());
+                    script = new Script("getadd_ip4.sh", "/sbin/", argument);
 
                     script.Start();
 
-                    if (script.Output.CompareTo(lastEvent) != 0) {
-                        lastEvent = script.Output;
-                        detect_connection_changed = true;
+                    var ip_out = script.Output;
 
-                        if (script.Output.Contains("Link is Up") || script.Output.Contains("link becomes ready")) {
-                            connected = true;
-
+                    if (ip_out.Length == 0) { // no ipv4 found yet
+                        if (try_ipv4_cnt > 0) {
+                            goto try_get_ipv4;
                         }
                         else {
-                            connected = false;
+                            ip_out = "0.0.0.0\n";
                         }
-
-                        this.networkLinkConnectedChangedCallbacks?.Invoke(this, new NetworkLinkConnectedChangedEventArgs(connected, DateTime.Now));
-                    }
-                    var try_ipv4_cnt = 10;
-                    if (detect_connection_changed) {
-                        try {
-                            // get MAC address
-                            argument = string.Format("{0}{1}", this.interfaceName, this.controllerId.ToString());
-
-                            script = new Script("getmacadd.sh", "/sbin/", argument);
-
-                            script.Start();
-
-                            var macaddress = script.Output.Substring(0, script.Output.Length - 1); // remove '\n'
-
-                            if (connected) {
-// Get IP
-try_get_ipv4:
-                                Thread.Sleep(1000);
-                                argument = string.Format("{0}{1}", this.interfaceName, this.controllerId.ToString());
-                                script = new Script("getadd_ip4.sh", "/sbin/", argument);
-
-                                script.Start();
-
-                                var ip_out = script.Output;
-
-                                if (ip_out.Length == 0) { // no ipv4 found yet
-                                    if (try_ipv4_cnt > 0) {
-                                        goto try_get_ipv4;
-                                    }
-                                    else {
-                                        ip_out = "0.0.0.0\n";
-                                    }
-                                }
-
-                                var ip = ip_out.Substring(0, script.Output.Length - 1); // remove '\n'
-
-
-
-                                // Get gateway
-                                argument = "";
-
-                                script = new Script("getgateway.sh", "/sbin/", argument);
-
-                                script.Start();
-
-                                var getway = script.Output.Substring(0, script.Output.Length - 1); // remove '\n'
-
-                                // Get DNS
-                                argument = "";
-
-                                script = new Script("getdns.sh", "/sbin/", argument);
-
-                                script.Start();
-
-                                var dns = script.Output.Substring(0, script.Output.Length - 1); // remove '\n'
-
-                                this.networkAddressChangedCallbacks?.Invoke(this, new NetworkAddressChangedEventArgs(IPAddress.Parse(ip), IPAddress.Parse(getway), new IPAddress[] { IPAddress.Parse(dns) }, macaddress, DateTime.Now));
-                            }
-                            else {
-                                // assuming default "0.0.0.0"
-                                var ipdefault = "0.0.0.0";
-                                this.networkAddressChangedCallbacks?.Invoke(this, new NetworkAddressChangedEventArgs(IPAddress.Parse(ipdefault), IPAddress.Parse(ipdefault), new IPAddress[] { IPAddress.Parse(ipdefault) }, macaddress, DateTime.Now));
-                            }
-
-                            detect_connection_changed = false;
-                        }
-                        catch  {
-
-                        }
-
-
                     }
 
-                    Thread.Sleep(2000);
+                    var ip = ip_out.Substring(0, script.Output.Length - 1); // remove '\n'
 
+
+
+                    // Get gateway
+                    argument = "";
+
+                    script = new Script("getgateway.sh", "/sbin/", argument);
+
+                    script.Start();
+
+                    var getway = script.Output.Substring(0, script.Output.Length - 1); // remove '\n'
+
+                    // Get DNS
+                    argument = "";
+
+                    script = new Script("getdns.sh", "/sbin/", argument);
+
+                    script.Start();
+
+                    var dns = script.Output.Substring(0, script.Output.Length - 1); // remove '\n'
+
+                    this.networkAddressChangedCallbacks?.Invoke(this, new NetworkAddressChangedEventArgs(IPAddress.Parse(ip), IPAddress.Parse(getway), new IPAddress[] { IPAddress.Parse(dns) }, macaddress, DateTime.Now));
                 }
-            }
-            ); ;
+                else {
+                    // assuming default "0.0.0.0"
+                    var ipdefault = "0.0.0.0";
+                    this.networkAddressChangedCallbacks?.Invoke(this, new NetworkAddressChangedEventArgs(IPAddress.Parse(ipdefault), IPAddress.Parse(ipdefault), new IPAddress[] { IPAddress.Parse(ipdefault) }, macaddress, DateTime.Now));
+                }
 
+            });
         }
+
+//        private Task InitializeEventDetectionTask() {
+
+//            return Task.Run(() => {
+//                var lastEvent = string.Empty;
+
+//                var detect_connection_changed = false;
+//                var connected = false;
+
+//                while (this.enabled || !this.disposed) {
+
+
+
+//                    var argument = string.Format("{0}{1}", this.interfaceName, this.controllerId.ToString());
+//                    var script = new Script("getevent.sh", "/usr/sbin/", argument);
+
+//                    script.Start();
+
+//                    if (script.Output.CompareTo(lastEvent) != 0) {
+//                        lastEvent = script.Output;
+//                        detect_connection_changed = true;
+
+//                        if (script.Output.Contains("Link is Up") || script.Output.Contains("link becomes ready")) {
+//                            connected = true;
+
+//                        }
+//                        else {
+//                            connected = false;
+//                        }
+
+//                        this.networkLinkConnectedChangedCallbacks?.Invoke(this, new NetworkLinkConnectedChangedEventArgs(connected, DateTime.Now));
+//                    }
+//                    var try_ipv4_cnt = 10;
+//                    if (detect_connection_changed) {
+//                        try {
+//                            // get MAC address
+//                            argument = string.Format("{0}{1}", this.interfaceName, this.controllerId.ToString());
+
+//                            script = new Script("getmacadd.sh", "/sbin/", argument);
+
+//                            script.Start();
+
+//                            var macaddress = script.Output.Substring(0, script.Output.Length - 1); // remove '\n'
+
+//                            if (connected) {
+//// Get IP
+//try_get_ipv4:
+//                                Thread.Sleep(1000);
+//                                argument = string.Format("{0}{1}", this.interfaceName, this.controllerId.ToString());
+//                                script = new Script("getadd_ip4.sh", "/sbin/", argument);
+
+//                                script.Start();
+
+//                                var ip_out = script.Output;
+
+//                                if (ip_out.Length == 0) { // no ipv4 found yet
+//                                    if (try_ipv4_cnt > 0) {
+//                                        goto try_get_ipv4;
+//                                    }
+//                                    else {
+//                                        ip_out = "0.0.0.0\n";
+//                                    }
+//                                }
+
+//                                var ip = ip_out.Substring(0, script.Output.Length - 1); // remove '\n'
+
+
+
+//                                // Get gateway
+//                                argument = "";
+
+//                                script = new Script("getgateway.sh", "/sbin/", argument);
+
+//                                script.Start();
+
+//                                var getway = script.Output.Substring(0, script.Output.Length - 1); // remove '\n'
+
+//                                // Get DNS
+//                                argument = "";
+
+//                                script = new Script("getdns.sh", "/sbin/", argument);
+
+//                                script.Start();
+
+//                                var dns = script.Output.Substring(0, script.Output.Length - 1); // remove '\n'
+
+//                                this.networkAddressChangedCallbacks?.Invoke(this, new NetworkAddressChangedEventArgs(IPAddress.Parse(ip), IPAddress.Parse(getway), new IPAddress[] { IPAddress.Parse(dns) }, macaddress, DateTime.Now));
+//                            }
+//                            else {
+//                                // assuming default "0.0.0.0"
+//                                var ipdefault = "0.0.0.0";
+//                                this.networkAddressChangedCallbacks?.Invoke(this, new NetworkAddressChangedEventArgs(IPAddress.Parse(ipdefault), IPAddress.Parse(ipdefault), new IPAddress[] { IPAddress.Parse(ipdefault) }, macaddress, DateTime.Now));
+//                            }
+
+//                            detect_connection_changed = false;
+//                        }
+//                        catch {
+
+//                        }
+
+
+//                    }
+
+//                    Thread.Sleep(2000);
+
+//                }
+//            }
+//            ); ;
+
+//        }
         ~NetworkController() {
             this.Dispose(disposing: false);
         }

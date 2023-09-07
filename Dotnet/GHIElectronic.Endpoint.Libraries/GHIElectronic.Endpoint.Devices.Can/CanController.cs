@@ -1,13 +1,62 @@
-using GHIElectronic.Endpoint.Libraries;
+#pragma warning disable CS8601 // Possible null reference assignment.
+using GHIElectronic.Endpoint.Core;
 using GHIElectronic.Endpoint.Pins;
 
 namespace GHIElectronic.Endpoint.Devices.Can {
-    
+
+    public delegate void MessageReceivedEventHandler(CanController sender, MessageReceivedEventArgs e);
+    public delegate void ErrorReceivedEventHandler(CanController sender, ErrorReceivedEventArgs e);
+
+    public enum CanError {
+        ReadBufferOverrun = 0,
+        ReadBufferFull = 1,
+        BusOff = 2,
+        Passive = 3,
+    }
+
+    public enum ErrorStateIndicator {
+        Active = 0,
+        Passive = 1,
+    }
+    public class MessageReceivedEventArgs {     
+        public DateTime Timestamp { get; }
+
+        internal MessageReceivedEventArgs(DateTime timestamp) {            
+            this.Timestamp = timestamp;
+        }
+    }
+
+    public class ErrorReceivedEventArgs {
+        public CanError Error { get; }
+        public DateTime Timestamp { get; }
+
+        internal ErrorReceivedEventArgs(CanError error, DateTime timestamp) {
+            this.Error = error;
+            this.Timestamp = timestamp;
+        }
+    }
+
     public class CanController : IDisposable {
         static int initializeCount = 0;
         private int controllerId;
 
         private CanRaw canRaw;
+
+        private CanMessage[] CanMessageRx;
+        public int ReadBufferSize { get; set; } = 128;
+        private int fifoRxIn;
+        private int fifoRxOut;
+        private int fifoRxCount;
+        public int MessagesToRead => this.fifoRxCount;
+
+        public bool IsEnabled { get; private set; } = false;
+
+        object locker;
+
+        private MessageReceivedEventHandler messageReceivedCallbacks;
+        private ErrorReceivedEventHandler errorReceivedCallbacks;
+
+        Thread threadReceive;
 
         public CanController(int controllerId, int baudrate) {
 
@@ -37,6 +86,43 @@ namespace GHIElectronic.Endpoint.Devices.Can {
             if (initializeCount == 0) {
                 this.UnLoadResources();
             }
+        }
+
+        public void Enable() {
+            if (!this.IsEnabled) {
+                // bring can up
+
+
+                this.CanMessageRx = new CanMessage[this.ReadBufferSize];
+
+                this.fifoRxIn = 0;
+                this.fifoRxOut = 0;
+                this.fifoRxCount = 0;
+
+                this.locker = new object();
+
+                this.IsEnabled = true;
+
+
+                this.threadReceive = new Thread(ThreadReceive);
+                this.threadReceive.Start(); 
+               
+            }
+        }
+
+        public void Disable() {
+            if (this.IsEnabled) {
+
+                this.IsEnabled = false;
+
+                try {
+                    this.threadReceive.Abort();
+                }
+                catch {
+                }
+
+            }
+
         }
 
         private void LoadResources() {
@@ -72,8 +158,10 @@ namespace GHIElectronic.Endpoint.Devices.Can {
         }
 
         public void Write(CanMessage message) {
-
-             var canId = new CanId();
+            if (!this.IsEnabled) {
+                throw new Exception("CAN is disabled.");
+            }
+            var canId = new CanId();
 
             if (message.ExtendedId)
                 canId.Extended = message.ArbitrationId;
@@ -89,23 +177,69 @@ namespace GHIElectronic.Endpoint.Devices.Can {
         }
 
         public CanMessage Read() {
+            if (!this.IsEnabled) {
+                throw new Exception("CAN is disabled.");
+            }
 
-            var data = new byte[64];
+            if (this.fifoRxCount > 0) {
+                var message = this.CanMessageRx[this.fifoRxOut];
 
-            var read = this.canRaw.TryReadFrame(data, out var data_length, out var canId);
+                this.fifoRxOut = (this.fifoRxOut + 1) % this.ReadBufferSize;
 
-            CanMessage message = default!;
+                lock (this.locker)
+                {
+                    this.fifoRxCount--;
+                }
 
-            if (read && canId.IsValid) {
-                message = new CanMessage {
-                    ArbitrationId = canId.Value,
-                    Length = data_length,
-                    Data = data,
+                return message;
+            }
 
-                    //TODO more will be add
-                };
-            }               
-            return message;
+            return null;
+        }
+
+        public event MessageReceivedEventHandler MessageReceived {
+            add {
+                this.messageReceivedCallbacks += value;
+            }
+            remove {
+
+                if (this.messageReceivedCallbacks != null)
+                    this.messageReceivedCallbacks -= value;
+
+            }
+        }
+        private void ThreadReceive() {
+            //return Task.Run(() => {
+
+            while (!this.disposed && this.IsEnabled) {
+
+                var data = new byte[64];
+
+                var read = this.canRaw.TryReadFrame(data, out var data_length, out var canId);
+
+
+                if (read && canId.IsValid) {
+                    var message = new CanMessage {
+                        ArbitrationId = canId.Value,
+                        Length = data_length,
+                        Data = data,
+
+                        //TODO more will be add
+                    };
+
+
+                    this.CanMessageRx[this.fifoRxIn] = message;
+
+                    this.fifoRxIn = (this.fifoRxIn + 1) % this.ReadBufferSize;
+
+                    lock (this.locker)
+                    {
+                        this.fifoRxCount++;
+                    }
+
+                    messageReceivedCallbacks?.Invoke(this, new MessageReceivedEventArgs(DateTime.Now) ); 
+                }               
+            }
         }
 
         private bool disposed = false;
@@ -126,6 +260,7 @@ namespace GHIElectronic.Endpoint.Devices.Can {
 
             }
 
+            this.Disable();
             this.Release();
 
             this.disposed = true;
@@ -134,3 +269,4 @@ namespace GHIElectronic.Endpoint.Devices.Can {
 
     }
 }
+#pragma warning restore IDE1006

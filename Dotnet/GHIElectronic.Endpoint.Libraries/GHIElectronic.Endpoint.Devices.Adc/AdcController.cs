@@ -1,5 +1,5 @@
 using System.Text;
-using GHIElectronic.Endpoint.Libraries;
+using GHIElectronic.Endpoint.Core;
 using GHIElectronic.Endpoint.Pins;
 
 namespace GHIElectronic.Endpoint.Devices.Adc

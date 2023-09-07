@@ -26,12 +26,6 @@ namespace GHIElectronic.Endpoint.Devices.Can {
         private byte _res1;
         public fixed byte Data[MaxLength];
 
-        public bool IsValid
-        {
-            get
-            {
-                return this.Length <= MaxLength && this.Id.IsValid;
-            }
-        }
+        public bool IsValid => this.Length <= MaxLength && this.Id.IsValid;
     }
 }

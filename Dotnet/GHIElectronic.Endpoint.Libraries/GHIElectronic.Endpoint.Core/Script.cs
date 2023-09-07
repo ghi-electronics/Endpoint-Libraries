@@ -5,7 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GHIElectronic.Endpoint.Libraries {
+namespace GHIElectronic.Endpoint.Core {
     public class Script {
         private Process process;
         private string error = string.Empty;

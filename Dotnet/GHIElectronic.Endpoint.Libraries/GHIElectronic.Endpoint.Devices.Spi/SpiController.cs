@@ -1,5 +1,4 @@
 using GHIElectronic.Endpoint.Core;
-using GHIElectronic.Endpoint.Libraries;
 using GHIElectronic.Endpoint.Pins;
 using System.Device.Gpio;
 using System.Device.Gpio.Drivers;

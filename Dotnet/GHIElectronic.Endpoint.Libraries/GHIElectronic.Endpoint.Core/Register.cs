@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GHIElectronic.Endpoint.Libraries {
+namespace GHIElectronic.Endpoint.Core {
     public static class Register {
         const string PATH = "/dev/mem";
 

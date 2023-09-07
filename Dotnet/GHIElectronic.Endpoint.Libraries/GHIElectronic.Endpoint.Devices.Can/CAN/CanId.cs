@@ -112,7 +112,7 @@ namespace GHIElectronic.Endpoint.Devices.Can {
         {
             get
             {
-                uint idMask = this.ExtendedFrameFormat ? Interop.CAN_EFF_MASK : Interop.CAN_SFF_MASK;
+                var idMask = this.ExtendedFrameFormat ? Interop.CAN_EFF_MASK : Interop.CAN_SFF_MASK;
                 return !this.Error && (this.Raw & idMask) == (this.Raw & Interop.CAN_EFF_MASK);
             }
         }

@@ -1,5 +1,5 @@
 using System.Diagnostics;
-using GHIElectronic.Endpoint.Libraries;
+using GHIElectronic.Endpoint.Core;
 using static GHIElectronic.Endpoint.Pins.STM32MP1;
 
 namespace GHIElectronic.Endpoint.Pins {

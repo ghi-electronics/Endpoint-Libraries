@@ -23,10 +23,7 @@ namespace GHIElectronic.Endpoint.Devices.Can {
         /// Constructs CanRaw instance
         /// </summary>
         /// <param name="networkInterface">Name of the network interface</param>
-        public CanRaw(string networkInterface = "can0")
-        {
-            this._handle = new SafeCanRawSocketHandle(networkInterface);
-        }
+        public CanRaw(string networkInterface = "can0") => this._handle = new SafeCanRawSocketHandle(networkInterface);
 
         /// <summary>
         /// Writes frame to the CAN Bus
@@ -46,17 +43,18 @@ namespace GHIElectronic.Endpoint.Devices.Can {
                 throw new ArgumentException($"Data length cannot exceed {CanFrame.MaxLength} bytes.", nameof(data));
             }
 
-            CanFrame frame = new CanFrame();
-            frame.Id = id;
-            frame.Length = (byte)data.Length;
+            var frame = new CanFrame {
+                Id = id,
+                Length = (byte)data.Length
+            };
             Debug.Assert(frame.IsValid, "Frame is not valid");
 
             unsafe
             {
-                Span<byte> frameData = new Span<byte>(frame.Data, data.Length);
+                var frameData = new Span<byte>(frame.Data, data.Length);
                 data.CopyTo(frameData);
 
-                byte* buff = (byte*)&frame;
+                var buff = (byte*)&frame;
                 Interop.Write(this._handle, buff, Marshal.SizeOf<CanFrame>());
             }
         }
@@ -75,14 +73,14 @@ namespace GHIElectronic.Endpoint.Devices.Can {
                 throw new ArgumentException($"Value must be a minimum of {CanFrame.MaxLength} bytes.", nameof(data));
             }
 
-            CanFrame frame = new CanFrame();
+            var frame = new CanFrame();
 
-            int remainingBytes = Marshal.SizeOf<CanFrame>();
+            var remainingBytes = Marshal.SizeOf<CanFrame>();
             unsafe
             {
                 while (remainingBytes > 0)
                 {
-                    int read = Interop.Read(this._handle, (byte*)&frame, remainingBytes);
+                    var read = Interop.Read(this._handle, (byte*)&frame, remainingBytes);
                     remainingBytes -= read;
                 }
             }
@@ -109,7 +107,7 @@ namespace GHIElectronic.Endpoint.Devices.Can {
                 // - we still need to read the remaining bytes to read the full frame
                 // Considering there are at most 8 bytes to read it is cheaper
                 // to copy rather than doing multiple syscalls.
-                Span<byte> frameData = new Span<byte>(frame.Data, frame.Length);
+                var frameData = new Span<byte>(frame.Data, frame.Length);
                 frameData.CopyTo(data);
             }
 
@@ -134,17 +132,12 @@ namespace GHIElectronic.Endpoint.Devices.Can {
             Interop.SetCanRawSocketOption<Interop.CanFilter>(this._handle, Interop.CanSocketOption.CAN_RAW_FILTER, filters);
         }
 
-        private static bool IsEff(uint address)
-        {
+        private static bool IsEff(uint address) =>
             // has explicit flag or address does not fit in SFF addressing mode
-            return (address & (uint)CanFlags.ExtendedFrameFormat) != 0
+            (address & (uint)CanFlags.ExtendedFrameFormat) != 0
                 || (address & Interop.CAN_EFF_MASK) != (address & Interop.CAN_SFF_MASK);
-        }
 
         /// <inheritdoc/>
-        public void Dispose()
-        {
-            this._handle.Dispose();
-        }
+        public void Dispose() => this._handle.Dispose();
     }
 }

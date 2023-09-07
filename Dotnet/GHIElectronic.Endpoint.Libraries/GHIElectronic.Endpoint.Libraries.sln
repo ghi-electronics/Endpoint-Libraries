@@ -26,7 +26,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronic.Endpoint.Devices.Display", "GHIElectronic.Endpoint.Devices.Display\GHIElectronic.Endpoint.Devices.Display.csproj", "{49F9A867-5B26-4290-9C14-12690BE5BC43}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GHIElectronic.Endpoint.Devices.Network", "GHIElectronic.Endpoint.Devices.Network\GHIElectronic.Endpoint.Devices.Network.csproj", "{A2857E33-B366-4C8F-A03A-0FAA053FBD94}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronic.Endpoint.Devices.Network", "GHIElectronic.Endpoint.Devices.Network\GHIElectronic.Endpoint.Devices.Network.csproj", "{A2857E33-B366-4C8F-A03A-0FAA053FBD94}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronic.Endpoint.Devices.UsbHost", "GHIElectronic.Endpoint.Devices.UsbHost\GHIElectronic.Endpoint.Devices.UsbHost.csproj", "{C007B83D-95CC-4AA1-BD19-E59EFECE2C91}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GHIElectronic.Endpoint.FileSystem", "GHIElectronic.Endpoint.FileSystem\GHIElectronic.Endpoint.FileSystem.csproj", "{879FA77D-122C-4382-9314-DB9E1ACC3DD5}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -74,6 +78,14 @@ Global
 		{A2857E33-B366-4C8F-A03A-0FAA053FBD94}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A2857E33-B366-4C8F-A03A-0FAA053FBD94}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A2857E33-B366-4C8F-A03A-0FAA053FBD94}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C007B83D-95CC-4AA1-BD19-E59EFECE2C91}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C007B83D-95CC-4AA1-BD19-E59EFECE2C91}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C007B83D-95CC-4AA1-BD19-E59EFECE2C91}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C007B83D-95CC-4AA1-BD19-E59EFECE2C91}.Release|Any CPU.Build.0 = Release|Any CPU
+		{879FA77D-122C-4382-9314-DB9E1ACC3DD5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{879FA77D-122C-4382-9314-DB9E1ACC3DD5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{879FA77D-122C-4382-9314-DB9E1ACC3DD5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{879FA77D-122C-4382-9314-DB9E1ACC3DD5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

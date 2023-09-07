@@ -5,7 +5,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GHIElectronic.Endpoint.Libraries {    
+namespace GHIElectronic.Endpoint.Core {    
     public partial class Interop {
         public enum FileOpenFlags
         {
