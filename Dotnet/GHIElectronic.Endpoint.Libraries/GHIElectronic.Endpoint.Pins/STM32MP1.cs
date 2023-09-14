@@ -419,21 +419,21 @@ namespace GHIElectronic.Endpoint.Pins {
             /// <summary>GPIO pin.</summary>
             public const int PK15 = 15 + 160;
             /// <summary>GPIO pin.</summary>
-            public const int PZ0 = 0 + 400;
+            public const int PZ0 = 0 + 144;
             /// <summary>GPIO pin.</summary>
-            public const int PZ1 = 1 + 400;
+            public const int PZ1 = 1 + 144;
             /// <summary>GPIO pin.</summary>
-            public const int PZ2 = 2 + 400;
+            public const int PZ2 = 2 + 144;
             /// <summary>GPIO pin.</summary>
-            public const int PZ3 = 3 + 400;
+            public const int PZ3 = 3 + 144;
             /// <summary>GPIO pin.</summary>
-            public const int PZ4 = 4 + 400;
+            public const int PZ4 = 4 + 144;
             /// <summary>GPIO pin.</summary>
-            public const int PZ5 = 5 + 400;
+            public const int PZ5 = 5 + 144;
             /// <summary>GPIO pin.</summary>
-            public const int PZ6 = 6 + 400;
+            public const int PZ6 = 6 + 144;
             /// <summary>GPIO pin.</summary>
-            public const int PZ7 = 7 + 400;
+            public const int PZ7 = 7 + 144;
             /// <summary>GPIO pin.</summary>
             public const int NONE = -1;
 
@@ -461,7 +461,7 @@ namespace GHIElectronic.Endpoint.Pins {
 
                 pin_id = pin_id % 16;
 
-                if (port_id == 25) // portZ
+                if (port_id == 9) // portZ
                 {
                     port_base = GPIOZ_BASE_REG;
                     port_id = 0;
@@ -491,7 +491,7 @@ namespace GHIElectronic.Endpoint.Pins {
 
                 pin_id = pin_id % 16;
 
-                if (port_id == 25) // portZ
+                if (port_id == 9) // portZ
                  {
                     port_base = GPIOZ_BASE_REG;
                     port_id = 0;
@@ -527,7 +527,7 @@ namespace GHIElectronic.Endpoint.Pins {
 
                 pin_id = pin_id % 16;
 
-                if (port_id == 25) // portZ
+                if (port_id == 9) // portZ
                 {
                     port_base = GPIOZ_BASE_REG;
                     port_id = 0;
@@ -555,7 +555,7 @@ namespace GHIElectronic.Endpoint.Pins {
                 var port_id = pin_id / 16;
                 var port_base = GPIO_BASE_REG + port_id * 0x1000;
 
-                if (port_id == 25) // portZ
+                if (port_id == 9) // portZ
                 {
                     port_base = GPIOZ_BASE_REG;
                     port_id = 0;
@@ -587,7 +587,7 @@ namespace GHIElectronic.Endpoint.Pins {
 
                 pin_id = pin_id % 16;
 
-                if (port_id == 25) // portZ
+                if (port_id == 9) // portZ
                 {
                     port_base = GPIOZ_BASE_REG;
                     port_id = 0;
