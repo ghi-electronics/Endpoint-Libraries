@@ -30,7 +30,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronic.Endpoint.Devi
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronic.Endpoint.Devices.UsbHost", "GHIElectronic.Endpoint.Devices.UsbHost\GHIElectronic.Endpoint.Devices.UsbHost.csproj", "{C007B83D-95CC-4AA1-BD19-E59EFECE2C91}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GHIElectronic.Endpoint.FileSystem", "GHIElectronic.Endpoint.FileSystem\GHIElectronic.Endpoint.FileSystem.csproj", "{879FA77D-122C-4382-9314-DB9E1ACC3DD5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronic.Endpoint.FileSystem", "GHIElectronic.Endpoint.FileSystem\GHIElectronic.Endpoint.FileSystem.csproj", "{879FA77D-122C-4382-9314-DB9E1ACC3DD5}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GHIElectronic.Endpoint.Devices.Rtc", "GHIElectronic.Endpoint.Devices.Rtc\GHIElectronic.Endpoint.Devices.Rtc.csproj", "{AFA496ED-3E61-4BF3-956F-723E6E292979}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -86,6 +88,10 @@ Global
 		{879FA77D-122C-4382-9314-DB9E1ACC3DD5}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{879FA77D-122C-4382-9314-DB9E1ACC3DD5}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{879FA77D-122C-4382-9314-DB9E1ACC3DD5}.Release|Any CPU.Build.0 = Release|Any CPU
+		{AFA496ED-3E61-4BF3-956F-723E6E292979}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AFA496ED-3E61-4BF3-956F-723E6E292979}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AFA496ED-3E61-4BF3-956F-723E6E292979}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AFA496ED-3E61-4BF3-956F-723E6E292979}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
