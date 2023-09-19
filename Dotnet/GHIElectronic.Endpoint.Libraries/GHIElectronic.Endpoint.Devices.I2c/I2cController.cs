@@ -6,24 +6,43 @@ namespace GHIElectronic.Endpoint.Devices.I2c
 {
     public class I2cController : I2cDevice {
         static int initializeCount = 0;
-        private int busId;
         private I2cDevice i2cDev;
-        public I2cController(int busId, int deviceAddress) {
-            if (busId < 0)
-                throw new Exception(string.Format("Not supported bus id {0}", busId));
+        private int busId;
+        I2cConnectionSettings connectionSetting;
 
-            this.busId = busId;
+        public I2cController(I2cConnectionSettings connectionSettings) {
+            if (connectionSettings.BusId < 0 || connectionSettings.BusId > STM32MP1.I2c.PinSettings.Length)
+                throw new Exception(string.Format("Not supported bus id {0}", connectionSettings.BusId));
+
+            this.connectionSetting = connectionSettings;
+
+            this.busId = connectionSettings.BusId;
 
             this.Acquire();
 
-            this.i2cDev = I2cDevice.Create(new I2cConnectionSettings(this.busId, deviceAddress));
+            this.i2cDev = I2cDevice.Create(connectionSettings);
 
             if (this.i2cDev == null) {
                 this.Release();
                 throw new Exception("Could not create device");
             }
         }
-        public override I2cConnectionSettings ConnectionSettings => throw new NotImplementedException();
+        //public I2cController(int busId, int deviceAddress) {
+        //    if (busId < 0)
+        //        throw new Exception(string.Format("Not supported bus id {0}", busId));
+
+        //    this.busId = busId;
+
+        //    this.Acquire();
+
+        //    this.i2cDev = I2cDevice.Create(new I2cConnectionSettings(this.busId, deviceAddress));
+
+        //    if (this.i2cDev == null) {
+        //        this.Release();
+        //        throw new Exception("Could not create device");
+        //    }
+        //}
+        public override I2cConnectionSettings ConnectionSettings => this.connectionSetting;
 
         public override void Read(Span<byte> buffer) => this.i2cDev.Read(buffer);
         public override byte ReadByte() => this.i2cDev.ReadByte();
