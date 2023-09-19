@@ -80,6 +80,7 @@ namespace GHIElectronic.Endpoint.Pins {
             }
 
             public static class Controller4 {
+                public const int PD12 = (0x0300 << 16) | (GpioPin.PD12 << 8) | ((int)Alternate.AF2 << 0);
                 public const int PB7 = (0x0301 << 16) | (GpioPin.PB7 << 8) | ((int)Alternate.AF2 << 0);
                 public const int PD14 = (0x0302 << 16) | (GpioPin.PD14 << 8) | ((int)Alternate.AF2 << 0);
                 public const int PD15 = (0x0303 << 16) | (GpioPin.PD15 << 8) | ((int)Alternate.AF2 << 0);
