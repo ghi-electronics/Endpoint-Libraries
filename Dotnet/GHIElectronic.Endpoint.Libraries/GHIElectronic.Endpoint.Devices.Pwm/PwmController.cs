@@ -1,26 +1,48 @@
 using System.Device.Pwm;
 using GHIElectronic.Endpoint.Pins;
+using static GHIElectronic.Endpoint.Pins.STM32MP1;
 
 namespace GHIElectronic.Endpoint.Devices.Pwm {
     public class PwmController : PwmChannel {
         static int initializeCount = 0;
         private int controllerId;
         private int channelId;
+        private int pinId;
+        private int alternateId;
 
         PwmChannel pwmChannel = default!;
-        public PwmController(int controllerId, int channelId, int frequency, double dutyCyclePercentage) {
-            this.pwmChannel = Create(STM32MP1.Pwm.ToActualController(controllerId), channelId, frequency, dutyCyclePercentage);
-            this.controllerId = controllerId;
-            this.channelId = channelId;
+        //public PwmController(int controllerId, int channelId, int frequency, double dutyCyclePercentage) {
+        //    this.pwmChannel = Create(STM32MP1.Pwm.ToActualController(controllerId), channelId, frequency, dutyCyclePercentage);
+        //    this.controllerId = controllerId;
+        //    this.channelId = channelId;
 
+        //    this.Acquire();
+
+        //    if (this.pwmChannel == null) {
+        //        this.Release(); 
+        //        throw new Exception("Could not create device");
+        //    }
+
+
+
+        //}
+
+        public PwmController(int pin, int frequency, double dutyCyclePercentage) {
+            this.controllerId = (pin >> 24) & 0xFF;
+            this.channelId = (pin >> 16) & 0xFF;
+            this.pinId = (pin >> 8) & 0xFF;
+            this.alternateId = (pin >> 0) & 0xFF;
+
+            this.pwmChannel = Create(STM32MP1.Pwm.ToActualController(controllerId), channelId, frequency, dutyCyclePercentage);
+            
             this.Acquire();
 
             if (this.pwmChannel == null) {
-                this.Release(); 
+                this.Release();
                 throw new Exception("Could not create device");
             }
 
-            
+
 
         }
         public override int Frequency { get => this.pwmChannel.Frequency; set => this.pwmChannel.Frequency = value; }
@@ -47,10 +69,10 @@ namespace GHIElectronic.Endpoint.Devices.Pwm {
 
         private void LoadResources() {
             // load pins 
-            var pinConfig = STM32MP1.Pwm.PinSettings[this.controllerId][this.channelId];
+            //var pinConfig = STM32MP1.Pwm.PinSettings[this.controllerId][this.channelId];
 
-            STM32MP1.GpioPin.SetModer(pinConfig.PwmPin, STM32MP1.Moder.Alternate);
-            STM32MP1.GpioPin.SetAlternate(pinConfig.PwmPin, pinConfig.PwmAlternate);
+            STM32MP1.GpioPin.SetModer(this.pinId, STM32MP1.Moder.Alternate);
+            STM32MP1.GpioPin.SetAlternate(this.pinId, (Alternate)this.alternateId);
             
             // load driver
          
@@ -58,9 +80,9 @@ namespace GHIElectronic.Endpoint.Devices.Pwm {
 
         private void UnLoadResources() {
             // releaset pins 
-            var pinConfig = STM32MP1.Pwm.PinSettings[this.controllerId][this.channelId];
+            //var pinConfig = STM32MP1.Pwm.PinSettings[this.controllerId][this.channelId];
 
-            STM32MP1.GpioPin.SetModer(pinConfig.PwmPin, STM32MP1.Moder.Input);
+            STM32MP1.GpioPin.SetModer(this.pinId, STM32MP1.Moder.Input);
            
         }
 
