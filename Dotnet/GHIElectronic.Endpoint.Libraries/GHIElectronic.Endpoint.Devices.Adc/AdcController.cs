@@ -8,18 +8,40 @@ namespace GHIElectronic.Endpoint.Devices.Adc
         static int initializeCount;
         private int controllerId;
         private int channelId;
+        private int pinId;
 
         private int fd = -1;        
 
         public int ResolutionInBits { get; } = 16;
-        public AdcController(int controllerId, int channelId) {
+        //public AdcController(int controllerId, int channelId) {
            
-            this.controllerId = controllerId;
-            this.channelId = channelId;
+        //    this.controllerId = controllerId;
+        //    this.channelId = channelId;
+
+        //    this.Acquire();
+
+        //    var path = "/sys/bus/iio/devices/iio:device" + this.controllerId.ToString() +  "/in_voltage"+ this.channelId.ToString() + "_raw";
+
+        //    if (File.Exists(path)) {
+        //        this.fd = Interop.Open(path, Interop.FileOpenFlags.O_RDONLY);
+        //    }
+
+        //    if (this.fd < 0) {
+        //        this.Release();
+        //        throw new Exception("Could not create device");
+        //    }
+        //}
+
+        public AdcController(int pin) {
+
+            this.controllerId = (pin >> 24) & 0xFF;
+            this.channelId = (pin >> 16) & 0xFF;
+            this.pinId = (pin>> 0) & 0xFFFF;
+
 
             this.Acquire();
 
-            var path = "/sys/bus/iio/devices/iio:device" + this.controllerId.ToString() +  "/in_voltage"+ this.channelId.ToString() + "_raw";
+            var path = "/sys/bus/iio/devices/iio:device" + this.controllerId.ToString() + "/in_voltage" + this.channelId.ToString() + "_raw";
 
             if (File.Exists(path)) {
                 this.fd = Interop.Open(path, Interop.FileOpenFlags.O_RDONLY);
@@ -69,9 +91,10 @@ namespace GHIElectronic.Endpoint.Devices.Adc
             if (this.controllerId == 0 && (this.channelId < 2))
                 return; // ANA0 and ANA1 are special, no pin
 
-            var pinConfig = STM32MP1.Adc.PinSettings[this.controllerId][this.channelId];
+            //var pinConfig = STM32MP1.Adc.PinSettings[this.controllerId][this.channelId];
 
-            STM32MP1.GpioPin.SetModer(pinConfig.AdcPin, STM32MP1.Moder.Analog);
+            if (this.pinId >=0)
+                STM32MP1.GpioPin.SetModer(this.pinId, STM32MP1.Moder.Analog);
             
             // load driver
 
@@ -82,9 +105,10 @@ namespace GHIElectronic.Endpoint.Devices.Adc
             if (this.controllerId == 0 && (this.channelId < 2))
                 return; // ANA0 and ANA1 are special, no pin
 
-            var pinConfig = STM32MP1.Adc.PinSettings[this.controllerId][this.channelId];
+            //var pinConfig = STM32MP1.Adc.PinSettings[this.controllerId][this.channelId];
 
-            STM32MP1.GpioPin.SetModer(pinConfig.AdcPin, STM32MP1.Moder.Input);            
+            if (this.pinId >= 0)
+                STM32MP1.GpioPin.SetModer(this.pinId, STM32MP1.Moder.Input);            
 
         }
 
