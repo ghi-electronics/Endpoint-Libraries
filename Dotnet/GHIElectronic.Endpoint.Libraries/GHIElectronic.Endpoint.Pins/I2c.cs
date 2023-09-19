@@ -13,7 +13,8 @@ namespace GHIElectronic.Endpoint.Pins {
             //public static int I2c2 = -1;
             //public static int I2c3 = -1;
             public static int I2c4 = 2;
-            public static int I2c5 = 1; 
+            public static int I2c5 = 1;
+            public static int I2c6 = 3;
 
             public class I2cPinSettings {
                 public int SdaPin { get; set; }
@@ -26,6 +27,7 @@ namespace GHIElectronic.Endpoint.Pins {
                 /*i2c1*/new I2cPinSettings { SdaPin = GpioPin.PD13, SclPin = GpioPin.PD12, SdaAlternate = Alternate.AF5 ,  SclAlternate = Alternate.AF5  },                
                 /*i2c5*/new I2cPinSettings { SdaPin = GpioPin.PZ5 , SclPin = GpioPin.PZ4 , SdaAlternate = Alternate.AF4 ,  SclAlternate = Alternate.AF4  },
                 /*i2c4*/new I2cPinSettings { SdaPin = GpioPin.PF15, SclPin = GpioPin.PB6 , SdaAlternate = Alternate.AF4 ,  SclAlternate = Alternate.AF6 },
+                /*i2c6*/new I2cPinSettings { SdaPin = GpioPin.PD0, SclPin = GpioPin.PD1 , SdaAlternate = Alternate.AF2 ,  SclAlternate = Alternate.AF2 },
 
             };
         }
