@@ -14,7 +14,7 @@ namespace GHIElectronic.Endpoint.Devices.Can {
         private int length;
 
         public uint ArbitrationId { get; set; }
-        public bool ExtendedId { get; set; }
+        public bool ExtendedFrameFormat { get; set; }
         public DateTime Timestamp { get; set; }
         public bool BitRateSwitch { get; set; }
         //public ErrorStateIndicator ErrorStateIndicator { get; }
@@ -97,7 +97,7 @@ namespace GHIElectronic.Endpoint.Devices.Can {
 
             this.ArbitrationId = arbitrationId;
             this.RemoteTransmissionRequest = isRemoteTransmissionRequesti;
-            this.ExtendedId = isExtendedId;
+            this.ExtendedFrameFormat = isExtendedId;
             this.Timestamp = DateTime.Now;
             this.Length = count;
             this.data = new byte[64];

@@ -5,30 +5,20 @@ using GHIElectronic.Endpoint.Pins;
 namespace GHIElectronic.Endpoint.Devices.Can
 {
 
-    public delegate void MessageReceivedEventHandler(CanController sender, MessageReceivedEventArgs e);
+    public delegate void MessageReceivedEventHandler(CanController sender);
     public delegate void ErrorReceivedEventHandler(CanController sender, ErrorReceivedEventArgs e);
 
-    public enum CanError
+    public enum CanError:uint
     {
-        ReadBufferOverrun = 0,
-        ReadBufferFull = 1,
-        BusOff = 2,
-        Passive = 3,
-    }
-
-    public enum ErrorStateIndicator
-    {
-        Active = 0,
-        Passive = 1,
-    }
-    public class MessageReceivedEventArgs
-    {
-        public DateTime Timestamp { get; }
-
-        internal MessageReceivedEventArgs(DateTime timestamp)
-        {
-            this.Timestamp = timestamp;
-        }
+        ErrorTxTimeout = 0x00000001U, 
+        ErrorLostArbitration = 0x00000002U,
+        ErrorCrtl = 0x00000004U, 
+        ErrorProtocol = 0x00000008U,
+        ErrorTransceiver = 0x00000010U,
+        ErrorAck = 0x00000020U, 
+        ErrorBusOff = 0x00000040U, 
+        ErrorBusError = 0x00000080U, 
+        ErrorRestarted = 0x00000100U,
     }
 
     public class ErrorReceivedEventArgs
@@ -63,8 +53,6 @@ namespace GHIElectronic.Endpoint.Devices.Can
 
         private MessageReceivedEventHandler messageReceivedCallbacks;
         private ErrorReceivedEventHandler errorReceivedCallbacks;
-
-        Thread threadReceive;
 
         public CanController(int controllerId, int baudrate)
         {
@@ -134,12 +122,23 @@ namespace GHIElectronic.Endpoint.Devices.Can
             {
 
                 this.IsEnabled = false;
-
-
             }
 
         }
 
+        public void EnableFilter(uint[] id, uint[] mask)
+        {
+            if (id == null || mask == null || id.Length != mask.Length)
+            {
+                throw new ArgumentException("Invalid agrument!");
+            }
+            this.canRaw.Filter(id, mask);
+        }
+
+        public void EnableError(uint error)
+        {
+            this.canRaw.FilterError(error);
+        }
         private void LoadResources()
         {
             // load pins 
@@ -183,10 +182,13 @@ namespace GHIElectronic.Endpoint.Devices.Can
             }
             var canId = new CanId();
 
-            if (message.ExtendedId)
+            if (message.ExtendedFrameFormat)
                 canId.Extended = message.ArbitrationId;
             else
                 canId.Standard = message.ArbitrationId;
+
+            canId.RemoteTransmissionRequest = message.RemoteTransmissionRequest;
+            canId.ExtendedFrameFormat = message.ExtendedFrameFormat;
 
             // TODO - add more properties;
 
@@ -234,24 +236,49 @@ namespace GHIElectronic.Endpoint.Devices.Can
 
             }
         }
+
+        public event ErrorReceivedEventHandler ErrorReceived
+        {
+            add
+            {
+                this.errorReceivedCallbacks += value;
+            }
+            remove
+            {
+
+                if (this.errorReceivedCallbacks != null)
+                    this.errorReceivedCallbacks -= value;
+
+            }
+        }
         private Task TaskReceive()
         {
             return Task.Run(() =>
             {
                 while (!this.disposed && this.IsEnabled)
-                {                    
+                {
 
-                    var data = new byte[64];
+                    var data64 = new byte[64];
 
-                    var read = this.canRaw.TryReadFrame(data, out var data_length, out var canId);
+                    var read = this.canRaw.TryReadFrame(data64, out var data_length, out var canId);
 
-                    if (read && canId.IsValid)
+                    if (read && canId.IsValid && canId.Error == false)
                     {
+                        var data8 = new byte[data_length];                        
+
+                        for (int i = 0; i < data_length; i++)
+                        {
+                            data8[i] = data64[i]; 
+                        }
+
                         var message = new CanMessage
                         {
                             ArbitrationId = canId.Value,
                             Length = data_length,
-                            Data = data,
+                            Data = data8,
+                            ExtendedFrameFormat = canId.ExtendedFrameFormat,
+                            RemoteTransmissionRequest = canId.RemoteTransmissionRequest,
+                            Timestamp = DateTime.Now,
 
                             //TODO more will be add
                         };
@@ -266,7 +293,14 @@ namespace GHIElectronic.Endpoint.Devices.Can
                             this.fifoRxCount++;
                         }
 
-                        messageReceivedCallbacks?.Invoke(this, new MessageReceivedEventArgs(DateTime.Now));
+                        messageReceivedCallbacks?.Invoke(this);
+                    }
+                    else
+                    {
+                        if (canId.Error == true)
+                        {
+                            this.errorReceivedCallbacks?.Invoke(this, new ErrorReceivedEventArgs((CanError)canId.Raw, DateTime.Now));
+                        }
                     }
                 }
             });

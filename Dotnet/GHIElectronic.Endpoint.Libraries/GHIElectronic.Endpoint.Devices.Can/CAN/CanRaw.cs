@@ -7,6 +7,7 @@ using System.IO;
 using System.Linq;
 using System.Net.Sockets;
 using System.Reflection;
+using System.Reflection.Metadata;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
@@ -131,6 +132,37 @@ namespace GHIElectronic.Endpoint.Devices.Can {
 
             Interop.SetCanRawSocketOption<Interop.CanFilter>(this._handle, Interop.CanSocketOption.CAN_RAW_FILTER, filters);
         }
+
+        /// <summary>
+        /// Set filter on the bus to read only from specified recipient.
+        /// </summary>
+        /// <param name="id">Recipient identifier</param>
+        /// <param name="mask">mask</param>
+        public void Filter(uint[] id, uint[] mask)
+        {           
+
+            Span<Interop.CanFilter> filters = stackalloc Interop.CanFilter[id.Length];
+            for (int i = 0; i < id.Length; i++)
+            {
+                filters[i].can_id = id[i];
+                filters[i].can_mask = mask[i];
+            }
+
+            Interop.SetCanRawSocketOption<Interop.CanFilter>(this._handle, Interop.CanSocketOption.CAN_RAW_FILTER, filters);
+        }
+
+        /// <summary>
+        /// Set filter on the bus to read only from specified recipient.
+        /// </summary>
+        public void FilterError(uint mask)
+        {
+            Span<uint> filters = stackalloc uint[1];
+
+            filters[0] = mask;
+
+            Interop.SetCanRawSocketOption<uint>(this._handle, Interop.CanSocketOption.CAN_RAW_ERR_FILTER, filters);            
+        }
+
 
         private static bool IsEff(uint address) =>
             // has explicit flag or address does not fit in SFF addressing mode
