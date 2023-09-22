@@ -119,36 +119,50 @@ namespace GHIElectronic.Endpoint.Devices.Can {
         /// Set filter on the bus to read only from specified recipient.
         /// </summary>
         /// <param name="id">Recipient identifier</param>
-        public void Filter(CanId id)
-        {
-            if (!id.IsValid)
-            {
-                throw new ArgumentException("Value must be a valid CanId", nameof(id));
-            }
+        //public void Filter(CanId id)
+        //{
+        //    if (!id.IsValid)
+        //    {
+        //        throw new ArgumentException("Value must be a valid CanId", nameof(id));
+        //    }
 
-            Span<Interop.CanFilter> filters = stackalloc Interop.CanFilter[1];
-            filters[0].can_id = id.Raw;
-            filters[0].can_mask = id.Value | (uint)CanFlags.ExtendedFrameFormat | (uint)CanFlags.RemoteTransmissionRequest;
+        //    Span<Interop.CanFilter> filters = stackalloc Interop.CanFilter[1];
+        //    filters[0].can_id = id.Raw;
+        //    filters[0].can_mask = id.Value | (uint)CanFlags.ExtendedFrameFormat | (uint)CanFlags.RemoteTransmissionRequest;
 
-            Interop.SetCanRawSocketOption<Interop.CanFilter>(this._handle, Interop.CanSocketOption.CAN_RAW_FILTER, filters);
-        }
+        //    Interop.SetCanRawSocketOption<Interop.CanFilter>(this._handle, Interop.CanSocketOption.CAN_RAW_FILTER, filters);
+        //}
 
         /// <summary>
         /// Set filter on the bus to read only from specified recipient.
         /// </summary>
         /// <param name="id">Recipient identifier</param>
         /// <param name="mask">mask</param>
-        public void Filter(uint[] id, uint[] mask)
+        public void Filter(uint[] id, uint[] mask, bool invert)
         {           
 
             Span<Interop.CanFilter> filters = stackalloc Interop.CanFilter[id.Length];
             for (int i = 0; i < id.Length; i++)
             {
-                filters[i].can_id = id[i];
+                filters[i].can_id = id[i] ;
+
+                if (invert)
+                {
+                    filters[i].can_id |= 0x20000000U;
+                }
                 filters[i].can_mask = mask[i];
             }
 
             Interop.SetCanRawSocketOption<Interop.CanFilter>(this._handle, Interop.CanSocketOption.CAN_RAW_FILTER, filters);
+            
+            if (invert) 
+            {
+                Span<uint> filter = stackalloc uint[1];
+
+                filter[0] = 1;
+                Interop.SetCanRawSocketOption<uint>(this._handle, Interop.CanSocketOption.CAN_RAW_JOIN_FILTERS, filter);
+                
+            }
         }
 
         /// <summary>

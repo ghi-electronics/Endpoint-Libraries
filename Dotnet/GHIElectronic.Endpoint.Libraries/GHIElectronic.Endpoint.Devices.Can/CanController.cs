@@ -126,13 +126,13 @@ namespace GHIElectronic.Endpoint.Devices.Can
 
         }
 
-        public void EnableFilter(uint[] id, uint[] mask)
+        public void EnableFilter(uint[] id, uint[] mask, bool invert = false )
         {
             if (id == null || mask == null || id.Length != mask.Length)
             {
                 throw new ArgumentException("Invalid agrument!");
             }
-            this.canRaw.Filter(id, mask);
+            this.canRaw.Filter(id, mask, invert);
         }
 
         public void EnableError(uint error)
