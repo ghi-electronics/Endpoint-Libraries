@@ -2,41 +2,49 @@
 using GHIElectronic.Endpoint.Core;
 using GHIElectronic.Endpoint.Pins;
 
-namespace GHIElectronic.Endpoint.Devices.Can {
+namespace GHIElectronic.Endpoint.Devices.Can
+{
 
     public delegate void MessageReceivedEventHandler(CanController sender, MessageReceivedEventArgs e);
     public delegate void ErrorReceivedEventHandler(CanController sender, ErrorReceivedEventArgs e);
 
-    public enum CanError {
+    public enum CanError
+    {
         ReadBufferOverrun = 0,
         ReadBufferFull = 1,
         BusOff = 2,
         Passive = 3,
     }
 
-    public enum ErrorStateIndicator {
+    public enum ErrorStateIndicator
+    {
         Active = 0,
         Passive = 1,
     }
-    public class MessageReceivedEventArgs {     
+    public class MessageReceivedEventArgs
+    {
         public DateTime Timestamp { get; }
 
-        internal MessageReceivedEventArgs(DateTime timestamp) {            
+        internal MessageReceivedEventArgs(DateTime timestamp)
+        {
             this.Timestamp = timestamp;
         }
     }
 
-    public class ErrorReceivedEventArgs {
+    public class ErrorReceivedEventArgs
+    {
         public CanError Error { get; }
         public DateTime Timestamp { get; }
 
-        internal ErrorReceivedEventArgs(CanError error, DateTime timestamp) {
+        internal ErrorReceivedEventArgs(CanError error, DateTime timestamp)
+        {
             this.Error = error;
             this.Timestamp = timestamp;
         }
     }
 
-    public class CanController : IDisposable {
+    public class CanController : IDisposable
+    {
         static int initializeCount = 0;
         private int controllerId;
 
@@ -58,11 +66,12 @@ namespace GHIElectronic.Endpoint.Devices.Can {
 
         Thread threadReceive;
 
-        public CanController(int controllerId, int baudrate) {
+        public CanController(int controllerId, int baudrate)
+        {
 
             this.controllerId = controllerId;
 
-            var script = new Script("ip", "/sbin/", "link set can" + this.controllerId + " type can bitrate " + baudrate.ToString());
+            var script = new Script("ip", "./", "link set can" + this.controllerId + " type can bitrate " + baudrate.ToString());
 
             script.Start();
 
@@ -72,24 +81,30 @@ namespace GHIElectronic.Endpoint.Devices.Can {
 
         }
 
-        private void Acquire() {
-            if (initializeCount == 0) {
+        private void Acquire()
+        {
+            if (initializeCount == 0)
+            {
                 this.LoadResources();
             }
 
             initializeCount++;
         }
 
-        private void Release() {
+        private void Release()
+        {
             initializeCount--;
 
-            if (initializeCount == 0) {
+            if (initializeCount == 0)
+            {
                 this.UnLoadResources();
             }
         }
 
-        public void Enable() {
-            if (!this.IsEnabled) {
+        public void Enable()
+        {
+            if (!this.IsEnabled)
+            {
                 // bring can up
 
 
@@ -104,28 +119,29 @@ namespace GHIElectronic.Endpoint.Devices.Can {
                 this.IsEnabled = true;
 
 
-                this.threadReceive = new Thread(ThreadReceive);
-                this.threadReceive.Start(); 
-               
+
+                TaskReceive();
+
+
+
+
             }
         }
 
-        public void Disable() {
-            if (this.IsEnabled) {
+        public void Disable()
+        {
+            if (this.IsEnabled)
+            {
 
                 this.IsEnabled = false;
 
-                try {
-                    this.threadReceive.Abort();
-                }
-                catch {
-                }
 
             }
 
         }
 
-        private void LoadResources() {
+        private void LoadResources()
+        {
             // load pins 
             var pinConfig = STM32MP1.Can.PinSettings[this.controllerId];
 
@@ -139,26 +155,30 @@ namespace GHIElectronic.Endpoint.Devices.Can {
             // Can always loaded
 
             // bring can up
-            var script = new Script("ifconfig", "/sbin/", "can" + this.controllerId + " up");
+            var script = new Script("ifconfig", "./", "can" + this.controllerId + " up");
 
             script.Start();
 
+
         }
 
-        private void UnLoadResources() {
+        private void UnLoadResources()
+        {
             // releaset pins 
             var pinConfig = STM32MP1.Can.PinSettings[this.controllerId];
 
             STM32MP1.GpioPin.SetModer(pinConfig.TxPin, STM32MP1.Moder.Input);
             STM32MP1.GpioPin.SetModer(pinConfig.RxPin, STM32MP1.Moder.Input);
 
-            var script = new Script("ifconfig", "/sbin/", "can" + this.controllerId + " down");
+            var script = new Script("ifconfig", "./", "can" + this.controllerId + " down");
 
             script.Start();
         }
 
-        public void Write(CanMessage message) {
-            if (!this.IsEnabled) {
+        public void Write(CanMessage message)
+        {
+            if (!this.IsEnabled)
+            {
                 throw new Exception("CAN is disabled.");
             }
             var canId = new CanId();
@@ -176,12 +196,15 @@ namespace GHIElectronic.Endpoint.Devices.Can {
                 throw new Exception("Invalid id!");
         }
 
-        public CanMessage Read() {
-            if (!this.IsEnabled) {
+        public CanMessage Read()
+        {
+            if (!this.IsEnabled)
+            {
                 throw new Exception("CAN is disabled.");
             }
 
-            if (this.fifoRxCount > 0) {
+            if (this.fifoRxCount > 0)
+            {
                 var message = this.CanMessageRx[this.fifoRxOut];
 
                 this.fifoRxOut = (this.fifoRxOut + 1) % this.ReadBufferSize;
@@ -197,65 +220,76 @@ namespace GHIElectronic.Endpoint.Devices.Can {
             return null;
         }
 
-        public event MessageReceivedEventHandler MessageReceived {
-            add {
+        public event MessageReceivedEventHandler MessageReceived
+        {
+            add
+            {
                 this.messageReceivedCallbacks += value;
             }
-            remove {
+            remove
+            {
 
                 if (this.messageReceivedCallbacks != null)
                     this.messageReceivedCallbacks -= value;
 
             }
         }
-        private void ThreadReceive() {
-            //return Task.Run(() => {
+        private Task TaskReceive()
+        {
+            return Task.Run(() =>
+            {
+                while (!this.disposed && this.IsEnabled)
+                {                    
 
-            while (!this.disposed && this.IsEnabled) {
+                    var data = new byte[64];
 
-                var data = new byte[64];
+                    var read = this.canRaw.TryReadFrame(data, out var data_length, out var canId);
 
-                var read = this.canRaw.TryReadFrame(data, out var data_length, out var canId);
-
-
-                if (read && canId.IsValid) {
-                    var message = new CanMessage {
-                        ArbitrationId = canId.Value,
-                        Length = data_length,
-                        Data = data,
-
-                        //TODO more will be add
-                    };
-
-
-                    this.CanMessageRx[this.fifoRxIn] = message;
-
-                    this.fifoRxIn = (this.fifoRxIn + 1) % this.ReadBufferSize;
-
-                    lock (this.locker)
+                    if (read && canId.IsValid)
                     {
-                        this.fifoRxCount++;
-                    }
+                        var message = new CanMessage
+                        {
+                            ArbitrationId = canId.Value,
+                            Length = data_length,
+                            Data = data,
 
-                    messageReceivedCallbacks?.Invoke(this, new MessageReceivedEventArgs(DateTime.Now) ); 
-                }               
-            }
+                            //TODO more will be add
+                        };
+
+
+                        this.CanMessageRx[this.fifoRxIn] = message;
+
+                        this.fifoRxIn = (this.fifoRxIn + 1) % this.ReadBufferSize;
+
+                        lock (this.locker)
+                        {
+                            this.fifoRxCount++;
+                        }
+
+                        messageReceivedCallbacks?.Invoke(this, new MessageReceivedEventArgs(DateTime.Now));
+                    }
+                }
+            });
         }
 
         private bool disposed = false;
-        ~CanController() {
+        ~CanController()
+        {
             this.Dispose(disposing: false);
         }
 
-        public void Dispose() {
+        public void Dispose()
+        {
             this.Dispose(true);
             GC.SuppressFinalize(this);
         }
-        protected void Dispose(bool disposing) {
+        protected void Dispose(bool disposing)
+        {
             if (this.disposed)
                 return;
 
-            if (disposing) {
+            if (disposing)
+            {
                 this.canRaw.Dispose();
 
             }
