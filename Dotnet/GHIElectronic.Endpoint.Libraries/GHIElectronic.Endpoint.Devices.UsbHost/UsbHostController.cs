@@ -84,7 +84,7 @@ namespace GHIElectronic.Endpoint.Devices.UsbHost
         {
             enabled = true; ;
 
-            TaskRun();
+            TaskEvent();
 
         }
 
@@ -167,7 +167,7 @@ namespace GHIElectronic.Endpoint.Devices.UsbHost
         }
 
        
-        private Task TaskRun()
+        private Task TaskEvent()
         {
 
             return Task.Run(() =>
