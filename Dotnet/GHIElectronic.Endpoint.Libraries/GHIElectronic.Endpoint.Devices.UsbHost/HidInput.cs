@@ -32,10 +32,10 @@ namespace GHIElectronic.Endpoint.Devices.UsbHost
                 {
                     var reader = new InputReader(file);
 
-                    reader.OnData += HandleOnData;
-                    reader.OnDisconnected += ReaderOnDisconnected;
+                    reader.OnData += this.HandleOnData;
+                    reader.OnDisconnected += this.ReaderOnDisconnected;
 
-                    _readers.Add(reader);
+                    this._readers.Add(reader);
                 }
             }
             else
@@ -44,10 +44,7 @@ namespace GHIElectronic.Endpoint.Devices.UsbHost
             }
         }
 
-        private void ReaderOnDisconnected()
-        {
-            OnDisconnected?.Invoke();
-        }
+        private void ReaderOnDisconnected() => OnDisconnected?.Invoke();
 
         private void HandleOnData(byte[] data)
         {
@@ -60,23 +57,17 @@ namespace GHIElectronic.Endpoint.Devices.UsbHost
             switch (eventType)
             {
                 case EventType.EV_KEY:
-                    HandleKeyPressEvent(code, value);
+                    this.HandleKeyPressEvent(code, value);
                     break;
                 case EventType.EV_REL:
-                    HandleMouseMoveEvent(code, value);
+                    this.HandleMouseMoveEvent(code, value);
                     break;
             }
         }
 
-        private void HandleKeyPressEvent(short code, int value)
-        {
-            OnButtonPress?.Invoke(new KeyPressEvent((EventCode)code, (KeyState)value));
-        }
+        private void HandleKeyPressEvent(short code, int value) => OnButtonPress?.Invoke(new KeyPressEvent((EventCode)code, (KeyState)value));
 
-        private void HandleMouseMoveEvent(short code, int value)
-        {
-            OnMouseMove?.Invoke(new MouseMoveEvent((MouseAxis)code, value));
-        }
+        private void HandleMouseMoveEvent(short code, int value) => OnMouseMove?.Invoke(new MouseMoveEvent((MouseAxis)code, value));
 
         public void Dispose()
         {
@@ -90,15 +81,15 @@ namespace GHIElectronic.Endpoint.Devices.UsbHost
 
             if (disposing)
             {
-                foreach (var reader in _readers)
+                foreach (var reader in this._readers)
                 {
-                    reader.OnData -= HandleOnData;
-                    reader.OnDisconnected -= ReaderOnDisconnected;
+                    reader.OnData -= this.HandleOnData;
+                    reader.OnDisconnected -= this.ReaderOnDisconnected;
                     reader.Dispose();
                 }
 
-                _readers.Clear();   
-                _readers = null;
+                this._readers.Clear();
+                this._readers = null;
             }
 
             this.disposed = true;

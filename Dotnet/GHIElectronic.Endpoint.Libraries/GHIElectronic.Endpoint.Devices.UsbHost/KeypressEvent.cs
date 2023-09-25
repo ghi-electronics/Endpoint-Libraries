@@ -10,8 +10,8 @@ namespace GHIElectronic.Endpoint.Devices.UsbHost
     {
         public KeyPressEvent(EventCode code, KeyState state)
         {
-            Code = code;
-            State = state;
+            this.Code = code;
+            this.State = state;
         }
 
         public EventCode Code { get; }

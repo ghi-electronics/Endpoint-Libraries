@@ -25,12 +25,12 @@ namespace GHIElectronic.Endpoint.Devices.Network {
         public IPAddress[] Dns { get; }
 
         public string MACAddress { get; }
-        internal NetworkAddressChangedEventArgs(IPAddress address, IPAddress gateway, IPAddress[] dns, string MAC, DateTime timestamp) {
+        internal NetworkAddressChangedEventArgs(IPAddress address, IPAddress gateway, IPAddress[] dns, string mac, DateTime timestamp) {
             this.Timestamp = timestamp;
             this.Gateway = gateway;
             this.Address = address;
             this.Dns = dns;
-            this.MACAddress = MAC;
+            this.MACAddress = mac;
         }
     }
     public enum NetworkInterfaceType {
@@ -153,7 +153,7 @@ namespace GHIElectronic.Endpoint.Devices.Network {
 
             this.enabled = true;
 
-            TaskEvents();
+            this.TaskEvents();
 
 
 
@@ -348,7 +348,7 @@ namespace GHIElectronic.Endpoint.Devices.Network {
                 while (this.enabled && !this.disposed)
                 {
 
-                    connect[index] = CheckNetworkConnection(networklist[index]);
+                    connect[index] = this.CheckNetworkConnection(networklist[index]);
                     
                     if (connect[index] != lastconnect[index])
                     {

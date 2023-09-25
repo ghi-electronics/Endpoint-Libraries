@@ -10,8 +10,8 @@ namespace GHIElectronic.Endpoint.Devices.UsbHost
     {
         public MouseMoveEvent(MouseAxis axis, int amount)
         {
-            Axis = axis;
-            Amount = amount;
+            this.Axis = axis;
+            this.Amount = amount;
         }
 
         public MouseAxis Axis { get; }

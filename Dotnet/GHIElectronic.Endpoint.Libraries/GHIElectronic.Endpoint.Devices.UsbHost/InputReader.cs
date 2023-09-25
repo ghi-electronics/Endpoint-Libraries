@@ -25,24 +25,24 @@ namespace GHIElectronic.Endpoint.Devices.UsbHost
 
         public InputReader(string path)
         {
-            _stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+            this._stream = new FileStream(path, FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
 
-            Task.Run(Run);
+            Task.Run(this.Run);
         }
 
         private void Run()
         {
             while (true)
             {
-                if (_disposing)
+                if (this._disposing)
                     break;
 
                 if (Directory.Exists("/dev/input/"))
                 {
                     try
                     {
-                        _stream.Read(_buffer, 0, BufferLength);
-                        OnData?.Invoke(_buffer);
+                        this._stream.Read(this._buffer, 0, BufferLength);
+                        OnData?.Invoke(this._buffer);
                     }
                     catch { 
                     
@@ -58,9 +58,9 @@ namespace GHIElectronic.Endpoint.Devices.UsbHost
         }        
         public void Dispose()
         {
-            _disposing = true;
-            _stream.Dispose();
-            _stream = null;
+            this._disposing = true;
+            this._stream.Dispose();
+            this._stream = null;
         }
     }
 }

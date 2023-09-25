@@ -84,7 +84,7 @@ namespace GHIElectronic.Endpoint.Devices.UsbHost
         {
             enabled = true; ;
 
-            TaskEvent();
+            this.TaskEvent();
 
         }
 
@@ -166,30 +166,20 @@ namespace GHIElectronic.Endpoint.Devices.UsbHost
             return hasRemoved;
         }
 
-       
-        private Task TaskEvent()
-        {
 
-            return Task.Run(() =>
-            {
+        private Task TaskEvent() => Task.Run(() => {
 
-                while (!disposed && enabled)
-                {
+            while (!this.disposed && enabled) {
 
-                    CheckUsbConnection("/dev/", "sd*", DeviceType.MassStorage);
-                    CheckUsbConnection("/dev/input/", "event*", DeviceType.HID);
+                this.CheckUsbConnection("/dev/", "sd*", DeviceType.MassStorage);
+                this.CheckUsbConnection("/dev/input/", "event*", DeviceType.HID);
 
-                    Thread.Sleep(1000);
+                Thread.Sleep(1000);
 
-                }
-            });
-        }
-        
-        private void OnConnectionChangedCallBack(UsbHostController sender, DeviceConnectionEventArgs e)
-        {
-           
-            this.onConnectionChangedCallbacks?.Invoke(sender, e);
-        }
+            }
+        });
+
+        private void OnConnectionChangedCallBack(UsbHostController sender, DeviceConnectionEventArgs e) => this.onConnectionChangedCallbacks?.Invoke(sender, e);
 
 
         public event OnConnectionChanged OnConnectionChangedEvent
