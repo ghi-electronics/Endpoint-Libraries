@@ -1,6 +1,7 @@
 #pragma warning disable CS8601 // Possible null reference assignment.
 using GHIElectronic.Endpoint.Core;
 using GHIElectronic.Endpoint.Pins;
+using static GHIElectronic.Endpoint.Pins.STM32MP1;
 
 namespace GHIElectronic.Endpoint.Devices.Can
 {
@@ -53,19 +54,27 @@ namespace GHIElectronic.Endpoint.Devices.Can
 
         private MessageReceivedEventHandler messageReceivedCallbacks;
         private ErrorReceivedEventHandler errorReceivedCallbacks;
+        internal static bool IsCanFd = false;
 
-        public CanController(int controllerId, int baudrate)
-        {
 
+        public CanController(int controllerId, int nominalBitrate, int dataBitrate = 0)
+        {            
             this.controllerId = controllerId;
 
-            var script = new Script("ip", "./", "link set can" + this.controllerId + " type can bitrate " + baudrate.ToString());
+            var fdBaurate = dataBitrate > 0 ? string.Format(" dbitrate {0} fd on", dataBitrate) : "";
+
+            IsCanFd = fdBaurate.Length > 0 ? true: false;
+
+            var script = new Script("ip", "./", "link set can" + this.controllerId + " type can bitrate " + nominalBitrate.ToString() + fdBaurate);
 
             script.Start();
 
             this.Acquire();
 
             this.canRaw = new CanRaw("can" + this.controllerId.ToString());
+
+            if (IsCanFd)
+                this.canRaw.EnableCanFd();
 
         }
 
@@ -93,8 +102,7 @@ namespace GHIElectronic.Endpoint.Devices.Can
         {
             if (!this.IsEnabled)
             {
-                // bring can up
-
+                // bring can up               
 
                 this.CanMessageRx = new CanMessage[this.ReadBufferSize];
 
@@ -108,7 +116,7 @@ namespace GHIElectronic.Endpoint.Devices.Can
 
 
 
-                TaskReceive();
+                this.TaskReceive();
 
 
 
@@ -139,6 +147,15 @@ namespace GHIElectronic.Endpoint.Devices.Can
         {
             this.canRaw.FilterError(error);
         }
+
+        public void Reset() {            
+
+            var script = new Script("ip", "./", "link set can" + this.controllerId + " type can restart-ms 100");
+
+            script.Start();
+
+        }
+
         private void LoadResources()
         {
             // load pins 
@@ -190,10 +207,15 @@ namespace GHIElectronic.Endpoint.Devices.Can
             canId.RemoteTransmissionRequest = message.RemoteTransmissionRequest;
             canId.ExtendedFrameFormat = message.ExtendedFrameFormat;
 
+
             // TODO - add more properties;
 
-            if (canId.IsValid)
-                this.canRaw.WriteFrame(message.Data, canId);
+            if (canId.IsValid) {
+                if (IsCanFd)
+                    this.canRaw.WriteFrameFd(message.Data, canId, message.BitRateSwitch);
+                else
+                    this.canRaw.WriteFrame(message.Data, canId);
+            }
             else
                 throw new Exception("Invalid id!");
         }
@@ -260,25 +282,43 @@ namespace GHIElectronic.Endpoint.Devices.Can
 
                     var data64 = new byte[64];
 
-                    var read = this.canRaw.TryReadFrame(data64, out var data_length, out var canId);
+                    var read = false;
+                    CanId canId;
+                    int frameLength = -1;
+                    bool bitrateSwitch = false;
+
+                    if (IsCanFd) {
+                        read = this.canRaw.TryReadFrameFd(data64, out var v1, out var v2, out var v3);
+                        frameLength = v1;
+                        canId = v2;
+                        bitrateSwitch = v3;
+                    }
+                    else {
+                        read = this.canRaw.TryReadFrame(data64, out var v1, out var v2);
+                        frameLength = v1;
+                        canId = v2;
+                    }
 
                     if (read && canId.IsValid && canId.Error == false)
                     {
-                        var data8 = new byte[data_length];                        
+                        var data = new byte[frameLength];                        
 
-                        for (int i = 0; i < data_length; i++)
+                        for (int i = 0; i < frameLength; i++)
                         {
-                            data8[i] = data64[i]; 
+                            data[i] = data64[i]; 
                         }
+
+           
 
                         var message = new CanMessage
                         {
                             ArbitrationId = canId.Value,
-                            Length = data_length,
-                            Data = data8,
+                            Length = frameLength,
+                            Data = data,
                             ExtendedFrameFormat = canId.ExtendedFrameFormat,
                             RemoteTransmissionRequest = canId.RemoteTransmissionRequest,
                             Timestamp = DateTime.Now,
+                            BitRateSwitch = bitrateSwitch,
 
                             //TODO more will be add
                         };

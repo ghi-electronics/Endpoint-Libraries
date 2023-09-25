@@ -11,8 +11,25 @@ using System.Threading;
 
 namespace GHIElectronic.Endpoint.Devices.Can {
     [StructLayout(LayoutKind.Sequential)]
-    internal unsafe struct CanFrame
+    internal unsafe struct CanFrameFd
     {
+        public const int MaxLength = 64;
+
+        // RawId (can_id) includes EFF, RTR and ERR flags
+        public CanId Id;
+
+        // data length code (can_dlc)
+        // see: ISO 11898-1 Chapter 8.4.2.4
+        public byte Length;
+        public byte BitRateSwitch;
+        private byte _res0;
+        private byte _res1;
+        public fixed byte Data[MaxLength];
+
+        public bool IsValid => this.Length <= MaxLength && this.Id.IsValid;
+    }
+
+    internal unsafe struct CanFrame {
         public const int MaxLength = 8;
 
         // RawId (can_id) includes EFF, RTR and ERR flags
