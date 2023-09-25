@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\GHIElectronic.Endpoint.Core\GHIElectronic.Endpoint.Core.csproj" />
+    <ProjectReference Include="..\GHIElectronic.Endpoint.Devices.Usb\GHIElectronic.Endpoint.Devices.Usb.csproj" />
   </ItemGroup>
 
 </Project>

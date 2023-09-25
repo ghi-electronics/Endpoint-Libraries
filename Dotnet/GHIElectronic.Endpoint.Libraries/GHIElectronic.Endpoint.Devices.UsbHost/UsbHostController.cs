@@ -1,8 +1,13 @@
+using System;
 using System.Collections;
+using System.Collections.Specialized;
 using GHIElectronic.Endpoint.Core;
+using GHIElectronic.Endpoint.Devices.Usb;
 
-namespace GHIElectronic.Endpoint.Devices.UsbHost {
-    public enum DeviceConnectionStatus {
+namespace GHIElectronic.Endpoint.Devices.UsbHost
+{
+    public enum DeviceConnectionStatus
+    {
         Disconnected = 0,
         Connected = 1,
         Bad = 2,
@@ -10,183 +15,199 @@ namespace GHIElectronic.Endpoint.Devices.UsbHost {
 
     public delegate void OnConnectionChanged(UsbHostController sender, DeviceConnectionEventArgs e);
 
-    public class DeviceConnectionEventArgs : EventArgs {
-        private readonly uint id;
-        private readonly byte interfaceIndex;
-        private readonly BaseDevice.DeviceType type;
-        private readonly ushort vendorId;
-        private readonly ushort productId;
-        private readonly byte portNumber;
-        private readonly DeviceConnectionStatus deviceStatus;
+    public class DeviceConnectionEventArgs : EventArgs
+    {
+        //private readonly uint id;
+        //private readonly byte interfaceIndex;
+        //private readonly BaseDevice.DeviceType type;
+        //private readonly ushort vendorId;
+        //private readonly ushort productId;
+        //private readonly byte portNumber;
+        //private readonly DeviceConnectionStatus deviceStatus;
 
-        /// <summary>The device id.</summary>
-        public uint Id => this.id;
+        ///// <summary>The device id.</summary>
+        //public uint Id => this.id;
 
-        /// <summary>The logical device interface index.</summary>
-        public byte InterfaceIndex => this.interfaceIndex;
+        ///// <summary>The logical device interface index.</summary>
+        //public byte InterfaceIndex => this.interfaceIndex;
 
-        /// <summary>The device's type.</summary>
-        public BaseDevice.DeviceType Type => this.type;
+        ///// <summary>The device's type.</summary>
+        //public BaseDevice.DeviceType Type => this.type;
 
-        /// <summary>The devic's vendor id.</summary>
-        public ushort VendorId => this.vendorId;
+        ///// <summary>The devic's vendor id.</summary>
+        //public ushort VendorId => this.vendorId;
 
-        /// <summary>The device's product id.</summary>
-        public ushort ProductId => this.productId;
+        ///// <summary>The device's product id.</summary>
+        //public ushort ProductId => this.productId;
 
-        /// <summary>The device's USB port number.</summary>
-        public byte PortNumber => this.portNumber;
+        ///// <summary>The device's USB port number.</summary>
+        //public byte PortNumber => this.portNumber;
 
-        public DeviceConnectionStatus DeviceStatus => this.deviceStatus;
+        public DeviceConnectionStatus DeviceStatus { get; }
+
+        public string DeviceName { get; }
+        public DeviceType Type { get; }
+        public int DeviceId { get; }
 
 
-        internal DeviceConnectionEventArgs(uint id, byte interfaceIndex, BaseDevice.DeviceType type, ushort vendorId, ushort productId, byte portNumber, DeviceConnectionStatus deviceStatus) {
-            this.id = id;
-            this.interfaceIndex = interfaceIndex;
-            this.type = type;
-            this.vendorId = vendorId;
-            this.productId = productId;
-            this.portNumber = portNumber;
-            this.deviceStatus = deviceStatus;
+        internal DeviceConnectionEventArgs(int id, DeviceType type, string name, DeviceConnectionStatus deviceStatus)
+        {
+            this.DeviceId = id;
+            this.DeviceName = name;
+            this.Type = type;
+            this.DeviceStatus = deviceStatus;
         }
     }
-    public class UsbHostController : IDisposable {
+    public class UsbHostController : IDisposable
+    {
 
         private static bool enabled;
         private static ArrayList devices;
         private static object listLock;
         private static int initializeCount;
 
+
         private bool disposed = false;
 
         private OnConnectionChanged onConnectionChangedCallbacks;
 
-        public UsbHostController() {
+        public UsbHostController()
+        {
             devices = new ArrayList();
             enabled = false;
             listLock = new object();
 
+
             this.Acquire();
         }
-        public void Enable() {
+        public void Enable()
+        {
             enabled = true; ;
 
-          
+            TaskRun();
 
         }
 
-    
-
-        public void Disable() {
+        public void Disable()
+        {
             enabled = false; ;
-
-            
         }
 
-        public static BaseDevice[]? GetConnectedDevices() {
-            if (enabled == false)
-                return null;
+        private bool CheckUsbConnection(string path, string pattern, DeviceType type)
+        {
 
-            lock (listLock)
-                return (BaseDevice[])devices.ToArray(typeof(BaseDevice));
-        }
+            var hasRemoved = false;
+            string[] files = null;
 
-        internal static void RegisterDevice(BaseDevice device) {
-            lock (listLock)
-                devices.Add(device);
-        }
 
-        private static void OnDisconnect(object sender, DeviceConnectionEventArgs e) {
-            lock (listLock) {
-                var newList = new ArrayList();
+            if (Directory.Exists(path))
+            {
+                files = Directory.GetFiles(path, pattern);
 
-                foreach (BaseDevice d in devices) {
-                    if (d.Id == e.Id) {
-                        d.OnDisconnected();
-                        d.Dispose();
+                if (files != null && files.Length > 0)
+                {
+                    foreach (var file in files)
+                    {
+                        var found = false;
+
+                        foreach (BaseDevice d in devices)
+                        {
+                            if (d.DeviceName == file)
+                            {
+                                found = true;
+                                break;
+                            }
+                        }
+
+                        if (!found)
+                        {
+                            if (type == DeviceType.MassStorage && file.Length <= 8)
+                                continue;
+
+                            var d = new BaseDevice(++BaseDevice.CurrentId, file, type);
+
+                            devices.Add(d);
+
+                            this.OnConnectionChangedCallBack(this, new DeviceConnectionEventArgs(d.DeviceId, d.Type, d.DeviceName, DeviceConnectionStatus.Connected));
+
+                        }
                     }
-                    else {
-                        newList.Add(d);
+                }
+            }
+
+            foreach (BaseDevice d in devices)
+            {
+                var found = false;
+
+                if (files != null && files.Length > 0)
+                {
+                    foreach (var f in files)
+                    {
+                        if (d.DeviceName == f)
+                        {
+                            found = true;
+                            break;
+                        }
                     }
                 }
 
-                devices = newList;
+                if (d.Type == type && !found)
+                {
+                    devices.Remove(d);
+
+                    this.OnConnectionChangedCallBack(this, new DeviceConnectionEventArgs(d.DeviceId, d.Type, d.DeviceName, DeviceConnectionStatus.Disconnected));
+
+                    hasRemoved = true;
+                    break;
+
+                }
             }
+
+            return hasRemoved;
         }
 
-        private void UsbHostEventChanged(string eventlog) {
-            var device_id = -1;
-            if (eventlog.Contains("USB device number ")) {
-                if (eventlog.Contains("detected")) {
+       
+        private Task TaskRun()
+        {
 
-                    
+            return Task.Run(() =>
+            {
 
-                    var s = Core.Utils.FindAndSplitUntil(eventlog, "USB device number ", ' ');
+                while (!disposed && enabled)
+                {
 
-                    var end = s.Length-1;
+                    CheckUsbConnection("/dev/", "sd*", DeviceType.MassStorage);
+                    CheckUsbConnection("/dev/input/", "event*", DeviceType.HID);
 
-                    var s_num = "";
+                    Thread.Sleep(1000);
 
-                    while (end > 0 && s[end] != ' ') {
-                        s_num += s[end];
-                        end--;
-                    }
-
-
-                    try {
-                        device_id = int.Parse(s_num);
-                        this.OnConnectionChangedCallBack(this, new DeviceConnectionEventArgs((uint)device_id, 1, BaseDevice.DeviceType.Unknown, 0, 0, 0, DeviceConnectionStatus.Connected));
-                    }
-                    catch { }
-                    
                 }
-            }
-            if (eventlog.Contains("USB disconnect")) {
-
-                var s = Core.Utils.FindAndSplitUntil(eventlog, "device number ", ' ');
-
-                var end = s.Length - 1;
-
-                var s_num = "";
-
-                while (end > 0 && s[end] != ' ') {
-                    s_num += s[end];
-                    end--;
-                }
-
-                try {
-
-                    device_id = int.Parse(s_num);
-                    this.OnConnectionChangedCallBack(this, new DeviceConnectionEventArgs((uint)device_id, 1, BaseDevice.DeviceType.Unknown, 0, 0, 0, DeviceConnectionStatus.Disconnected));
-                }
-                catch { }   
-
-                
-            }
+            });
         }
-        private void OnConnectionChangedCallBack(UsbHostController sender, DeviceConnectionEventArgs e) {
-            if (e.DeviceStatus == DeviceConnectionStatus.Disconnected) {
-                OnDisconnect(sender, e);
-            }
-
-            this.onConnectionChangedCallbacks?.Invoke(this, e);
+        
+        private void OnConnectionChangedCallBack(UsbHostController sender, DeviceConnectionEventArgs e)
+        {
+           
+            this.onConnectionChangedCallbacks?.Invoke(sender, e);
         }
 
 
-        public event OnConnectionChanged OnConnectionChangedEvent {
+        public event OnConnectionChanged OnConnectionChangedEvent
+        {
             add => this.onConnectionChangedCallbacks += value;
-            remove {
-                if (this.onConnectionChangedCallbacks != null) {
+            remove
+            {
+                if (this.onConnectionChangedCallbacks != null)
+                {
                     this.onConnectionChangedCallbacks -= value;
                 }
             }
         }
 
-        private void Acquire() {
-            if (initializeCount == 0) {
-
-                Core.Events.SystemEventChanged += this.UsbHostEventChanged;
-                Core.Events.StartSystemEventDetectionTask();
+        private void Acquire()
+        {
+            if (initializeCount == 0)
+            {              
 
                 this.LoadResources();
 
@@ -194,41 +215,47 @@ namespace GHIElectronic.Endpoint.Devices.UsbHost {
             initializeCount++;
         }
 
-        private void Release() {
+        private void Release()
+        {
             initializeCount--;
 
-            if (initializeCount == 0) {
+            if (initializeCount == 0)
+            {
 
-                Core.Events.SystemEventChanged -= this.UsbHostEventChanged;
-                Core.Events.StopSystemEventDetectionTask();
-
+               
                 this.UnLoadResources();
             }
         }
 
-        private void LoadResources() {
+        private void LoadResources()
+        {
 
             //TODO
         }
 
-        private void UnLoadResources() {
+        private void UnLoadResources()
+        {
 
             //TODO
         }
 
-        ~UsbHostController() {
+        ~UsbHostController()
+        {
             this.Dispose(disposing: false);
         }
 
-        public void Dispose() {
+        public void Dispose()
+        {
             this.Dispose(true);
             GC.SuppressFinalize(this);
         }
-        protected void Dispose(bool disposing) {
+        protected void Dispose(bool disposing)
+        {
             if (this.disposed)
                 return;
 
-            if (disposing) {
+            if (disposing)
+            {
 
             }
 
