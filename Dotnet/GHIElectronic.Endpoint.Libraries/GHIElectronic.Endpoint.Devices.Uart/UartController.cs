@@ -66,8 +66,12 @@ namespace GHIElectronic.Endpoint.Devices.Uart {
 
             STM32MP1.GpioPin.SetModer(pinConfig.TxPin, STM32MP1.Moder.Input);
             STM32MP1.GpioPin.SetModer(pinConfig.RxPin, STM32MP1.Moder.Input);
-            STM32MP1.GpioPin.SetModer(pinConfig.CtsPin, STM32MP1.Moder.Input);
-            STM32MP1.GpioPin.SetModer(pinConfig.RtsPin, STM32MP1.Moder.Input);
+
+            if (pinConfig.CtsPin != STM32MP1.GpioPin.NONE) 
+                STM32MP1.GpioPin.SetModer(pinConfig.CtsPin, STM32MP1.Moder.Input);
+
+            if (pinConfig.RtsPin != STM32MP1.GpioPin.NONE)
+                STM32MP1.GpioPin.SetModer(pinConfig.RtsPin, STM32MP1.Moder.Input);
         }
 
         private bool disposed = false;
