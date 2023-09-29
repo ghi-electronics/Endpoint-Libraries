@@ -34,7 +34,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronic.Endpoint.File
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronic.Endpoint.Devices.Rtc", "GHIElectronic.Endpoint.Devices.Rtc\GHIElectronic.Endpoint.Devices.Rtc.csproj", "{AFA496ED-3E61-4BF3-956F-723E6E292979}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronic.Endpoint.Devices.Sdmmc", "GHIElectronic.Endpoint.Devices.Mmc\GHIElectronic.Endpoint.Devices.Sdmmc.csproj", "{8C5E1A5E-86AA-4B8C-98D9-E58BEC7B2797}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronic.Endpoint.Devices.Sdmmc", "GHIElectronic.Endpoint.Devices.Sdmmc\GHIElectronic.Endpoint.Devices.Sdmmc.csproj", "{8C5E1A5E-86AA-4B8C-98D9-E58BEC7B2797}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
