@@ -112,7 +112,7 @@ namespace GHIElectronic.Endpoint.Devices.UsbHost
 
                         foreach (BaseDevice d in devices)
                         {
-                            if (d.DeviceName == file)
+                            if (d.DeviceName == file && d.Type == type)
                             {
                                 found = true;
                                 break;
@@ -143,7 +143,7 @@ namespace GHIElectronic.Endpoint.Devices.UsbHost
                 {
                     foreach (var f in files)
                     {
-                        if (d.DeviceName == f)
+                        if (d.DeviceName == f && d.Type == type)
                         {
                             found = true;
                             break;
