@@ -1,5 +1,5 @@
 using System.Collections;
-
+using GHIElectronic.Endpoint.Pins; 
 namespace GHIElectronic.Endpoint.Devices.Mmc {
 
     public class Sdmmc {
@@ -72,9 +72,7 @@ namespace GHIElectronic.Endpoint.Devices.Mmc {
 
         }
 
-        public void Disable() {
-            enabled = false; ;
-        }
+        public void Disable() => enabled = false;
 
         private bool CheckSdConnection(string path, string pattern, SdmmcType type) {
 
@@ -190,13 +188,39 @@ namespace GHIElectronic.Endpoint.Devices.Mmc {
         }
 
         private void LoadResources() {
+            if (this.Type == SdmmcType.SdCard2) {
 
-            //TODO
+                var pinConfig = STM32MP1.Sdmmc.PinSettings[STM32MP1.Sdmmc.SdCard2];
+
+                STM32MP1.GpioPin.SetModer(pinConfig.PinD0, STM32MP1.Moder.Alternate);
+                STM32MP1.GpioPin.SetModer(pinConfig.PinD1, STM32MP1.Moder.Alternate);
+                STM32MP1.GpioPin.SetModer(pinConfig.PinD2, STM32MP1.Moder.Alternate);
+                STM32MP1.GpioPin.SetModer(pinConfig.PinD3, STM32MP1.Moder.Alternate);
+                STM32MP1.GpioPin.SetModer(pinConfig.PinCmd, STM32MP1.Moder.Alternate);
+                STM32MP1.GpioPin.SetModer(pinConfig.PinClock, STM32MP1.Moder.Alternate);
+                
+
+                STM32MP1.GpioPin.SetAlternate(pinConfig.PinD0, pinConfig.AlternatePinD0);
+                STM32MP1.GpioPin.SetAlternate(pinConfig.PinD1, pinConfig.AlternatePinD1);
+                STM32MP1.GpioPin.SetAlternate(pinConfig.PinD2, pinConfig.AlternatePinD2);
+                STM32MP1.GpioPin.SetAlternate(pinConfig.PinD3, pinConfig.AlternatePinD3);
+                STM32MP1.GpioPin.SetAlternate(pinConfig.PinCmd, pinConfig.AlternatePinCmd);
+                STM32MP1.GpioPin.SetAlternate(pinConfig.PinClock, pinConfig.AlternatePinClock);
+                
+            }
         }
 
         private void UnLoadResources() {
+            if (this.Type == SdmmcType.SdCard2) {
+                var pinConfig = STM32MP1.Sdmmc.PinSettings[STM32MP1.Sdmmc.SdCard2];                
 
-            //TODO
+                STM32MP1.GpioPin.SetModer(pinConfig.PinD0, STM32MP1.Moder.Input);
+                STM32MP1.GpioPin.SetModer(pinConfig.PinD1, STM32MP1.Moder.Input);
+                STM32MP1.GpioPin.SetModer(pinConfig.PinD2, STM32MP1.Moder.Input);
+                STM32MP1.GpioPin.SetModer(pinConfig.PinD3, STM32MP1.Moder.Input);
+                STM32MP1.GpioPin.SetModer(pinConfig.PinCmd, STM32MP1.Moder.Input);
+                STM32MP1.GpioPin.SetModer(pinConfig.PinClock, STM32MP1.Moder.Input);
+            }
         }
 
         ~SdmmcController() {

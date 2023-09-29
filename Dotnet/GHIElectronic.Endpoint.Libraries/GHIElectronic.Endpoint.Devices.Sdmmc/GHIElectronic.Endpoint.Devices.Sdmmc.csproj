@@ -6,4 +6,8 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\GHIElectronic.Endpoint.Pins\GHIElectronic.Endpoint.Pins.csproj" />
+  </ItemGroup>
+
 </Project>
