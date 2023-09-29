@@ -2,15 +2,15 @@ using System.Collections;
 
 namespace GHIElectronic.Endpoint.Devices.Mmc {
 
-    public class Mmc {
+    public class Sdmmc {
         public string DeviceName { get; }        
         public int DeviceId { get; }
 
         public static int CurrentId;
 
-        public MmcType Type { get; }
+        public SdmmcType Type { get; }
 
-        public Mmc(int id, string name, MmcType type) {
+        public Sdmmc(int id, string name, SdmmcType type) {
             this.DeviceName = name;            
             this.DeviceId = id;
             this.Type = type;
@@ -18,7 +18,7 @@ namespace GHIElectronic.Endpoint.Devices.Mmc {
 
     }
 
-    public enum MmcType: uint {
+    public enum SdmmcType: uint {
         SdCard1 = 1,
         SdCard2 = 0,
         Emmc = 2,
@@ -29,7 +29,7 @@ namespace GHIElectronic.Endpoint.Devices.Mmc {
         Bad = 2,
     };
 
-    public delegate void OnConnectionChanged(MmcController sender, DeviceConnectionEventArgs e);
+    public delegate void OnConnectionChanged(SdmmcController sender, DeviceConnectionEventArgs e);
 
     public class DeviceConnectionEventArgs : EventArgs {
        
@@ -46,7 +46,7 @@ namespace GHIElectronic.Endpoint.Devices.Mmc {
             this.DeviceStatus = deviceStatus;
         }
     }
-    public class MmcController : IDisposable {
+    public class SdmmcController : IDisposable {
 
         private static bool enabled;
         private static ArrayList devices;
@@ -56,9 +56,9 @@ namespace GHIElectronic.Endpoint.Devices.Mmc {
         private bool disposed = false;
 
         private OnConnectionChanged onConnectionChangedCallbacks;
-        MmcType Type { get; }
+        SdmmcType Type { get; }
 
-        public MmcController(MmcType type) {
+        public SdmmcController(SdmmcType type) {
             devices = new ArrayList();
             enabled = false;
             this.Type = type;   
@@ -76,7 +76,7 @@ namespace GHIElectronic.Endpoint.Devices.Mmc {
             enabled = false; ;
         }
 
-        private bool CheckSdConnection(string path, string pattern, MmcType type) {
+        private bool CheckSdConnection(string path, string pattern, SdmmcType type) {
 
             var hasRemoved = false;
             string[] files = null;
@@ -89,7 +89,7 @@ namespace GHIElectronic.Endpoint.Devices.Mmc {
                     foreach (var file in files) {
                         var found = false;
 
-                        foreach (Mmc d in devices) {
+                        foreach (Sdmmc d in devices) {
                             if (d.DeviceName == file && d.Type == type) {
                                 found = true;
                                 break;
@@ -99,7 +99,7 @@ namespace GHIElectronic.Endpoint.Devices.Mmc {
                         if (!found) {
                            
 
-                            var d = new Mmc(++Mmc.CurrentId, file, type);
+                            var d = new Sdmmc(++Sdmmc.CurrentId, file, type);
 
                             devices.Add(d);
 
@@ -110,7 +110,7 @@ namespace GHIElectronic.Endpoint.Devices.Mmc {
                 }
             }
 
-            foreach (Mmc d in devices) {
+            foreach (Sdmmc d in devices) {
                 var found = false;
 
                 if (files != null && files.Length > 0) {
@@ -136,7 +136,7 @@ namespace GHIElectronic.Endpoint.Devices.Mmc {
             return hasRemoved;
         }
 
-        private void OnConnectionChangedCallBack(MmcController sender, DeviceConnectionEventArgs e) => this.onConnectionChangedCallbacks?.Invoke(sender, e);
+        private void OnConnectionChangedCallBack(SdmmcController sender, DeviceConnectionEventArgs e) => this.onConnectionChangedCallbacks?.Invoke(sender, e);
 
 
         public event OnConnectionChanged OnConnectionChangedEvent {
@@ -153,13 +153,13 @@ namespace GHIElectronic.Endpoint.Devices.Mmc {
             while (!this.disposed && enabled) {
 
                 switch (this.Type) {
-                    case MmcType.SdCard1:
+                    case SdmmcType.SdCard1:
                         this.CheckSdConnection("/dev/", "mmcblk1", this.Type); // sd1
                         break;
-                    case MmcType.SdCard2:
+                    case SdmmcType.SdCard2:
                         this.CheckSdConnection("/dev/", "mmcblk0", this.Type); // sd1
                         break;
-                    case MmcType.Emmc:
+                    case SdmmcType.Emmc:
                         this.CheckSdConnection("/dev/", "mmcblk2", this.Type); // sd1
                         break;
 
@@ -199,7 +199,7 @@ namespace GHIElectronic.Endpoint.Devices.Mmc {
             //TODO
         }
 
-        ~MmcController() {
+        ~SdmmcController() {
             this.Dispose(disposing: false);
         }
 
