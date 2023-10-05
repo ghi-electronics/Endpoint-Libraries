@@ -93,8 +93,8 @@ namespace GHIElectronic.Endpoint.Devices.Display {
             if (script_lsmod.Output.IndexOf("panel_simple") > 0) {
                 var script_rm = new Script("rmmod", CMD_LOCATION, DRIVER_LOCATION);
                 script_rm.Start();
-            }            
-            
+            }
+
 
             var script_config = new Script("ltdc-config.sh", "/sbin", this.configuration.ToString());
             script_config.Start();
@@ -103,7 +103,7 @@ namespace GHIElectronic.Endpoint.Devices.Display {
             script_insmod.Start();
 
             while (!File.Exists(FB_PATH)) ;
-            
+
 
             if (fbHandle < 0) {
                 fbHandle = Interop.Open(FB_PATH, Interop.FileOpenFlags.O_RDWR);
@@ -143,6 +143,15 @@ namespace GHIElectronic.Endpoint.Devices.Display {
                     throw new Exception("Could not create Framebuffer memory!");
                 }
             }
+
+            // Disable cursor
+            while (!File.Exists("/sys/class/graphics/fbcon/cursor_blink")) ;
+
+            script_config = new Script("ghi_disable_cursor.sh", "./", "");
+
+            script_config.Start();
+
+
         }
 
         private void UnLoadResources() {
