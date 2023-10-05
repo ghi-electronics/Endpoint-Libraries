@@ -2,23 +2,61 @@ using GHIElectronic.Endpoint.Core;
 
 namespace GHIElectronic.Endpoint.Devices.Watchdog {
     public class WatchdogController {
-        public static bool Started { get; private set; }
+        
         public uint MaxTimeout { get; } = 32;
-        public uint Timeout { get; set; }
-        public bool Start() {
-            if (this.Timeout == 0 || this.Timeout > this.MaxTimeout) {
+        public uint Timeout { get; private set; }
+        public bool Start(uint timeout) {
+            if (timeout == 0 || timeout > this.MaxTimeout) {
                 throw new Exception("Invalid Timeout");
-            }
+            }            
 
-            var arg = string.Format("-T {0} /dev/watchdog", this.Timeout);
+            var arg = string.Format("-T {0} /dev/watchdog", timeout);
             var script = new Script("watchdog", "./", arg);
 
+            script.Start();
+
             if (script.ExitCode == 0 && script.Output == "") {
-                Started = true;
+                this.Timeout = timeout;
                 return true;
             }
 
             return false;
+        }
+
+        public bool Started {
+
+            get  {
+                var arg = "watchdog";
+
+                var script = new Script("ghi_ps.sh", "./", arg);
+
+                script.Start();
+
+                if (script.Output.Contains("-T") && script.Output.Contains("/dev/watchdog"))
+                    return true;
+
+                return false;
+            }
+
+               
+        }
+
+        public bool Stop() {
+            if (this.Started) {
+                var arg = "watchdog";
+
+                var script = new Script("killall", "./", arg);
+
+                script.Start();
+
+                if ((script.Error == null || script.Error.Length == 0) && script.ExitCode == 0 && script.Output.Length == 0)
+                    return true;
+
+               
+            }
+
+            return false;
+
         }
 
     }
