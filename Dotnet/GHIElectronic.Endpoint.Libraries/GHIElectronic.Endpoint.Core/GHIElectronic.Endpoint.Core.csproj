@@ -7,7 +7,7 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	
 	<GeneratePackageOnBuild>True</GeneratePackageOnBuild>	
-	<PackageId>GHIElectronic.Endpoint.Core</PackageId>
+	<PackageId>GHIElectronics.Endpoint.Core</PackageId>
 	<Title>Endpoint</Title>
     <Description>The Core driver for Endpoint.</Description>
     <Copyright>Copyright GHI Electronics, LLC 2023</Copyright>

@@ -7,7 +7,7 @@
 	
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>	
 	<Title>Endpoint</Title>
-	<PackageId>GHIElectronic.Endpoint.Watchdog</PackageId>
+	<PackageId>GHIElectronics.Endpoint.Devices.Watchdog</PackageId>
     <Description>The Watchdog driver for Endpoint.</Description>
     <Copyright>Copyright GHI Electronics, LLC 2023</Copyright>
     <PackageProjectUrl>https://ghielectronics.com/</PackageProjectUrl>

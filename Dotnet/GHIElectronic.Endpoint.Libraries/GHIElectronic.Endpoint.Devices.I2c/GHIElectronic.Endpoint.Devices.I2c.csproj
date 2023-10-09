@@ -7,7 +7,7 @@
   
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>	
 	<Title>Endpoint</Title>
-	<PackageId>GHIElectronic.Endpoint.I2c</PackageId>
+	<PackageId>GHIElectronics.Endpoint.Devices.I2c</PackageId>
     <Description>The I2c driver for Endpoint.</Description>
     <Copyright>Copyright GHI Electronics, LLC 2023</Copyright>
     <PackageProjectUrl>https://ghielectronics.com/</PackageProjectUrl>

@@ -8,7 +8,7 @@
 	
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>	
 	<Title>Endpoint</Title>
-	<PackageId>GHIElectronic.Endpoint.Display</PackageId>
+	<PackageId>GHIElectronics.Endpoint.Devices.Display</PackageId>
     <Description>The Display driver for Endpoint.</Description>
     <Copyright>Copyright GHI Electronics, LLC 2023</Copyright>
     <PackageProjectUrl>https://ghielectronics.com/</PackageProjectUrl>

@@ -7,7 +7,7 @@
   
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>	
 	<Title>Endpoint</Title>
-	<PackageId>GHIElectronic.Endpoint.Rtc</PackageId>
+	<PackageId>GHIElectronics.Endpoint.Devices.Rtc</PackageId>
     <Description>The Rtc driver for Endpoint.</Description>
     <Copyright>Copyright GHI Electronics, LLC 2023</Copyright>
     <PackageProjectUrl>https://ghielectronics.com/</PackageProjectUrl>

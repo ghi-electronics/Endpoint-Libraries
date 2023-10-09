@@ -7,7 +7,7 @@
 
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>	
 	<Title>Endpoint</Title>
-	<PackageId>GHIElectronic.Endpoint.Sdmmc</PackageId>
+	<PackageId>GHIElectronics.Endpoint.Devices.Sdmmc</PackageId>
     <Description>The Sdmmc driver for Endpoint.</Description>
     <Copyright>Copyright GHI Electronics, LLC 2023</Copyright>
     <PackageProjectUrl>https://ghielectronics.com/</PackageProjectUrl>

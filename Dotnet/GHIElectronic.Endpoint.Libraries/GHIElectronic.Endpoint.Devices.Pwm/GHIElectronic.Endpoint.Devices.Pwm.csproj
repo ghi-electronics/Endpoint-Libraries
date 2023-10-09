@@ -7,7 +7,7 @@
   
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>	
 	<Title>Endpoint</Title>
-	<PackageId>GHIElectronic.Endpoint.Pwm</PackageId>
+	<PackageId>GHIElectronics.Endpoint.Devices.Pwm</PackageId>
     <Description>The Pwm driver for Endpoint.</Description>
     <Copyright>Copyright GHI Electronics, LLC 2023</Copyright>
     <PackageProjectUrl>https://ghielectronics.com/</PackageProjectUrl>

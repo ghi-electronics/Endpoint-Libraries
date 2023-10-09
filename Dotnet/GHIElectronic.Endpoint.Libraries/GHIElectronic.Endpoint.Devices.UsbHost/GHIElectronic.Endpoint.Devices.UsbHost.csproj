@@ -7,7 +7,7 @@
 	
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>	
 	<Title>Endpoint</Title>
-	<PackageId>GHIElectronic.Endpoint.UsbHost</PackageId>
+	<PackageId>GHIElectronics.Endpoint.Devices.UsbHost</PackageId>
     <Description>The UsbHost driver for Endpoint.</Description>
     <Copyright>Copyright GHI Electronics, LLC 2023</Copyright>
     <PackageProjectUrl>https://ghielectronics.com/</PackageProjectUrl>
