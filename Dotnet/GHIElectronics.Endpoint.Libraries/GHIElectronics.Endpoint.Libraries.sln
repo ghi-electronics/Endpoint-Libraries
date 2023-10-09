@@ -3,42 +3,42 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.32112.339
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronic.Endpoint.Core", "GHIElectronic.Endpoint.Core\GHIElectronic.Endpoint.Core.csproj", "{DA0E3082-AC17-44AF-AE8C-75F7040FA580}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Core", "GHIElectronics.Endpoint.Core\GHIElectronics.Endpoint.Core.csproj", "{DA0E3082-AC17-44AF-AE8C-75F7040FA580}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronic.Endpoint.Devices.Spi", "GHIElectronic.Endpoint.Devices.Spi\GHIElectronic.Endpoint.Devices.Spi.csproj", "{FF4A4A13-FB27-4113-9189-C4057AFB176C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Devices.Spi", "GHIElectronics.Endpoint.Devices.Spi\GHIElectronics.Endpoint.Devices.Spi.csproj", "{FF4A4A13-FB27-4113-9189-C4057AFB176C}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronic.Endpoint.Pins", "GHIElectronic.Endpoint.Pins\GHIElectronic.Endpoint.Pins.csproj", "{827FE3E6-69D6-4963-AF16-AB0969F51490}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Pins", "GHIElectronics.Endpoint.Pins\GHIElectronics.Endpoint.Pins.csproj", "{827FE3E6-69D6-4963-AF16-AB0969F51490}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronic.Endpoint.Devices.Uart", "GHIElectronic.Endpoint.Devices.Uart\GHIElectronic.Endpoint.Devices.Uart.csproj", "{4E88C05D-0470-4A7F-87F0-D7B7B12764D9}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Devices.Uart", "GHIElectronics.Endpoint.Devices.Uart\GHIElectronics.Endpoint.Devices.Uart.csproj", "{4E88C05D-0470-4A7F-87F0-D7B7B12764D9}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronic.Endpoint.Devices.Pwm", "GHIElectronic.Endpoint.Devices.Pwm\GHIElectronic.Endpoint.Devices.Pwm.csproj", "{77E3FAF2-C22C-4584-AD20-8725F6E94D25}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Devices.Pwm", "GHIElectronics.Endpoint.Devices.Pwm\GHIElectronics.Endpoint.Devices.Pwm.csproj", "{77E3FAF2-C22C-4584-AD20-8725F6E94D25}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronic.Endpoint.Devices.I2c", "GHIElectronic.Endpoint.Devices.I2c\GHIElectronic.Endpoint.Devices.I2c.csproj", "{4A359D96-4ADD-4652-B895-8A3A6DAD90C1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Devices.I2c", "GHIElectronics.Endpoint.Devices.I2c\GHIElectronics.Endpoint.Devices.I2c.csproj", "{4A359D96-4ADD-4652-B895-8A3A6DAD90C1}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronic.Endpoint.Devices.Adc", "GHIElectronic.Endpoint.Devices.Adc\GHIElectronic.Endpoint.Devices.Adc.csproj", "{A28F631E-09A6-4C7E-9C36-4DA3054AFAAE}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Devices.Adc", "GHIElectronics.Endpoint.Devices.Adc\GHIElectronics.Endpoint.Devices.Adc.csproj", "{A28F631E-09A6-4C7E-9C36-4DA3054AFAAE}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronic.Endpoint.Devices.Can", "GHIElectronic.Endpoint.Devices.Can\GHIElectronic.Endpoint.Devices.Can.csproj", "{B7025E46-7EE2-424D-B40E-14BDF9075DA8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Devices.Can", "GHIElectronics.Endpoint.Devices.Can\GHIElectronics.Endpoint.Devices.Can.csproj", "{B7025E46-7EE2-424D-B40E-14BDF9075DA8}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{8D15F13C-04BD-460A-99D4-A76EE57DFDA7}"
 	ProjectSection(SolutionItems) = preProject
 		.editorconfig = .editorconfig
 	EndProjectSection
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronic.Endpoint.Devices.Display", "GHIElectronic.Endpoint.Devices.Display\GHIElectronic.Endpoint.Devices.Display.csproj", "{49F9A867-5B26-4290-9C14-12690BE5BC43}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Devices.Display", "GHIElectronics.Endpoint.Devices.Display\GHIElectronics.Endpoint.Devices.Display.csproj", "{49F9A867-5B26-4290-9C14-12690BE5BC43}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronic.Endpoint.Devices.Network", "GHIElectronic.Endpoint.Devices.Network\GHIElectronic.Endpoint.Devices.Network.csproj", "{A2857E33-B366-4C8F-A03A-0FAA053FBD94}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Devices.Network", "GHIElectronics.Endpoint.Devices.Network\GHIElectronics.Endpoint.Devices.Network.csproj", "{A2857E33-B366-4C8F-A03A-0FAA053FBD94}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronic.Endpoint.Devices.UsbHost", "GHIElectronic.Endpoint.Devices.UsbHost\GHIElectronic.Endpoint.Devices.UsbHost.csproj", "{C007B83D-95CC-4AA1-BD19-E59EFECE2C91}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Devices.UsbHost", "GHIElectronics.Endpoint.Devices.UsbHost\GHIElectronics.Endpoint.Devices.UsbHost.csproj", "{C007B83D-95CC-4AA1-BD19-E59EFECE2C91}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronic.Endpoint.FileSystem", "GHIElectronic.Endpoint.FileSystem\GHIElectronic.Endpoint.FileSystem.csproj", "{879FA77D-122C-4382-9314-DB9E1ACC3DD5}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.FileSystem", "GHIElectronics.Endpoint.FileSystem\GHIElectronics.Endpoint.FileSystem.csproj", "{879FA77D-122C-4382-9314-DB9E1ACC3DD5}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronic.Endpoint.Devices.Rtc", "GHIElectronic.Endpoint.Devices.Rtc\GHIElectronic.Endpoint.Devices.Rtc.csproj", "{AFA496ED-3E61-4BF3-956F-723E6E292979}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Devices.Rtc", "GHIElectronics.Endpoint.Devices.Rtc\GHIElectronics.Endpoint.Devices.Rtc.csproj", "{AFA496ED-3E61-4BF3-956F-723E6E292979}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronic.Endpoint.Devices.Sdmmc", "GHIElectronic.Endpoint.Devices.Sdmmc\GHIElectronic.Endpoint.Devices.Sdmmc.csproj", "{8C5E1A5E-86AA-4B8C-98D9-E58BEC7B2797}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Devices.Sdmmc", "GHIElectronics.Endpoint.Devices.Sdmmc\GHIElectronics.Endpoint.Devices.Sdmmc.csproj", "{8C5E1A5E-86AA-4B8C-98D9-E58BEC7B2797}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronic.Endpoint.Devices.Watchdog", "GHIElectronic.Endpoint.Devices.Watchdog\GHIElectronic.Endpoint.Devices.Watchdog.csproj", "{BE6D6F78-0736-4537-8827-1EAE19ABE3AF}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Devices.Watchdog", "GHIElectronics.Endpoint.Devices.Watchdog\GHIElectronics.Endpoint.Devices.Watchdog.csproj", "{BE6D6F78-0736-4537-8827-1EAE19ABE3AF}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronic.Endpoint.Devices.Usb", "GHIElectronic.Endpoint.Devices.Usb\GHIElectronic.Endpoint.Devices.Usb.csproj", "{3A38FE2F-9D05-44CF-9396-896945198440}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Devices.Usb", "GHIElectronics.Endpoint.Devices.Usb\GHIElectronics.Endpoint.Devices.Usb.csproj", "{3A38FE2F-9D05-44CF-9396-896945198440}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

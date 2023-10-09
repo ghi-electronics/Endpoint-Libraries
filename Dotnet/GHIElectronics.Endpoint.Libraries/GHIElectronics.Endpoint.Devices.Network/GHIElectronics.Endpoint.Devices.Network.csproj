@@ -29,8 +29,8 @@
   </ItemGroup>
   
   <ItemGroup>
-	<PackageReference Include="GHIElectronic.Endpoint.Core" Version="0.0.1" />
-	<PackageReference Include="GHIElectronic.Endpoint.Pins" Version="0.0.1" />
+	<PackageReference Include="GHIElectronics.Endpoint.Core" Version="0.0.1" />
+	<PackageReference Include="GHIElectronics.Endpoint.Pins" Version="0.0.1" />
   </ItemGroup>
 
 </Project>
