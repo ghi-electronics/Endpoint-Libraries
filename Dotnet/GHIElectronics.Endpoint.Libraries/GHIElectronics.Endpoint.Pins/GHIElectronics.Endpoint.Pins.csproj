@@ -7,7 +7,7 @@
 	
   	<GeneratePackageOnBuild>True</GeneratePackageOnBuild>	
 	<Title>Endpoint</Title>
-	<PackageId>GHIElectronics.Endpoint.Pin</PackageId>
+	<PackageId>GHIElectronics.Endpoint.Pins</PackageId>
     <Description>The Pin driver for Endpoint.</Description>
     <Copyright>Copyright GHI Electronics, LLC 2023</Copyright>
     <PackageProjectUrl>https://ghielectronics.com/</PackageProjectUrl>
