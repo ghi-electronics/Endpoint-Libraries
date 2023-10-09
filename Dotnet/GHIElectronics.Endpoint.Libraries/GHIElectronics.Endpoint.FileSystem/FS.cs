@@ -1,7 +1,7 @@
 using System.IO;
-using GHIElectronic.Endpoint.Core;
+using GHIElectronics.Endpoint.Core;
 
-namespace GHIElectronic.Endpoint {
+namespace GHIElectronics.Endpoint {
     public static class FileSystem {
 
         public static string Mount(string deviceName, string specialName = "") => Mount(deviceName, -1, specialName);

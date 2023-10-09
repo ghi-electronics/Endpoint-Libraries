@@ -9,7 +9,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Threading;
 
-namespace GHIElectronic.Endpoint.Devices.Can {
+namespace GHIElectronics.Endpoint.Devices.Can {
     /// <summary>
     /// Represents CAN identifier (11 or 29-bit)
     /// </summary>

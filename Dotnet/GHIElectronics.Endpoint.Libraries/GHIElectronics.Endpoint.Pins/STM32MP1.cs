@@ -1,8 +1,8 @@
 using System.Diagnostics;
-using GHIElectronic.Endpoint.Core;
-using static GHIElectronic.Endpoint.Pins.STM32MP1;
+using GHIElectronics.Endpoint.Core;
+using static GHIElectronics.Endpoint.Pins.STM32MP1;
 
-namespace GHIElectronic.Endpoint.Pins {
+namespace GHIElectronics.Endpoint.Pins {
     /// <summary>Board definition for the STM32H7.</summary>
     public static partial class STM32MP1 {
         public enum Alternate : int {

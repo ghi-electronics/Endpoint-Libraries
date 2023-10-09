@@ -5,7 +5,7 @@ using System.Reflection.PortableExecutable;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GHIElectronic.Endpoint.Devices.UsbHost
+namespace GHIElectronics.Endpoint.Devices.UsbHost
 {
     public class HidInput : IDisposable
     {

@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GHIElectronic.Endpoint.Core {
+namespace GHIElectronics.Endpoint.Core {
     static public class Utils {
         public static string GetUntil(this string that, char @char) {
             return that[..(IndexOf() == -1 ? that.Length : IndexOf())];

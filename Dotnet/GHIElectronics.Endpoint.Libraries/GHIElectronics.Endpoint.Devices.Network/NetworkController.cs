@@ -1,9 +1,9 @@
 using System.Net;
 using System.Numerics;
 using System.Xml.Linq;
-using GHIElectronic.Endpoint.Core;
+using GHIElectronics.Endpoint.Core;
 
-namespace GHIElectronic.Endpoint.Devices.Network {
+namespace GHIElectronics.Endpoint.Devices.Network {
     public delegate void NetworkLinkConnectedChangedEventHandler(NetworkController sender, NetworkLinkConnectedChangedEventArgs e);
     public delegate void NetworkAddressChangedEventHandler(NetworkController sender, NetworkAddressChangedEventArgs e);
 

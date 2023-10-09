@@ -12,7 +12,7 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
 
-namespace GHIElectronic.Endpoint.Devices.Can {
+namespace GHIElectronics.Endpoint.Devices.Can {
     /// <summary>
     /// Allows reading and writing raw frames to CAN Bus
     /// </summary>

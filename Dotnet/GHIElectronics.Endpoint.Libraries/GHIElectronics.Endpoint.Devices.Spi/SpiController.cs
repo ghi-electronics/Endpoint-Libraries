@@ -1,10 +1,10 @@
-using GHIElectronic.Endpoint.Core;
-using GHIElectronic.Endpoint.Pins;
+using GHIElectronics.Endpoint.Core;
+using GHIElectronics.Endpoint.Pins;
 using System.Device.Gpio;
 using System.Device.Gpio.Drivers;
 using System.Device.Spi;
 
-namespace GHIElectronic.Endpoint.Devices.Spi {
+namespace GHIElectronics.Endpoint.Devices.Spi {
 
     public class SpiController : IDisposable {
         const string CMD_LOCATION = "/sbin";

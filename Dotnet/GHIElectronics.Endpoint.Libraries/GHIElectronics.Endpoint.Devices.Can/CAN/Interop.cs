@@ -14,7 +14,7 @@ using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 using System.Text;
 
-namespace GHIElectronic.Endpoint.Devices.Can {
+namespace GHIElectronics.Endpoint.Devices.Can {
     internal class Interop
     {
         private const int PF_CAN = 29;

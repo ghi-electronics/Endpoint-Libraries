@@ -1,4 +1,4 @@
-namespace GHIElectronic.Endpoint.Devices.Display
+namespace GHIElectronics.Endpoint.Devices.Display
 {
     public class DisplayConfiguration {
         public int Width { get; set; }

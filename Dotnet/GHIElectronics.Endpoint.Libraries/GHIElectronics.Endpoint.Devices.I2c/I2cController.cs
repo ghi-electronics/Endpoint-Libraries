@@ -1,8 +1,8 @@
 using System;
 using System.Device.I2c;
-using GHIElectronic.Endpoint.Pins;
+using GHIElectronics.Endpoint.Pins;
 
-namespace GHIElectronic.Endpoint.Devices.I2c
+namespace GHIElectronics.Endpoint.Devices.I2c
 {
     public class I2cController : I2cDevice {
         static int initializeCount = 0;

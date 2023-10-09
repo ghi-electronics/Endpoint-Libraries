@@ -1,6 +1,6 @@
 using System.Collections;
-using GHIElectronic.Endpoint.Pins; 
-namespace GHIElectronic.Endpoint.Devices.Mmc {
+using GHIElectronics.Endpoint.Pins; 
+namespace GHIElectronics.Endpoint.Devices.Mmc {
 
     public class Sdmmc {
         public string DeviceName { get; }        

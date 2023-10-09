@@ -1,9 +1,9 @@
 using System;
 using System.Linq;
 using System.Xml.Linq;
-using GHIElectronic.Endpoint.Core;
+using GHIElectronics.Endpoint.Core;
 
-namespace GHIElectronic.Endpoint.Devices.Rtc {
+namespace GHIElectronics.Endpoint.Devices.Rtc {
     public enum BatteryChargeMode {
         None = 0,
         Fast = 1,

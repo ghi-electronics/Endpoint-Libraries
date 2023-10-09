@@ -1,11 +1,11 @@
-using GHIElectronic.Endpoint.Devices.Usb;
+using GHIElectronics.Endpoint.Devices.Usb;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GHIElectronic.Endpoint.Devices.UsbHost
+namespace GHIElectronics.Endpoint.Devices.UsbHost
 {
     /// <summary>Represents a USB device connected.</summary>
     //public abstract class BaseDevice : IDisposable {

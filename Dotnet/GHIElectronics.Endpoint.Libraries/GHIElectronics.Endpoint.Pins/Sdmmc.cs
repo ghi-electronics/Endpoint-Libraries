@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GHIElectronic.Endpoint.Pins {
+namespace GHIElectronics.Endpoint.Pins {
     public static partial class STM32MP1 {
         /// <summary>Can controller definitions.</summary>
         public static class Sdmmc {

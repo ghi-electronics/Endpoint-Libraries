@@ -1,10 +1,10 @@
 using System;
 using System.Collections;
 using System.Collections.Specialized;
-using GHIElectronic.Endpoint.Core;
-using GHIElectronic.Endpoint.Devices.Usb;
+using GHIElectronics.Endpoint.Core;
+using GHIElectronics.Endpoint.Devices.Usb;
 
-namespace GHIElectronic.Endpoint.Devices.UsbHost
+namespace GHIElectronics.Endpoint.Devices.UsbHost
 {
     public enum DeviceConnectionStatus
     {

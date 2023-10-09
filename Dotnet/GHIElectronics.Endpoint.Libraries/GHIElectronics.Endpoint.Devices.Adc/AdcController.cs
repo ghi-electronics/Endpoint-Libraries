@@ -1,8 +1,8 @@
 using System.Text;
-using GHIElectronic.Endpoint.Core;
-using GHIElectronic.Endpoint.Pins;
+using GHIElectronics.Endpoint.Core;
+using GHIElectronics.Endpoint.Pins;
 
-namespace GHIElectronic.Endpoint.Devices.Adc
+namespace GHIElectronics.Endpoint.Devices.Adc
 {
     public class AdcController : IDisposable {
         static int initializeCount;

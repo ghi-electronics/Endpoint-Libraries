@@ -1,7 +1,7 @@
 using System.IO.Ports;
-using GHIElectronic.Endpoint.Pins;
+using GHIElectronics.Endpoint.Pins;
 
-namespace GHIElectronic.Endpoint.Devices.Uart {
+namespace GHIElectronics.Endpoint.Devices.Uart {
     public class UartController : SerialPort, IDisposable {
         static int initializeCount = 0;
         private int portId = -1;

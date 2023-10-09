@@ -1,6 +1,6 @@
-using GHIElectronic.Endpoint.Core;
+using GHIElectronics.Endpoint.Core;
 
-namespace GHIElectronic.Endpoint.Devices.Watchdog {
+namespace GHIElectronics.Endpoint.Devices.Watchdog {
     public class WatchdogController {
         
         public uint MaxTimeout { get; } = 32;

@@ -1,9 +1,9 @@
 #pragma warning disable CS8601 // Possible null reference assignment.
-using GHIElectronic.Endpoint.Core;
-using GHIElectronic.Endpoint.Pins;
-using static GHIElectronic.Endpoint.Pins.STM32MP1;
+using GHIElectronics.Endpoint.Core;
+using GHIElectronics.Endpoint.Pins;
+using static GHIElectronics.Endpoint.Pins.STM32MP1;
 
-namespace GHIElectronic.Endpoint.Devices.Can
+namespace GHIElectronics.Endpoint.Devices.Can
 {
 
     public delegate void MessageReceivedEventHandler(CanController sender);

@@ -1,8 +1,8 @@
 using System.Device.Pwm;
-using GHIElectronic.Endpoint.Pins;
-using static GHIElectronic.Endpoint.Pins.STM32MP1;
+using GHIElectronics.Endpoint.Pins;
+using static GHIElectronics.Endpoint.Pins.STM32MP1;
 
-namespace GHIElectronic.Endpoint.Devices.Pwm {
+namespace GHIElectronics.Endpoint.Devices.Pwm {
     public class PwmController : PwmChannel {
         static int initializeCount = 0;
         private int controllerId;

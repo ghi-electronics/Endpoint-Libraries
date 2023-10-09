@@ -8,7 +8,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Serialization;
 
-namespace GHIElectronic.Endpoint.Devices.Can {
+namespace GHIElectronics.Endpoint.Devices.Can {
     internal class SafeCanRawSocketHandle : SafeHandle
     {
         public SafeCanRawSocketHandle(string networkInterface)

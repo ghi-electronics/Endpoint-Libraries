@@ -6,7 +6,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GHIElectronic.Endpoint.Devices.Can {
+namespace GHIElectronics.Endpoint.Devices.Can {
     public class CanMessage {
         private byte[] data;
         private bool remoteTransmissionRequest;

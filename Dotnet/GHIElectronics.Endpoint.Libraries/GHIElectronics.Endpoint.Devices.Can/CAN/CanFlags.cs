@@ -3,7 +3,7 @@
 
 using System;
 
-namespace GHIElectronic.Endpoint.Devices.Can {
+namespace GHIElectronics.Endpoint.Devices.Can {
     [Flags]
     internal enum CanFlags : uint
     {

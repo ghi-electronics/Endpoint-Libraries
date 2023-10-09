@@ -3,10 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using GHIElectronic.Endpoint.Core;
+using GHIElectronics.Endpoint.Core;
 
 
-namespace GHIElectronic.Endpoint.Devices.Display {
+namespace GHIElectronics.Endpoint.Devices.Display {
     public class FBDisplay : IDisplayProvider {
 
         static int initializeCount = 0;

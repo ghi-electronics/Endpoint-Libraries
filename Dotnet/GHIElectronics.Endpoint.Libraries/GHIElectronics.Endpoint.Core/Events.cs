@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GHIElectronic.Endpoint.Core {
+namespace GHIElectronics.Endpoint.Core {
     public static class Events {
 
         //static int start_count = 0;

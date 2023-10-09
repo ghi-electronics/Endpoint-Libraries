@@ -1,4 +1,4 @@
-namespace GHIElectronic.Endpoint.Devices.Usb
+namespace GHIElectronics.Endpoint.Devices.Usb
 {
     public enum DeviceType : byte
     {
