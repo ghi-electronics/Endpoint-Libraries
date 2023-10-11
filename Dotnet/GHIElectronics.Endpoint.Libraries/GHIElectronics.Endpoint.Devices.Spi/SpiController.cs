@@ -97,6 +97,8 @@ namespace GHIElectronics.Endpoint.Devices.Spi {
 
             var script = new Script("insmod", CMD_LOCATION, DRIVER_LOCATION);
             script.Start();
+
+            while (!Directory.Exists("/sys/class/spidev"));
         }
 
         private void UnLoadResources() {
