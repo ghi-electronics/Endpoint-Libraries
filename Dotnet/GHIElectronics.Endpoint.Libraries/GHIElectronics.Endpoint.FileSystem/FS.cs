@@ -4,32 +4,54 @@ using GHIElectronics.Endpoint.Core;
 namespace GHIElectronics.Endpoint {
     public static class FileSystem {
 
-        public static string Mount(string deviceName, string specialName = "") => Mount(deviceName, -1, specialName);
+        //public static string Mount(string deviceName, string mountedName = "") => Mount(deviceName, -1, mountedName);
 
-        public static string Mount(string deviceName, int deviceId) => Mount(deviceName, deviceId, "");
-        private static string Mount(string deviceName, int deviceId, string specialName) {
+        //public static string Mount(string deviceName, int deviceId) => Mount(deviceName, deviceId, "");
 
-            if (deviceId == -1 && (specialName == null || specialName.Length == 0))
-                throw new Exception("Could not found the device for unmount");
+        const string ROOT_FS_FOLDER = "/root/.media";
+        public static string Mount(string deviceName) {
 
-            var folder_name = specialName == "" ? "FS" + deviceId : specialName;
+            var rnd = new Random();
+            var num = rnd.Next();
 
-            var arg = string.Format("{0}", folder_name);
-            var script = new Script("mkdir", "/root", arg);
+            var arg = string.Empty;
+            Script script;
 
-            var dir = "/root/" + folder_name;
+            if (!Directory.Exists(ROOT_FS_FOLDER)) {
+
+                arg = string.Format("{0}", ROOT_FS_FOLDER);
+                script = new Script("mkdir", "/root", arg);
+
+                script.Start();
+
+                if (script.Error.Length > 0) {
+                    throw new Exception(script.Error);
+                }
+            }
+
+            if (deviceName == null || deviceName.Length == 0)
+                throw new Exception("Invalid argument");
+
+            var folder_name = string.Format("media{0}", num);
+
+           
+
+            var dir = ROOT_FS_FOLDER + "/" + folder_name;
 
             if (Directory.Exists(dir)) {
-                throw new Exception("The directory is already exist. Use different specialName");
+                throw new Exception("The directory is already exist. Use different mountedName");
             }
 
             if (!Directory.Exists(dir)) {
+                arg = string.Format("{0}", dir);
+                script = new Script("mkdir", "/root", arg);
+
                 script.Start();
             }
 
             if (Directory.Exists(dir)) {
 
-                arg = string.Format("{0} {1}", deviceName, folder_name);
+                arg = string.Format("{0} {1}", deviceName, dir);
 
                 script = new Script("mount", "/root", arg);
 
@@ -43,15 +65,15 @@ namespace GHIElectronics.Endpoint {
 
         }
 
-        public static void Unmount(int deviceId) => Unmount(deviceId, "");
+        //public static void Unmount(int deviceId) => Unmount(deviceId, "");
 
-        public static void Unmount(string specialName) => Unmount(-1, specialName);
-        private static void Unmount(int deviceId, string specialName) {
+        //public static void Unmount(string specialName) => Unmount(-1, specialName);
+        public static void Unmount(string path) {
 
-            if (deviceId == -1 && (specialName == null || specialName.Length == 0))
+            if (path == null || path.Length == 0)
                 throw new Exception("Could not found the device for unmount");
 
-            var dir = specialName != "" ? specialName : "FS" + deviceId;
+            var dir = path;
 
             var script = new Script("umount", "/root", dir);
 
