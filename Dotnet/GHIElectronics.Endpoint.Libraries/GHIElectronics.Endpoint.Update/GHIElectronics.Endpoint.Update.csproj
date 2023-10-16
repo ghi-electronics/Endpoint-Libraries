@@ -4,12 +4,11 @@
     <TargetFramework>net6.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
-	<Nullable>disable</Nullable>
 	
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>	
 	<Title>Endpoint</Title>
-	<PackageId>GHIElectronics.Endpoint.FileSystem</PackageId>
-    <Description>The FileSystem driver for Endpoint.</Description>
+	<PackageId>GHIElectronics.Endpoint.Update</PackageId>
+    <Description>The Update driver for Endpoint.</Description>
     <Copyright>Copyright GHI Electronics, LLC 2023</Copyright>
     <PackageProjectUrl>https://ghielectronics.com/</PackageProjectUrl>
     <PackageTags>Endpoint</PackageTags>
