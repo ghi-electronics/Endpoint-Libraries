@@ -21,7 +21,7 @@ namespace GHIElectronics.Endpoint.Devices.Display {
 
         static IntPtr fbPtr = IntPtr.Zero;
 
-        const string CMD_LOCATION = "/sbin";
+        const string CMD_LOCATION = "./";
         const string DRIVER_LOCATION = "/lib/modules/5.13.0/kernel/drivers/gpu/drm/panel/panel-simple.ko";
 
         const string LTDC_GENERIC_PATH = "/dev/ltdc-generic";
@@ -96,7 +96,7 @@ namespace GHIElectronics.Endpoint.Devices.Display {
             }
 
 
-            var script_config = new Script("ltdc-config.sh", "/sbin", this.configuration.ToString());
+            var script_config = new Script("ltdc-config.sh", "./", this.configuration.ToString());
             script_config.Start();
 
             var script_insmod = new Script("insmod", CMD_LOCATION, DRIVER_LOCATION);
