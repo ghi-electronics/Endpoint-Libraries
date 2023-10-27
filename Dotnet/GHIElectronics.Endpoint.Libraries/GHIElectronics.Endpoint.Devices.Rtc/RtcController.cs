@@ -14,12 +14,10 @@ namespace GHIElectronics.Endpoint.Devices.Rtc {
         static int initializeCount = 0;
 
         const uint PWR_CR3 = 0x50001000 + 0x0C;
-        public RtcController() {
-            this.Acquire();
-        }
+        public RtcController() => this.Acquire();
 
         public void EnableChargeMode(BatteryChargeMode chargeMode) {
-            uint read = Register.Read(PWR_CR3);
+            var read = Register.Read(PWR_CR3);
 
             switch (chargeMode) {
                 case BatteryChargeMode.None:
@@ -55,8 +53,8 @@ namespace GHIElectronics.Endpoint.Devices.Rtc {
                 // month
                 var month = -1;
                 id++;
-                for (var i = 0; i < Months.Length; i++) {
-                    if (elements[id] == Months[i]) {
+                for (var i = 0; i < months.Length; i++) {
+                    if (elements[id] == months[i]) {
                         month = i;
                         month++;
                         break;
@@ -88,7 +86,7 @@ namespace GHIElectronics.Endpoint.Devices.Rtc {
             throw new Exception("Invalid rtc time!");
         }
 
-        private static string[] Months = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
+        private static string[] months = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
         public void SetDateTime(DateTime value) {
 
             //date -s 2023.08.31-17:02:00
