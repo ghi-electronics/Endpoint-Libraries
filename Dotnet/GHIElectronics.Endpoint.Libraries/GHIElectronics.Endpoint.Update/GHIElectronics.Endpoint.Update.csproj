@@ -30,7 +30,6 @@
   
   <ItemGroup>
 	<PackageReference Include="GHIElectronics.Endpoint.Core" Version="0.0.1" />
-	<PackageReference Include="System.Device.Gpio" Version="2.1.0" />
   </ItemGroup>
 
 </Project>

@@ -27,5 +27,11 @@
       <PackagePath>\</PackagePath>
     </None>
   </ItemGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="Iot.Device.Bindings" Version="2.1.0" />
+    <PackageReference Include="System.Device.Gpio" Version="2.1.0" />
+	<PackageReference Include="System.Resources.Extensions" Version="7.0.0" />
+  </ItemGroup>
    
 </Project>
