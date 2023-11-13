@@ -194,7 +194,7 @@ namespace GHIElectronics.Endpoint.Devices.Network {
 
                     script.Start();
 
-                    if (!script.Output.Contains("Successfully initialized wpa_supplicant")) {
+                    if (!script.Output.Contains("Successfully initialized wpa_supplicant") || script.Error.Contains("No such device")) {
 
                         script = new Script("rmmod", "/sbin/", "8188eu");
 
