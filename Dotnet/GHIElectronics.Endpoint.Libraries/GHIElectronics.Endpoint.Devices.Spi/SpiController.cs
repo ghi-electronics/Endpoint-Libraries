@@ -45,7 +45,7 @@ namespace GHIElectronics.Endpoint.Devices.Spi {
 
 
             if (this.chipselectPin >= 0) {
-                var port_divider = Processor.Name == Processor.AM335x ? 31 : 16;
+                var port_divider = 16;
                 this.chipselectPort = this.chipselectPin / port_divider;
                 this.chipselectPin = this.chipselectPin % port_divider;
 
