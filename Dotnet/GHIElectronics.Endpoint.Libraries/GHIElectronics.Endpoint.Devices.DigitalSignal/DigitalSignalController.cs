@@ -231,11 +231,16 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
             // param 5
             buffer[5] = (uint)edge;
 
-            var i = 0;
-            while (i < count) {
-                buffer[CMD_RAW_DATA_START_OFFSET + i] = data[offset + i];
-                i++;
+            
 
+            buffer[CMD_RAW_DATA_START_OFFSET + 0] = data[offset + 0];
+
+            var i = 1;
+
+            while (i < count) {
+                buffer[CMD_RAW_DATA_START_OFFSET + i] = data[offset + i] + data[offset + (i-1)];
+                data[offset + i] = buffer[CMD_RAW_DATA_START_OFFSET + i];
+                i++;
             }
 
             this.CanGeneratePulse = false;
