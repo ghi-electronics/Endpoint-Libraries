@@ -6,7 +6,7 @@
     <Nullable>disable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	
-	<GeneratePackageOnBuild>False</GeneratePackageOnBuild>	
+	<GeneratePackageOnBuild>True</GeneratePackageOnBuild>	
 	<PackageId>GHIElectronics.Endpoint.Core</PackageId>
 	<Title>Endpoint</Title>
     <Description>The Core driver for Endpoint.</Description>
