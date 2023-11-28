@@ -4,9 +4,10 @@
 		<TargetFramework>net8.0</TargetFramework>
 		<ImplicitUsings>enable</ImplicitUsings>
 		<Nullable>disable</Nullable>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
 
-		<GeneratePackageOnBuild>False</GeneratePackageOnBuild>	
+		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>	
 		<Title>Endpoint</Title>
 		<PackageId>GHIElectronics.Endpoint.Devices.DigitalSignal</PackageId>
 		<Description>The DigitalSignal driver for Endpoint.</Description>
@@ -30,13 +31,13 @@
 	</ItemGroup>
 
 
-	<!--
+	
 	<ItemGroup>
 	<PackageReference Include="GHIElectronics.Endpoint.Core" Version="0.0.2" />
 	</ItemGroup>
-	-->
+	<!--
 	<ItemGroup>
 		<ProjectReference Include="..\GHIElectronics.Endpoint.Core\GHIElectronics.Endpoint.Core.csproj" />
 	</ItemGroup>
-
+	-->
 </Project>
