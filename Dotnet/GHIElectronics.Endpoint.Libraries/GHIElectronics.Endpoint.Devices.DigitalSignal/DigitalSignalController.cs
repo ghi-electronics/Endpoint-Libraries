@@ -62,19 +62,34 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
 
 
         private int pin;
+
+        static bool initLibCount = false;
         public DigitalSignalController(int pin) {
 
+       
 
+            if (!File.Exists("/dev/rpmsg_ctrl0")) { // load remoteproc.sh
+                var script = new Script("sremoteproc.sh", "./", "start");
 
-            if (File.Exists("/dev/rpmsg0")) {
-                NativeRpmsgHelper.Release();
+                script.Start();
+
+                while (!File.Exists("/dev/rpmsg_ctrl0")) ;
             }
 
-            if (File.Exists("/dev/rpmsg_ctrl0") && !File.Exists("/dev/rpmsg0"))
-                NativeRpmsgHelper.Acquire();
-            else {
-                throw new Exception("Could not start rpmsg");
+            if (!initLibCount) {
+
+                if (File.Exists("/dev/rpmsg0")) { // reset rpmsg0
+                    NativeRpmsgHelper.Release();
+
+                    while (File.Exists("/dev/rpmsg0") );
+                }
+
+                NativeRpmsgHelper.Acquire(); // load rpmsg0
+
+                initLibCount = true;
             }
+
+
 
 
 
@@ -203,6 +218,10 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
 
         public void Generate(uint[] data, uint offset, int count, uint multiplier, uint edge) {
 
+            if (!this.CanGeneratePulse) {
+                throw new Exception("Generate mode is busy");
+            }
+
             var prescaler = TIMER_CLOCK / (1000000000UL / multiplier);
 
             if (prescaler == 0 || prescaler > 0xFFFF) {
@@ -248,6 +267,10 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
         }
 
         public void ReadPulse(uint pulseNum, uint edge, bool waitForEdge) {
+            if (!this.CanReadPulse) {
+                throw new Exception("ReadPulse mode is busy");
+            }
+
             var buffer = new uint[CMD_RAW_DATA_START_OFFSET];
 
             // length
@@ -275,6 +298,10 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
 
         public void Capture(uint count, uint edge, bool waitForEdge) => this.Capture(count, edge, waitForEdge, TimeSpan.Zero);
         public void Capture(uint count, uint edge, bool waitForEdge, TimeSpan timeout) {
+
+            if (!this.CanCapture) {
+                throw new Exception("CanCapture mode is busy");
+            }
 
             var buffer = new uint[CMD_RAW_DATA_START_OFFSET];
 
