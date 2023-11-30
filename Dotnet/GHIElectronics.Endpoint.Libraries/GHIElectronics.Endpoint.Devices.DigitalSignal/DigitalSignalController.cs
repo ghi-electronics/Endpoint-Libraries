@@ -10,7 +10,7 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
         private const int CMD_RAW_DATA_START_OFFSET = 64;
 
         private const int CMD_GENERATE_PULSE = 0x10;
-        
+
         private const int CMD_RESPONSE_DONE = 0x30;
         private const int CMD_ABORT = 0x31;
         private const int CMD_CHECK_BUSY = 0x32;
@@ -21,16 +21,31 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
 
         private const int TIMER_CLOCK = 205626176;
 
+        public enum Mode {
+            GeneratePulse = 0,
+            ReadPulse = 1,
+            CapturePulse = 2,
+        }
+
+        public enum Error {
+            None = 0,
+            OutOfMemory = 1,
+            Timeout = 2,
+        }
+
 
         public delegate void PulseGenerateEventHandler(DigitalSignalController sender, uint endState, bool aborted);
         public delegate void PulseReadEventHandler(DigitalSignalController sender, TimeSpan duration, uint count, uint initialState, bool aborted);
         public delegate void PulseCaptureEventHandler(DigitalSignalController sender, double[] buffer, uint count, uint initialState, bool aborted);
 
+        public delegate void ErrorEventHandler(DigitalSignalController sender, Mode mode, Error error);
+
         private PulseReadEventHandler pulseReadCallback;
         private PulseGenerateEventHandler pulseGenerateCallback;
         private PulseCaptureEventHandler pulseCaptureCallback;
+        private ErrorEventHandler errorCallback;
 
-        public event PulseReadEventHandler OnReadPulseFinished {
+        public event PulseReadEventHandler ReadPulseFinished {
             add => this.pulseReadCallback += value;
             remove {
                 if (this.pulseReadCallback != null)
@@ -38,7 +53,7 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
             }
         }
 
-        public event PulseGenerateEventHandler OnGenerateFinished {
+        public event PulseGenerateEventHandler GenerateFinished {
             add => this.pulseGenerateCallback += value;
             remove {
                 if (this.pulseGenerateCallback != null)
@@ -46,11 +61,19 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
             }
         }
 
-        public event PulseCaptureEventHandler OnCaptureFinished {
+        public event PulseCaptureEventHandler CaptureFinished {
             add => this.pulseCaptureCallback += value;
             remove {
                 if (this.pulseCaptureCallback != null)
                     this.pulseCaptureCallback -= value;
+            }
+        }
+
+        public event ErrorEventHandler ErrorReceived {
+            add => this.errorCallback += value;
+            remove {
+                if (this.errorCallback != null)
+                    this.errorCallback -= value;
             }
         }
 
@@ -66,7 +89,7 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
         static bool initLibCount = false;
         public DigitalSignalController(int pin) {
 
-       
+
 
             if (!File.Exists("/dev/rpmsg_ctrl0")) { // load remoteproc.sh
                 var script = new Script("sremoteproc.sh", "./", "start");
@@ -81,7 +104,7 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
                 if (File.Exists("/dev/rpmsg0")) { // reset rpmsg0
                     NativeRpmsgHelper.Release();
 
-                    while (File.Exists("/dev/rpmsg0") );
+                    while (File.Exists("/dev/rpmsg0")) ;
                 }
 
                 NativeRpmsgHelper.Acquire(); // load rpmsg0
@@ -89,17 +112,10 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
                 initLibCount = true;
             }
 
-
-
-
-
             this.pin = pin;
             NativeRpmsgHelper.DataReceived += this.NativeRpmsgHelper_DataReceived;
 
             NativeRpmsgHelper.TaskReceive();
-
-
-
 
         }
 
@@ -125,12 +141,22 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
                 if (mode == MODE_GENERATE_PULSE) {
                     var edge = data[CMD_RAW_DATA_START_OFFSET / 2];
                     var aborted = data[CMD_RAW_DATA_START_OFFSET / 2 + 1] == 0 ? false : true;
+                    var error = (Error)data[CMD_RAW_DATA_START_OFFSET / 2 + 2];
 
 
-                    if (this.pulseGenerateCallback != null) {
-                        this.pulseGenerateCallback?.Invoke(this, edge, aborted);
+                    if (error != Error.None) {
+                        if (this.errorCallback != null) {
+                            this.errorCallback?.Invoke(this, Mode.GeneratePulse, error);
 
 
+                        }
+                    }
+                    else {
+                        if (this.pulseGenerateCallback != null) {
+                            this.pulseGenerateCallback?.Invoke(this, edge, aborted);
+
+
+                        }
                     }
 
                     this.CanGeneratePulse = true;
@@ -142,14 +168,23 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
                     var initialState = data[CMD_RAW_DATA_START_OFFSET / 2 + 2]; ;
                     var aborted = data[CMD_RAW_DATA_START_OFFSET / 2 + 3] == 0 ? false : true;
                     var durationTime = TimeSpan.FromTicks(durationTick);
+                    var error = (Error)data[CMD_RAW_DATA_START_OFFSET / 2 + 4];
 
 
+                    if (error != Error.None) {
+                        if (this.errorCallback != null) {
+                            this.errorCallback?.Invoke(this, Mode.GeneratePulse, error);
 
 
-                    if (this.pulseReadCallback != null) {
-                        this.pulseReadCallback?.Invoke(this, durationTime, readPulseCount, initialState, aborted);
+                        }
+                    }
+                    else {
+
+                        if (this.pulseReadCallback != null) {
+                            this.pulseReadCallback?.Invoke(this, durationTime, readPulseCount, initialState, aborted);
 
 
+                        }
                     }
 
                     this.CanReadPulse = true;
@@ -162,44 +197,50 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
 
                     var waitForEdge = data[CMD_RAW_DATA_START_OFFSET / 2 + 2] != 0 ? true : false;
                     var aborted = data[CMD_RAW_DATA_START_OFFSET / 2 + 3] == 0 ? false : true;
+                    var error = (Error)data[CMD_RAW_DATA_START_OFFSET / 2 + 4];
                     var startCopy = CMD_RAW_DATA_START_OFFSET;
 
 
 
 
-                    var buffer = new uint[capturedPulseCount];
-
-                    
-
-                    Array.Copy(data, startCopy, buffer, 0, capturedPulseCount);
+                    if (error != Error.None) {
+                        var buffer = new uint[capturedPulseCount];
 
 
-                    if (this.pulseCaptureCallback != null) {
 
-                        //Convert to double
-                        var d = new double[buffer.Length];
-                        var scale = 4.863;
+                        Array.Copy(data, startCopy, buffer, 0, capturedPulseCount);
 
-                        if (capturedPulseCount > 0) {
-                            d[0] = buffer[0] * scale;
 
-                            for (var i = 1; i < buffer.Length; i++) {
-                                d[i] = (buffer[i] - buffer[i - 1]) * scale;
+                        if (this.pulseCaptureCallback != null) {
+
+                            //Convert to double
+                            var d = new double[buffer.Length];
+                            var scale = 4.863;
+
+                            if (capturedPulseCount > 0) {
+                                d[0] = buffer[0] * scale;
+
+                                for (var i = 1; i < buffer.Length; i++) {
+                                    d[i] = (buffer[i] - buffer[i - 1]) * scale;
+                                }
+
+
+                            }
+                            if (waitForEdge) {
+                                var d2 = new double[d.Length - 1];
+                                Array.Copy(d, 1, d2, 0, d2.Length);
+
+                                this.pulseCaptureCallback?.Invoke(this, d2, (uint)d2.Length, initialState, aborted);
+                            }
+                            else {
+                                this.pulseCaptureCallback?.Invoke(this, d, capturedPulseCount, initialState, aborted);
                             }
 
-              
-                        }
-                        if (waitForEdge) {
-                            var d2 = new double[d.Length-1];
-                            Array.Copy(d, 1, d2, 0, d2.Length);
 
-                            this.pulseCaptureCallback?.Invoke(this, d2, (uint)d2.Length, initialState, aborted);
                         }
-                        else {
-                            this.pulseCaptureCallback?.Invoke(this, d, capturedPulseCount, initialState, aborted);
-                        }
-
-
+                    }
+                    else {
+                        this.errorCallback?.Invoke(this, Mode.CapturePulse, error);
                     }
 
                     this.CanCapture = true;
@@ -250,14 +291,14 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
             // param 5
             buffer[5] = (uint)edge;
 
-            
+
 
             buffer[CMD_RAW_DATA_START_OFFSET + 0] = data[offset + 0];
 
             var i = 1;
 
             while (i < count) {
-                buffer[CMD_RAW_DATA_START_OFFSET + i] = data[offset + i] + data[offset + (i-1)];
+                buffer[CMD_RAW_DATA_START_OFFSET + i] = data[offset + i] + data[offset + (i - 1)];
                 data[offset + i] = buffer[CMD_RAW_DATA_START_OFFSET + i];
                 i++;
             }
