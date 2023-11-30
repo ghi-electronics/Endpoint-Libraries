@@ -14,7 +14,7 @@ namespace GHIElectronics.Endpoint.Core {
         internal static IntPtr InvalidHandleValue;
 
 
-        public static int BlockDelay = 10;
+        public static int BlockDelay = 5;
 
         private const int CMD_RAW_DATA_START_OFFSET = 64;
         public static int BlockSize { get; } = CMD_RAW_DATA_START_OFFSET;
@@ -80,10 +80,6 @@ namespace GHIElectronics.Endpoint.Core {
                     if (sent > 0) {
                         index += sent;
                     }
-
-                    Thread.Sleep(BlockDelay);
-
-
                 }
             }
 
@@ -92,8 +88,11 @@ namespace GHIElectronics.Endpoint.Core {
 
 
         private static uint[] internalBuffer;
+        static bool started = false;
         public static Task TaskReceive() {
+            if (started) return Task.CompletedTask;
 
+            started = true;
             return Task.Run(() => {
                 while (true) {
                     var data = new uint[CMD_RAW_DATA_START_OFFSET];
