@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using GHIElectronics.Endpoint.Core;
 
 namespace GHIElectronics.Endpoint.Native {
@@ -46,6 +47,16 @@ namespace GHIElectronics.Endpoint.Native {
 
             script.Start();
 
+        }
+
+        public static double GetCpuUsageStatistic() {
+            var script = new Script("get_cpu_usage.sh", "./", "");
+
+            script.Start();
+
+            var ret = double.Parse(script.Output);
+
+            return ret;
         }
     }
 }
