@@ -58,12 +58,20 @@ namespace GHIElectronics.Endpoint.Devices.Display {
                 var x = 0;
                 var y = 0;
 
+                var idx = 0;
                 for (y = 0; y < this.Height; y++) {
                     for (x = 0; x < this.Width * 2; x++) {
+
                         var posDest = (y * fbWidth * 2) + x;
                         var posSrc = (y * this.Width * 2) + x;
 
                         mptr[posDest] = data[posSrc + offset];
+
+                        idx++;
+
+                        if (idx == length) {
+                            return;
+                        }
 
                     }
                 }
