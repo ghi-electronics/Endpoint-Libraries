@@ -10,11 +10,11 @@ namespace GHIElectronics.Endpoint.Core {
     public static partial class EPM815 {
         public static class Spi {
             /// <summary>SPI bus.</summary>
-            public static int Spi1 = 1;
+            public static int Spi1 = 0;
             //public static int Spi2 = 2;
             //public static int Spi3 = 3;
-            public static int Spi4 = 4;
-            public static int Spi5 = 5;
+            public static int Spi4 = 1;
+            public static int Spi5 = 2;
 
             const string CMD_LOCATION = "/sbin";
             const string DRIVER_LOCATION = "/lib/modules/5.13.0/kernel/drivers/spi/spidev.ko";
@@ -29,18 +29,31 @@ namespace GHIElectronics.Endpoint.Core {
 
             internal static SpiPinSettings[] PinSettings =  {
                 /* 1 */ new SpiPinSettings { MosiPin = Gpio.Pin.PZ2 , MisoPin = Gpio.Pin.PZ1 , ClockPin = Gpio.Pin.PZ0 , MosiAlternate = Alternate.AF5 , MisoAlternate = Alternate.AF5 , ClockAlternate = Alternate.AF5  },
-                /* 2 */ new SpiPinSettings { MosiPin = Gpio.Pin.NONE, MisoPin = Gpio.Pin.NONE, ClockPin = Gpio.Pin.NONE, MosiAlternate = Alternate.NONE, MisoAlternate = Alternate.NONE, ClockAlternate = Alternate.NONE },
-                /* 3 */ new SpiPinSettings { MosiPin = Gpio.Pin.NONE, MisoPin = Gpio.Pin.NONE, ClockPin = Gpio.Pin.NONE, MosiAlternate = Alternate.NONE, MisoAlternate = Alternate.NONE, ClockAlternate = Alternate.NONE },
+                ///* 2 */ new SpiPinSettings { MosiPin = Gpio.Pin.NONE, MisoPin = Gpio.Pin.NONE, ClockPin = Gpio.Pin.NONE, MosiAlternate = Alternate.NONE, MisoAlternate = Alternate.NONE, ClockAlternate = Alternate.NONE },
+                ///* 3 */ new SpiPinSettings { MosiPin = Gpio.Pin.NONE, MisoPin = Gpio.Pin.NONE, ClockPin = Gpio.Pin.NONE, MosiAlternate = Alternate.NONE, MisoAlternate = Alternate.NONE, ClockAlternate = Alternate.NONE },
                 /* 4 */ new SpiPinSettings { MosiPin = Gpio.Pin.PE14, MisoPin = Gpio.Pin.PE13, ClockPin = Gpio.Pin.PE12, MosiAlternate = Alternate.AF5 , MisoAlternate = Alternate.AF5 , ClockAlternate =Alternate.AF5   },
                 /* 5 */ new SpiPinSettings { MosiPin = Gpio.Pin.PF9 , MisoPin = Gpio.Pin.PF8 , ClockPin = Gpio.Pin.PF7 , MosiAlternate = Alternate.AF5 , MisoAlternate = Alternate.AF5 , ClockAlternate =Alternate.AF5   },
             };
+
+            //public static int GetNativePort(int port) {
+            //    switch (port) {
+            //        case 1: return 0;
+            //        case 4: return 1;
+            //        case 5: return 2;
+
+            //    }
+
+            //    throw new Exception($"SPI {port} is not supported.");
+            //}
             public static void Initialize(int port) {
 
                 if (port < Spi1 || port > Spi5) {
-                    throw new ArgumentException("Invalid Spi port.");
+                    throw new ArgumentException($"Invalid Spi port. The device support only: 0 = SPI1; 1 = SPI4; 2 = SPI5");
                 }
 
                 port = port - 1;
+
+
 
 
                 var pinConfig = PinSettings[port];
