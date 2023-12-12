@@ -12,14 +12,14 @@ namespace GHIElectronics.Endpoint.Core {
         public static class SerialPort {
 
             /// <summary>Uart controller.</summary>
-            //public static string Uart1 = "/dev/ttySTM0";
-            //public static string Uart2 = "/dev/ttySTM1";
-            //public static string Uart3 = "/dev/ttySTM2";
-            //public static string Uart4 = "/dev/ttySTM3";
-            //public static string Uart5 = "/dev/ttySTM4";
-            //public static string Uart6 = "/dev/ttySTM5";
-            //public static string Uart7 = "/dev/ttySTM6";
-            //public static string Uart8 = "/dev/ttySTM7";
+            public static string Uart1 = "/dev/ttySTM0";
+            public static string Uart2 = "/dev/ttySTM1";
+            public static string Uart3 = "/dev/ttySTM2";
+            public static string Uart4 = "/dev/ttySTM3";
+            public static string Uart5 = "/dev/ttySTM4";
+            public static string Uart6 = "/dev/ttySTM5";
+            public static string Uart7 = "/dev/ttySTM6";
+            public static string Uart8 = "/dev/ttySTM7";
 
             internal class UartPinSettings {
                 public int TxPin { get; set; }
