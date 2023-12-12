@@ -29,7 +29,7 @@
   </ItemGroup>
   
   <ItemGroup>
-	<PackageReference Include="GHIElectronics.Endpoint.Core" Version="0.0.2.5-alpha" />
+	<ProjectReference Include="..\GHIElectronics.Endpoint.Core\GHIElectronics.Endpoint.Core.csproj" />
 	<PackageReference Include="GHIElectronics.Endpoint.Devices.Usb" Version="0.0.2.5-alpha" />	
   </ItemGroup>
 

@@ -5,7 +5,6 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
-using GHIElectronics.Endpoint.Core.STM32MP1;
 
 [assembly: InternalsVisibleToAttribute("GHIElectronics.Endpoint.Devices.Can")]
 [assembly: InternalsVisibleToAttribute("GHIElectronics.Endpoint.Devices.Sdmmc")]

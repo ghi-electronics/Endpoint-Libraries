@@ -5,16 +5,6 @@ VisualStudioVersion = 17.0.32112.339
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Core", "GHIElectronics.Endpoint.Core\GHIElectronics.Endpoint.Core.csproj", "{DA0E3082-AC17-44AF-AE8C-75F7040FA580}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Devices.Spi", "GHIElectronics.Endpoint.Devices.Spi\GHIElectronics.Endpoint.Devices.Spi.csproj", "{FF4A4A13-FB27-4113-9189-C4057AFB176C}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Pins", "GHIElectronics.Endpoint.Pins\GHIElectronics.Endpoint.Pins.csproj", "{827FE3E6-69D6-4963-AF16-AB0969F51490}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Devices.Uart", "GHIElectronics.Endpoint.Devices.Uart\GHIElectronics.Endpoint.Devices.Uart.csproj", "{4E88C05D-0470-4A7F-87F0-D7B7B12764D9}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Devices.Pwm", "GHIElectronics.Endpoint.Devices.Pwm\GHIElectronics.Endpoint.Devices.Pwm.csproj", "{77E3FAF2-C22C-4584-AD20-8725F6E94D25}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Devices.I2c", "GHIElectronics.Endpoint.Devices.I2c\GHIElectronics.Endpoint.Devices.I2c.csproj", "{4A359D96-4ADD-4652-B895-8A3A6DAD90C1}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Devices.Adc", "GHIElectronics.Endpoint.Devices.Adc\GHIElectronics.Endpoint.Devices.Adc.csproj", "{A28F631E-09A6-4C7E-9C36-4DA3054AFAAE}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Devices.Can", "GHIElectronics.Endpoint.Devices.Can\GHIElectronics.Endpoint.Devices.Can.csproj", "{B7025E46-7EE2-424D-B40E-14BDF9075DA8}"
@@ -44,7 +34,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Upd
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Native", "GHIElectronics.Endpoint.Native\GHIElectronics.Endpoint.Native.csproj", "{5AB70736-3E04-4C32-ADFD-8F878834DA6B}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GHIElectronics.Endpoint.Devices.DigitalSignal", "GHIElectronics.Endpoint.Devices.DigitalSignal\GHIElectronics.Endpoint.Devices.DigitalSignal.csproj", "{14CB7919-6ACE-453F-B109-43AC508311C1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Devices.DigitalSignal", "GHIElectronics.Endpoint.Devices.DigitalSignal\GHIElectronics.Endpoint.Devices.DigitalSignal.csproj", "{14CB7919-6ACE-453F-B109-43AC508311C1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -56,26 +46,6 @@ Global
 		{DA0E3082-AC17-44AF-AE8C-75F7040FA580}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DA0E3082-AC17-44AF-AE8C-75F7040FA580}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DA0E3082-AC17-44AF-AE8C-75F7040FA580}.Release|Any CPU.Build.0 = Release|Any CPU
-		{FF4A4A13-FB27-4113-9189-C4057AFB176C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{FF4A4A13-FB27-4113-9189-C4057AFB176C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{FF4A4A13-FB27-4113-9189-C4057AFB176C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{FF4A4A13-FB27-4113-9189-C4057AFB176C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{827FE3E6-69D6-4963-AF16-AB0969F51490}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{827FE3E6-69D6-4963-AF16-AB0969F51490}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{827FE3E6-69D6-4963-AF16-AB0969F51490}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{827FE3E6-69D6-4963-AF16-AB0969F51490}.Release|Any CPU.Build.0 = Release|Any CPU
-		{4E88C05D-0470-4A7F-87F0-D7B7B12764D9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4E88C05D-0470-4A7F-87F0-D7B7B12764D9}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{4E88C05D-0470-4A7F-87F0-D7B7B12764D9}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4E88C05D-0470-4A7F-87F0-D7B7B12764D9}.Release|Any CPU.Build.0 = Release|Any CPU
-		{77E3FAF2-C22C-4584-AD20-8725F6E94D25}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{77E3FAF2-C22C-4584-AD20-8725F6E94D25}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{77E3FAF2-C22C-4584-AD20-8725F6E94D25}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{77E3FAF2-C22C-4584-AD20-8725F6E94D25}.Release|Any CPU.Build.0 = Release|Any CPU
-		{4A359D96-4ADD-4652-B895-8A3A6DAD90C1}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{4A359D96-4ADD-4652-B895-8A3A6DAD90C1}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{4A359D96-4ADD-4652-B895-8A3A6DAD90C1}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{4A359D96-4ADD-4652-B895-8A3A6DAD90C1}.Release|Any CPU.Build.0 = Release|Any CPU
 		{A28F631E-09A6-4C7E-9C36-4DA3054AFAAE}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{A28F631E-09A6-4C7E-9C36-4DA3054AFAAE}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A28F631E-09A6-4C7E-9C36-4DA3054AFAAE}.Release|Any CPU.ActiveCfg = Release|Any CPU

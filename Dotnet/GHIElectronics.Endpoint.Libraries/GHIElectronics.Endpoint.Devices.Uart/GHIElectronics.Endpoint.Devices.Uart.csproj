@@ -29,8 +29,8 @@
   </ItemGroup>
   
   <ItemGroup>
-	<PackageReference Include="GHIElectronics.Endpoint.Core" Version="0.0.2.5-alpha" />
-	<PackageReference Include="GHIElectronics.Endpoint.Pins" Version="0.0.2.5-alpha" />
+	<ProjectReference Include="..\GHIElectronics.Endpoint.Core\GHIElectronics.Endpoint.Core.csproj" />
+	
 	<PackageReference Include="System.IO.Ports" Version="6.0.0" />
   </ItemGroup>
 

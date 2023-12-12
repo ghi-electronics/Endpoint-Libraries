@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using GHIElectronics.Endpoint.Core.STM32MP1;
-using static GHIElectronics.Endpoint.Core.STM32MP1.GpioPin;
+using GHIElectronics.Endpoint.Core;
+using static GHIElectronics.Endpoint.Core.Gpio;
+
 
 namespace GHIElectronics.Endpoint.Core {
     public static partial class Configuration {
@@ -15,7 +16,7 @@ namespace GHIElectronics.Endpoint.Core {
             public static int Can2 = 2;
 
 
-            public class CanPinSettings {
+            internal class CanPinSettings {
                 public int TxPin { get; set; }
                 public int RxPin { get; set; }
 
@@ -24,7 +25,7 @@ namespace GHIElectronics.Endpoint.Core {
 
             };
 
-            public static CanPinSettings[] PinSettings =  {
+            internal static CanPinSettings[] PinSettings =  {
                 new CanPinSettings { TxPin = PD1, RxPin = PD0, TxAlternate = Alternate.AF9, RxAlternate = Alternate.AF9, },
                 new CanPinSettings { TxPin = PB13, RxPin = PB12, TxAlternate = Alternate.AF9, RxAlternate = Alternate.AF9, },
             };

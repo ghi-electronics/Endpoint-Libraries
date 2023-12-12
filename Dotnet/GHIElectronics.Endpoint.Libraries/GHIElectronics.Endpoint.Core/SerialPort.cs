@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using GHIElectronics.Endpoint.Core.STM32MP1;
+using static GHIElectronics.Endpoint.Core.Gpio;
 using static GHIElectronics.Endpoint.Core.Configuration;
-using static GHIElectronics.Endpoint.Core.STM32MP1.GpioPin;
+
 
 namespace GHIElectronics.Endpoint.Core {
     public static partial class Configuration {

@@ -4,8 +4,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace GHIElectronics.Endpoint.Core.STM32MP1 {
-    public static class GpioPin {
+namespace GHIElectronics.Endpoint.Core {
+    public static class Gpio {
 
         internal static int MAX_PORT = 10;
         internal static int MAX_PIN_PERPORT = 16;

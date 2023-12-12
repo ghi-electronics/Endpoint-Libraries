@@ -1,6 +1,7 @@
 using System.Text;
 using GHIElectronics.Endpoint.Core;
-using GHIElectronics.Endpoint.Pins;
+
+using static GHIElectronics.Endpoint.Core.Configuration;
 
 namespace GHIElectronics.Endpoint.Devices.Adc
 {
@@ -13,26 +14,36 @@ namespace GHIElectronics.Endpoint.Devices.Adc
         private int fd = -1;        
 
         public int ResolutionInBits { get; } = 16;
-        //public AdcController(int controllerId, int channelId) {
-           
-        //    this.controllerId = controllerId;
-        //    this.channelId = channelId;
+       
+        internal static int GetPinEncodeFromPin(int pin) {
+            switch (pin) {
+                //case AdcPin.ANA0: return AdcPin.ANA0;
+                //case AdcPin.ANA1: return AdcPin.ANA1;
+                case Gpio.PF11: return AdcPin.PF11;
+                case Gpio.PA6: return AdcPin.PA6;
+                case Gpio.PF12: return AdcPin.PF12;
+                case Gpio.PB0: return AdcPin.PB0;
+                case Gpio.PC0: return AdcPin.PC0;
+                case Gpio.PC3: return AdcPin.PC3;
+                case Gpio.PA3: return AdcPin.PA3;
+                case Gpio.PA0: return AdcPin.PA0;
+                case Gpio.PA4: return AdcPin.PA4;
+                case Gpio.PA5: return AdcPin.PA5;
+                case Gpio.PF13: return AdcPin.PF13;
+                case Gpio.PF14: return AdcPin.PF14;
+            }
 
-        //    this.Acquire();
+            return Gpio.NONE;
+        }
 
-        //    var path = "/sys/bus/iio/devices/iio:device" + this.controllerId.ToString() +  "/in_voltage"+ this.channelId.ToString() + "_raw";
+        public AdcController(int adcPin) {
 
-        //    if (File.Exists(path)) {
-        //        this.fd = Interop.Open(path, Interop.FileOpenFlags.O_RDONLY);
-        //    }
+            var pin = adcPin;
 
-        //    if (this.fd < 0) {
-        //        this.Release();
-        //        throw new Exception("Could not create device");
-        //    }
-        //}
+            if (adcPin < 255) {
+                pin = GetPinEncodeFromPin(adcPin);
+            }
 
-        public AdcController(int pin) {
 
             this.controllerId = (pin >> 24) & 0xFF;
             this.channelId = (pin >> 16) & 0xFF;
@@ -51,6 +62,7 @@ namespace GHIElectronics.Endpoint.Devices.Adc
                 this.Release();
                 throw new Exception("Could not create device");
             }
+
         }
 
         public uint Read() {
@@ -93,8 +105,11 @@ namespace GHIElectronics.Endpoint.Devices.Adc
 
             //var pinConfig = STM32MP1.Adc.PinSettings[this.controllerId][this.channelId];
 
-            if (this.pinId >=0)
-                STM32MP1.GpioPin.SetModer(this.pinId, STM32MP1.Moder.Analog);
+            if (this.pinId >= 0 && this.pinId < 255) {
+                Gpio.SetModer(this.pinId, Gpio.Moder.Analog);
+
+                Gpio.PinReserve(this.pinId);
+            }
             
             // load driver
 
@@ -107,8 +122,11 @@ namespace GHIElectronics.Endpoint.Devices.Adc
 
             //var pinConfig = STM32MP1.Adc.PinSettings[this.controllerId][this.channelId];
 
-            if (this.pinId >= 0)
-                STM32MP1.GpioPin.SetModer(this.pinId, STM32MP1.Moder.Input);            
+            if (this.pinId >= 0 && this.pinId < 255) {
+                Gpio.SetModer(this.pinId, Gpio.Moder.Input);
+
+                Gpio.PinRelease(this.pinId);
+            }
 
         }
 
