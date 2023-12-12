@@ -1,8 +1,6 @@
 using System.Text;
 using GHIElectronics.Endpoint.Core;
 
-using static GHIElectronics.Endpoint.Core.Configuration;
-
 namespace GHIElectronics.Endpoint.Devices.Adc
 {
     public class AdcController : IDisposable {
@@ -19,21 +17,21 @@ namespace GHIElectronics.Endpoint.Devices.Adc
             switch (pin) {
                 //case AdcPin.ANA0: return AdcPin.ANA0;
                 //case AdcPin.ANA1: return AdcPin.ANA1;
-                case Gpio.PF11: return AdcPin.PF11;
-                case Gpio.PA6: return AdcPin.PA6;
-                case Gpio.PF12: return AdcPin.PF12;
-                case Gpio.PB0: return AdcPin.PB0;
-                case Gpio.PC0: return AdcPin.PC0;
-                case Gpio.PC3: return AdcPin.PC3;
-                case Gpio.PA3: return AdcPin.PA3;
-                case Gpio.PA0: return AdcPin.PA0;
-                case Gpio.PA4: return AdcPin.PA4;
-                case Gpio.PA5: return AdcPin.PA5;
-                case Gpio.PF13: return AdcPin.PF13;
-                case Gpio.PF14: return AdcPin.PF14;
+                case Configuration.Gpio.Pin.PF11: return Configuration.Adc.Pin.PF11;
+                case Configuration.Gpio.Pin.PA6: return Configuration.Adc.Pin.PA6;
+                case Configuration.Gpio.Pin.PF12: return Configuration.Adc.Pin.PF12;
+                case Configuration.Gpio.Pin.PB0: return Configuration.Adc.Pin.PB0;
+                case Configuration.Gpio.Pin.PC0: return Configuration.Adc.Pin.PC0;
+                case Configuration.Gpio.Pin.PC3: return Configuration.Adc.Pin.PC3;
+                case Configuration.Gpio.Pin.PA3: return Configuration.Adc.Pin.PA3;
+                case Configuration.Gpio.Pin.PA0: return Configuration.Adc.Pin.PA0;
+                case Configuration.Gpio.Pin.PA4: return Configuration.Adc.Pin.PA4;
+                case Configuration.Gpio.Pin.PA5: return Configuration.Adc.Pin.PA5;
+                case Configuration.Gpio.Pin.PF13: return Configuration.Adc.Pin.PF13;
+                case Configuration.Gpio.Pin.PF14: return Configuration.Adc.Pin.PF14;
             }
 
-            return Gpio.NONE;
+            return Configuration.Gpio.Pin.NONE;
         }
 
         public AdcController(int adcPin) {
@@ -106,9 +104,9 @@ namespace GHIElectronics.Endpoint.Devices.Adc
             //var pinConfig = STM32MP1.Adc.PinSettings[this.controllerId][this.channelId];
 
             if (this.pinId >= 0 && this.pinId < 255) {
-                Gpio.SetModer(this.pinId, Gpio.Moder.Analog);
+                Configuration.Gpio.SetModer(this.pinId, Configuration.Gpio.Moder.Analog);
 
-                Gpio.PinReserve(this.pinId);
+                Configuration.Gpio.PinReserve(this.pinId);
             }
             
             // load driver
@@ -123,9 +121,9 @@ namespace GHIElectronics.Endpoint.Devices.Adc
             //var pinConfig = STM32MP1.Adc.PinSettings[this.controllerId][this.channelId];
 
             if (this.pinId >= 0 && this.pinId < 255) {
-                Gpio.SetModer(this.pinId, Gpio.Moder.Input);
+                Configuration.Gpio.SetModer(this.pinId, Configuration.Gpio.Moder.Input);
 
-                Gpio.PinRelease(this.pinId);
+                Configuration.Gpio.PinRelease(this.pinId);
             }
 
         }

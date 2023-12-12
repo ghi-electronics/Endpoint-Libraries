@@ -3,8 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using static GHIElectronics.Endpoint.Core.Gpio;
-using static GHIElectronics.Endpoint.Core.Configuration;
+using static GHIElectronics.Endpoint.Core.Configuration.Gpio;
+
 
 
 namespace GHIElectronics.Endpoint.Core {
@@ -33,16 +33,16 @@ namespace GHIElectronics.Endpoint.Core {
             };
 
             internal static UartPinSettings[] PinSettings = new UartPinSettings[8] {
-                /* 1 */ new UartPinSettings { TxPin = PZ7 , RxPin = PZ6 , RtsPin = PA12, CtsPin = PZ3 , TxAlternate = Alternate.AF7 , RxAlternate = Alternate.AF7 , RtsAlternate = Alternate.NONE,  CtsAlternate = Alternate.NONE },
-                /* 2 */ new UartPinSettings { TxPin = PF5 , RxPin = PD6 , RtsPin = NONE, CtsPin = NONE, TxAlternate = Alternate.AF7 , RxAlternate = Alternate.AF7 , RtsAlternate = Alternate.NONE,  CtsAlternate = Alternate.NONE },
-                /* 3 */ new UartPinSettings { TxPin = PD8 , RxPin = PD9 , RtsPin = NONE, CtsPin = NONE, TxAlternate = Alternate.AF7 , RxAlternate = Alternate.AF7 , RtsAlternate = Alternate.NONE,  CtsAlternate = Alternate.NONE },
-                /* 4 */ new UartPinSettings { TxPin = PD1 , RxPin = PD0 , RtsPin = NONE, CtsPin = NONE, TxAlternate = Alternate.AF8 , RxAlternate = Alternate.AF8 , RtsAlternate = Alternate.NONE,  CtsAlternate = Alternate.NONE },
-                /* 5 */ new UartPinSettings { TxPin = PB13, RxPin = PB12, RtsPin = NONE, CtsPin = NONE, TxAlternate = Alternate.NONE, RxAlternate = Alternate.NONE, RtsAlternate = Alternate.AF14,  CtsAlternate = Alternate.AF14 },
-                /* 6 */ new UartPinSettings { TxPin = NONE, RxPin = NONE, RtsPin = NONE, CtsPin = NONE, TxAlternate = Alternate.NONE, RxAlternate = Alternate.NONE, RtsAlternate = Alternate.NONE,  CtsAlternate = Alternate.NONE },
-                /* 7 */ new UartPinSettings { TxPin = PE8 , RxPin = PF6 , RtsPin = PE9 , CtsPin = PE10, TxAlternate = Alternate.AF7 , RxAlternate = Alternate.AF7 , RtsAlternate = Alternate.AF7 ,  CtsAlternate = Alternate.AF7  },
-                /* 8 */ new UartPinSettings { TxPin = PE1 , RxPin = PE0 , RtsPin = NONE, CtsPin = NONE, TxAlternate = Alternate.AF8 , RxAlternate = Alternate.AF8 , RtsAlternate = Alternate.NONE,  CtsAlternate = Alternate.NONE },
+                /* 1 */ new UartPinSettings { TxPin = Gpio.Pin.PZ7 , RxPin = Gpio.Pin.PZ6 , RtsPin = Gpio.Pin.PA12, CtsPin = Gpio.Pin.PZ3 , TxAlternate = Alternate.AF7 , RxAlternate = Alternate.AF7 , RtsAlternate = Alternate.NONE,  CtsAlternate = Alternate.NONE },
+                /* 2 */ new UartPinSettings { TxPin = Gpio.Pin.PF5 , RxPin = Gpio.Pin.PD6 , RtsPin = Gpio.Pin.NONE, CtsPin = Gpio.Pin.NONE, TxAlternate = Alternate.AF7 , RxAlternate = Alternate.AF7 , RtsAlternate = Alternate.NONE,  CtsAlternate = Alternate.NONE },
+                /* 3 */ new UartPinSettings { TxPin = Gpio.Pin.PD8 , RxPin = Gpio.Pin.PD9 , RtsPin = Gpio.Pin.NONE, CtsPin = Gpio.Pin.NONE, TxAlternate = Alternate.AF7 , RxAlternate = Alternate.AF7 , RtsAlternate = Alternate.NONE,  CtsAlternate = Alternate.NONE },
+                /* 4 */ new UartPinSettings { TxPin = Gpio.Pin.PD1 , RxPin = Gpio.Pin.PD0 , RtsPin = Gpio.Pin.NONE, CtsPin = Gpio.Pin.NONE, TxAlternate = Alternate.AF8 , RxAlternate = Alternate.AF8 , RtsAlternate = Alternate.NONE,  CtsAlternate = Alternate.NONE },
+                /* 5 */ new UartPinSettings { TxPin = Gpio.Pin.PB13, RxPin = Gpio.Pin.PB12, RtsPin = Gpio.Pin.NONE, CtsPin = Gpio.Pin.NONE, TxAlternate = Alternate.NONE, RxAlternate = Alternate.NONE, RtsAlternate = Alternate.AF14,  CtsAlternate = Alternate.AF14 },
+                /* 6 */ new UartPinSettings { TxPin = Gpio.Pin.NONE, RxPin = Gpio.Pin.NONE, RtsPin = Gpio.Pin.NONE, CtsPin = Gpio.Pin.NONE, TxAlternate = Alternate.NONE, RxAlternate = Alternate.NONE, RtsAlternate = Alternate.NONE,  CtsAlternate = Alternate.NONE },
+                /* 7 */ new UartPinSettings { TxPin = Gpio.Pin.PE8 , RxPin = Gpio.Pin.PF6 , RtsPin = Gpio.Pin.PE9 , CtsPin = Gpio.Pin.PE10, TxAlternate = Alternate.AF7 , RxAlternate = Alternate.AF7 , RtsAlternate = Alternate.AF7 ,  CtsAlternate = Alternate.AF7  },
+                /* 8 */ new UartPinSettings { TxPin = Gpio.Pin.PE1 , RxPin = Gpio.Pin.PE0 , RtsPin = Gpio.Pin.NONE, CtsPin = Gpio.Pin.NONE, TxAlternate = Alternate.AF8 , RxAlternate = Alternate.AF8 , RtsAlternate = Alternate.NONE,  CtsAlternate = Alternate.NONE },
             };
-            public static void Initialize(string portname, bool enableHardwareFlowControl=false) {
+            public static void Initialize(string portname, bool enableHardwareFlowControl = false) {
 
                 int port;
                 try {
@@ -56,30 +56,30 @@ namespace GHIElectronics.Endpoint.Core {
                     throw new ArgumentException("Invalid Serialport.");
                 }
 
-                
+
 
 
                 var pinConfig = PinSettings[port];
 
                 if (IsPinReserved(pinConfig.TxPin)) {
-                    ThrowExceptionPinInUsed(pinConfig.TxPin);
+                    Configuration.ThrowExceptionPinInUsed(pinConfig.TxPin);
                 }
 
                 if (IsPinReserved(pinConfig.RxPin)) {
-                    ThrowExceptionPinInUsed(pinConfig.RxPin);
+                    Configuration.ThrowExceptionPinInUsed(pinConfig.RxPin);
                 }
 
                 if (enableHardwareFlowControl) {
-                    if (pinConfig.RtsPin == NONE || pinConfig.CtsPin == NONE) {
+                    if (pinConfig.RtsPin == Gpio.Pin.NONE || pinConfig.CtsPin == Gpio.Pin.NONE) {
                         throw new ArgumentException($"Port {port} does not support handshaking.");
                     }
 
                     if (IsPinReserved(pinConfig.RtsPin)) {
-                        ThrowExceptionPinInUsed(pinConfig.RtsPin);
+                        Configuration.ThrowExceptionPinInUsed(pinConfig.RtsPin);
                     }
 
                     if (IsPinReserved(pinConfig.CtsPin)) {
-                        ThrowExceptionPinInUsed(pinConfig.CtsPin);
+                        Configuration.ThrowExceptionPinInUsed(pinConfig.CtsPin);
                     }
 
                 }
@@ -148,3 +148,4 @@ namespace GHIElectronics.Endpoint.Core {
         }
     }
 }
+

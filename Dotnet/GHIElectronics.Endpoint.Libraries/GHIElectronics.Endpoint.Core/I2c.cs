@@ -3,11 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using static GHIElectronics.Endpoint.Core.Gpio;
+using GHIElectronics.Endpoint.Core;
+
 
 namespace GHIElectronics.Endpoint.Core {
-    public static partial class Configuration {
 
+    public static partial class Configuration {
         public static class I2c {
             /// <summary>I2c controller.</summary>
             public static int I2c1 = 1;
@@ -20,17 +21,17 @@ namespace GHIElectronics.Endpoint.Core {
             internal class I2cPinSettings {
                 public int SdaPin { get; set; }
                 public int SclPin { get; set; }
-                public Alternate SdaAlternate { get; set; }
-                public Alternate SclAlternate { get; set; }
+                public Gpio.Alternate SdaAlternate { get; set; }
+                public Gpio.Alternate SclAlternate { get; set; }
             };
 
             internal static I2cPinSettings[] PinSettings = {
-                /*i2c1*/new I2cPinSettings { SdaPin = PD13, SclPin = PD12, SdaAlternate = Alternate.AF5 ,  SclAlternate = Alternate.AF5  },
-                /*i2c2*/new I2cPinSettings { SdaPin = NONE, SclPin = NONE, SdaAlternate = Alternate.AF0 ,  SclAlternate = Alternate.AF0  },
-                /*i2c3*/new I2cPinSettings { SdaPin = NONE, SclPin = NONE, SdaAlternate = Alternate.AF0 ,  SclAlternate = Alternate.AF0  },                
-                /*i2c4*/new I2cPinSettings { SdaPin = PF15, SclPin = PB6 , SdaAlternate = Alternate.AF4 ,  SclAlternate = Alternate.AF6 },
-                /*i2c5*/new I2cPinSettings { SdaPin = PZ5 , SclPin = PZ4 , SdaAlternate = Alternate.AF4 ,  SclAlternate = Alternate.AF4  },                
-                /*i2c6*/new I2cPinSettings { SdaPin = PD0, SclPin = PD1 , SdaAlternate = Alternate.AF2 ,  SclAlternate = Alternate.AF2 },
+                /*i2c1*/new I2cPinSettings { SdaPin = Gpio.Pin.PD13, SclPin = Gpio.Pin.PD12, SdaAlternate = Gpio.Alternate.AF5 ,  SclAlternate = Gpio.Alternate.AF5  },
+                /*i2c2*/new I2cPinSettings { SdaPin = Gpio.Pin.NONE, SclPin = Gpio.Pin.NONE, SdaAlternate = Gpio.Alternate.AF0 ,  SclAlternate = Gpio.Alternate.AF0  },
+                /*i2c3*/new I2cPinSettings { SdaPin = Gpio.Pin.NONE, SclPin = Gpio.Pin.NONE, SdaAlternate = Gpio.Alternate.AF0 ,  SclAlternate = Gpio.Alternate.AF0  },                
+                /*i2c4*/new I2cPinSettings { SdaPin = Gpio.Pin.PF15, SclPin = Gpio.Pin.PB6 , SdaAlternate = Gpio.Alternate.AF4 ,  SclAlternate = Gpio.Alternate.AF6 },
+                /*i2c5*/new I2cPinSettings { SdaPin = Gpio.Pin.PZ5 , SclPin = Gpio.Pin.PZ4 , SdaAlternate = Gpio.Alternate.AF4 ,  SclAlternate = Gpio.Alternate.AF4  },                
+                /*i2c6*/new I2cPinSettings { SdaPin = Gpio.Pin.PD0, SclPin = Gpio.Pin.PD1 , SdaAlternate = Gpio.Alternate.AF2 ,  SclAlternate = Gpio.Alternate.AF2 },
 
             };
 
@@ -45,32 +46,32 @@ namespace GHIElectronics.Endpoint.Core {
 
                 var pinConfig = PinSettings[port];
 
-                if (IsPinReserved(pinConfig.SclPin)) {
-                    ThrowExceptionPinInUsed(pinConfig.SclPin);
+                if (Gpio.IsPinReserved(pinConfig.SclPin)) {
+                    Configuration.ThrowExceptionPinInUsed(pinConfig.SclPin);
                 }
 
-                if (IsPinReserved(pinConfig.SdaPin)) {
-                    ThrowExceptionPinInUsed(pinConfig.SdaPin);
+                if (Gpio.IsPinReserved(pinConfig.SdaPin)) {
+                    Configuration.ThrowExceptionPinInUsed(pinConfig.SdaPin);
                 }
 
 
-              
-
-                SetModer(pinConfig.SclPin, Moder.Alternate);
-                SetModer(pinConfig.SdaPin, Moder.Alternate);
-
-                SetAlternate(pinConfig.SclPin, pinConfig.SclAlternate);
-                SetAlternate(pinConfig.SdaPin, pinConfig.SdaAlternate);
 
 
-                SetPull(pinConfig.SclPin, Pull.Up);
-                SetPull(pinConfig.SdaPin, Pull.Up);
+                Gpio.SetModer(pinConfig.SclPin, Gpio.Moder.Alternate);
+                Gpio.SetModer(pinConfig.SdaPin, Gpio.Moder.Alternate);
 
-                SetOutputType(pinConfig.SclPin, OutputType.OpenDrain);
-                SetOutputType(pinConfig.SdaPin, OutputType.OpenDrain);
+                Gpio.SetAlternate(pinConfig.SclPin, pinConfig.SclAlternate);
+                Gpio.SetAlternate(pinConfig.SdaPin, pinConfig.SdaAlternate);
 
-                PinReserve(pinConfig.SclPin);
-                PinReserve(pinConfig.SdaPin);
+
+                Gpio.SetPull(pinConfig.SclPin, Gpio.Pull.Up);
+                Gpio.SetPull(pinConfig.SdaPin, Gpio.Pull.Up);
+
+                Gpio.SetOutputType(pinConfig.SclPin, Gpio.OutputType.OpenDrain);
+                Gpio.SetOutputType(pinConfig.SdaPin, Gpio.OutputType.OpenDrain);
+
+                Gpio.PinReserve(pinConfig.SclPin);
+                Gpio.PinReserve(pinConfig.SdaPin);
 
             }
             public static void UnInitialize(int port) {
@@ -83,12 +84,13 @@ namespace GHIElectronics.Endpoint.Core {
 
                 var pinConfig = PinSettings[port];
 
-                PinRelease(pinConfig.SclPin);
-                PinRelease(pinConfig.SdaPin);
+                Gpio.PinRelease(pinConfig.SclPin);
+                Gpio.PinRelease(pinConfig.SdaPin);
 
-                SetModer(pinConfig.SclPin, Moder.Input);
-                SetModer(pinConfig.SdaPin, Moder.Input);
+                Gpio.SetModer(pinConfig.SclPin, Gpio.Moder.Input);
+                Gpio.SetModer(pinConfig.SdaPin, Gpio.Moder.Input);
             }
+
         }
     }
 }

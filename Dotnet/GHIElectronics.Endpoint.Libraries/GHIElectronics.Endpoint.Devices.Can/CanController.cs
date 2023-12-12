@@ -1,5 +1,6 @@
 #pragma warning disable CS8601 // Possible null reference assignment.
 using GHIElectronics.Endpoint.Core;
+using static GHIElectronics.Endpoint.Core.Configuration;
 
 
 namespace GHIElectronics.Endpoint.Devices.Can

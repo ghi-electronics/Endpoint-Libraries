@@ -1,5 +1,6 @@
 using System.Collections;
 using GHIElectronics.Endpoint.Core;
+using static GHIElectronics.Endpoint.Core.Configuration;
 namespace GHIElectronics.Endpoint.Devices.Mmc {
 
     public class Sdmmc {

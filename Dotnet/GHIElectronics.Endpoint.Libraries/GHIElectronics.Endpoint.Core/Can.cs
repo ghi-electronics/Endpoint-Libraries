@@ -4,12 +4,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using GHIElectronics.Endpoint.Core;
-using static GHIElectronics.Endpoint.Core.Gpio;
+using static GHIElectronics.Endpoint.Core.Configuration.Gpio;
 
 
 namespace GHIElectronics.Endpoint.Core {
     public static partial class Configuration {
-
         public static class Can {
             /// <summary>Can controller.</summary>
             public static int Can1 = 1;
@@ -26,9 +25,10 @@ namespace GHIElectronics.Endpoint.Core {
             };
 
             internal static CanPinSettings[] PinSettings =  {
-                new CanPinSettings { TxPin = PD1, RxPin = PD0, TxAlternate = Alternate.AF9, RxAlternate = Alternate.AF9, },
-                new CanPinSettings { TxPin = PB13, RxPin = PB12, TxAlternate = Alternate.AF9, RxAlternate = Alternate.AF9, },
+                new CanPinSettings { TxPin = Gpio.Pin.PD1, RxPin = Gpio.Pin.PD0, TxAlternate = Alternate.AF9, RxAlternate = Alternate.AF9, },
+                new CanPinSettings { TxPin = Gpio.Pin.PB13, RxPin = Gpio.Pin.PB12, TxAlternate = Alternate.AF9, RxAlternate = Alternate.AF9, },
             };
+
         }
     }
 }

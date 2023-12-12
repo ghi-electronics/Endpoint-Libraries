@@ -3,11 +3,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using static GHIElectronics.Endpoint.Core.Gpio;
-using static GHIElectronics.Endpoint.Core.Configuration;
+using static GHIElectronics.Endpoint.Core.Configuration.Gpio;
+
 
 namespace GHIElectronics.Endpoint.Core {
-
     public static partial class Configuration {
         public static class Spi {
             /// <summary>SPI bus.</summary>
@@ -29,11 +28,11 @@ namespace GHIElectronics.Endpoint.Core {
             };
 
             internal static SpiPinSettings[] PinSettings =  {
-                /* 1 */ new SpiPinSettings { MosiPin = PZ2 , MisoPin = PZ1 , ClockPin = PZ0 , MosiAlternate = Alternate.AF5 , MisoAlternate = Alternate.AF5 , ClockAlternate = Alternate.AF5  },
-                /* 2 */ new SpiPinSettings { MosiPin = NONE, MisoPin = NONE, ClockPin = NONE, MosiAlternate = Alternate.NONE, MisoAlternate = Alternate.NONE, ClockAlternate = Alternate.NONE },
-                /* 3 */ new SpiPinSettings { MosiPin = NONE, MisoPin = NONE, ClockPin = NONE, MosiAlternate = Alternate.NONE, MisoAlternate = Alternate.NONE, ClockAlternate = Alternate.NONE },
-                /* 4 */ new SpiPinSettings { MosiPin = PE14, MisoPin = PE13, ClockPin = PE12, MosiAlternate = Alternate.AF5 , MisoAlternate = Alternate.AF5 , ClockAlternate =Alternate.AF5   },
-                /* 5 */ new SpiPinSettings { MosiPin = PF9 , MisoPin = PF8 , ClockPin = PF7 , MosiAlternate = Alternate.AF5 , MisoAlternate = Alternate.AF5 , ClockAlternate =Alternate.AF5   },
+                /* 1 */ new SpiPinSettings { MosiPin = Gpio.Pin.PZ2 , MisoPin = Gpio.Pin.PZ1 , ClockPin = Gpio.Pin.PZ0 , MosiAlternate = Alternate.AF5 , MisoAlternate = Alternate.AF5 , ClockAlternate = Alternate.AF5  },
+                /* 2 */ new SpiPinSettings { MosiPin = Gpio.Pin.NONE, MisoPin = Gpio.Pin.NONE, ClockPin = Gpio.Pin.NONE, MosiAlternate = Alternate.NONE, MisoAlternate = Alternate.NONE, ClockAlternate = Alternate.NONE },
+                /* 3 */ new SpiPinSettings { MosiPin = Gpio.Pin.NONE, MisoPin = Gpio.Pin.NONE, ClockPin = Gpio.Pin.NONE, MosiAlternate = Alternate.NONE, MisoAlternate = Alternate.NONE, ClockAlternate = Alternate.NONE },
+                /* 4 */ new SpiPinSettings { MosiPin = Gpio.Pin.PE14, MisoPin = Gpio.Pin.PE13, ClockPin = Gpio.Pin.PE12, MosiAlternate = Alternate.AF5 , MisoAlternate = Alternate.AF5 , ClockAlternate =Alternate.AF5   },
+                /* 5 */ new SpiPinSettings { MosiPin = Gpio.Pin.PF9 , MisoPin = Gpio.Pin.PF8 , ClockPin = Gpio.Pin.PF7 , MosiAlternate = Alternate.AF5 , MisoAlternate = Alternate.AF5 , ClockAlternate =Alternate.AF5   },
             };
             public static void Initialize(int port) {
 
@@ -47,18 +46,18 @@ namespace GHIElectronics.Endpoint.Core {
                 var pinConfig = PinSettings[port];
 
                 if (IsPinReserved(pinConfig.MosiPin)) {
-                    ThrowExceptionPinInUsed(pinConfig.MosiPin);
+                    Configuration.ThrowExceptionPinInUsed(pinConfig.MosiPin);
                 }
 
                 if (IsPinReserved(pinConfig.MisoPin)) {
-                    ThrowExceptionPinInUsed(pinConfig.MisoPin);
+                    Configuration.ThrowExceptionPinInUsed(pinConfig.MisoPin);
                 }
 
                 if (IsPinReserved(pinConfig.ClockPin)) {
-                    ThrowExceptionPinInUsed(pinConfig.ClockPin);
+                    Configuration.ThrowExceptionPinInUsed(pinConfig.ClockPin);
                 }
 
-                
+
 
                 SetModer(pinConfig.MosiPin, Moder.Alternate);
                 SetModer(pinConfig.MisoPin, Moder.Alternate);
@@ -99,7 +98,7 @@ namespace GHIElectronics.Endpoint.Core {
 
                 var script = new Script("rmmod", CMD_LOCATION, DRIVER_LOCATION);
                 script.Start();
-              
+
                 SetModer(pinConfig.MosiPin, Moder.Input);
                 SetModer(pinConfig.MisoPin, Moder.Input);
                 SetModer(pinConfig.ClockPin, Moder.Input);
