@@ -1,6 +1,6 @@
 using System.Collections;
 using GHIElectronics.Endpoint.Core;
-using static GHIElectronics.Endpoint.Core.Configuration;
+using static GHIElectronics.Endpoint.Core.EPM815;
 namespace GHIElectronics.Endpoint.Devices.Mmc {
 
     public class Sdmmc {
@@ -191,30 +191,30 @@ namespace GHIElectronics.Endpoint.Devices.Mmc {
         private void LoadResources() {
             if (this.Type == SdmmcType.SdCard2) {
 
-                var pinConfig = Configuration.Sdmmc.PinSettings[Configuration.Sdmmc.SdCard2];
+                var pinConfig = EPM815.Sdmmc.PinSettings[EPM815.Sdmmc.SdCard2];
 
                 if (Gpio.IsPinReserved(pinConfig.PinD0)) {
-                    Configuration.ThrowExceptionPinInUsed(pinConfig.PinD0);
+                    EPM815.ThrowExceptionPinInUsed(pinConfig.PinD0);
                 }
 
                 if (Gpio.IsPinReserved(pinConfig.PinD1)) {
-                    Configuration.ThrowExceptionPinInUsed(pinConfig.PinD1);
+                    EPM815.ThrowExceptionPinInUsed(pinConfig.PinD1);
                 }
 
                 if (Gpio.IsPinReserved(pinConfig.PinD2)) {
-                    Configuration.ThrowExceptionPinInUsed(pinConfig.PinD2);
+                    EPM815.ThrowExceptionPinInUsed(pinConfig.PinD2);
                 }
 
                 if (Gpio.IsPinReserved(pinConfig.PinD3)) {
-                    Configuration.ThrowExceptionPinInUsed(pinConfig.PinD3);
+                    EPM815.ThrowExceptionPinInUsed(pinConfig.PinD3);
                 }
 
                 if (Gpio.IsPinReserved(pinConfig.PinCmd)) {
-                    Configuration.ThrowExceptionPinInUsed(pinConfig.PinCmd);
+                    EPM815.ThrowExceptionPinInUsed(pinConfig.PinCmd);
                 }
 
                 if (Gpio.IsPinReserved(pinConfig.PinClock)) {
-                    Configuration.ThrowExceptionPinInUsed(pinConfig.PinClock);
+                    EPM815.ThrowExceptionPinInUsed(pinConfig.PinClock);
                 }
 
                 Gpio.SetModer(pinConfig.PinD0, Gpio.Moder.Alternate);
@@ -237,7 +237,7 @@ namespace GHIElectronics.Endpoint.Devices.Mmc {
 
         private void UnLoadResources() {
             if (this.Type == SdmmcType.SdCard2) {
-                var pinConfig = Configuration.Sdmmc.PinSettings[Configuration.Sdmmc.SdCard2];                
+                var pinConfig = EPM815.Sdmmc.PinSettings[EPM815.Sdmmc.SdCard2];                
 
                 Gpio.SetModer(pinConfig.PinD0, Gpio.Moder.Input);
                 Gpio.SetModer(pinConfig.PinD1, Gpio.Moder.Input);

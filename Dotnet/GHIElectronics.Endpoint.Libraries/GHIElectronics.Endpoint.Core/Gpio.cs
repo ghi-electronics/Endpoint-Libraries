@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace GHIElectronics.Endpoint.Core {
 
-    public static partial class Configuration {
+    public static partial class EPM815 {
         public static class Gpio {
 
             internal static int MAX_PORT = 10;
@@ -625,11 +625,11 @@ namespace GHIElectronics.Endpoint.Core {
                 var pin_num = pin % 16;
 
                 if (pin_port >= MAX_PORT || pin_num >= MAX_PIN_PERPORT) {
-                    Configuration.ThrowExceptionPinNotInRange(pin);
+                    EPM815.ThrowExceptionPinNotInRange(pin);
                 }
 
                 if ((Pins[pin_port] & (1 << pin_num)) != 0) {
-                    Configuration.ThrowExceptionPinInUsed(pin);
+                    EPM815.ThrowExceptionPinInUsed(pin);
                 }
 
                 Pins[pin_port] |= (uint)(1 << pin_num);
@@ -641,7 +641,7 @@ namespace GHIElectronics.Endpoint.Core {
                 var pin_num = pin % 16;
 
                 if (pin_port >= MAX_PORT || pin_num >= MAX_PIN_PERPORT) {
-                    Configuration.ThrowExceptionPinNotInRange(pin);
+                    EPM815.ThrowExceptionPinNotInRange(pin);
                 }
 
 
@@ -654,7 +654,7 @@ namespace GHIElectronics.Endpoint.Core {
                 var pin_num = pin % 16;
 
                 if (pin_port >= MAX_PORT || pin_num >= MAX_PIN_PERPORT) {
-                    Configuration.ThrowExceptionPinNotInRange(pin);
+                    EPM815.ThrowExceptionPinNotInRange(pin);
                 }
                 return (Pins[pin_port] & (1 << pin_num)) != 0; ;
             }

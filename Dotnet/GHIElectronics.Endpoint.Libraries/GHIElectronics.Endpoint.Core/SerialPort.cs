@@ -3,12 +3,12 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using static GHIElectronics.Endpoint.Core.Configuration.Gpio;
+using static GHIElectronics.Endpoint.Core.EPM815.Gpio;
 
 
 
 namespace GHIElectronics.Endpoint.Core {
-    public static partial class Configuration {
+    public static partial class EPM815 {
         public static class SerialPort {
 
             /// <summary>Uart controller.</summary>
@@ -62,11 +62,11 @@ namespace GHIElectronics.Endpoint.Core {
                 var pinConfig = PinSettings[port];
 
                 if (IsPinReserved(pinConfig.TxPin)) {
-                    Configuration.ThrowExceptionPinInUsed(pinConfig.TxPin);
+                    EPM815.ThrowExceptionPinInUsed(pinConfig.TxPin);
                 }
 
                 if (IsPinReserved(pinConfig.RxPin)) {
-                    Configuration.ThrowExceptionPinInUsed(pinConfig.RxPin);
+                    EPM815.ThrowExceptionPinInUsed(pinConfig.RxPin);
                 }
 
                 if (enableHardwareFlowControl) {
@@ -75,11 +75,11 @@ namespace GHIElectronics.Endpoint.Core {
                     }
 
                     if (IsPinReserved(pinConfig.RtsPin)) {
-                        Configuration.ThrowExceptionPinInUsed(pinConfig.RtsPin);
+                        EPM815.ThrowExceptionPinInUsed(pinConfig.RtsPin);
                     }
 
                     if (IsPinReserved(pinConfig.CtsPin)) {
-                        Configuration.ThrowExceptionPinInUsed(pinConfig.CtsPin);
+                        EPM815.ThrowExceptionPinInUsed(pinConfig.CtsPin);
                     }
 
                 }

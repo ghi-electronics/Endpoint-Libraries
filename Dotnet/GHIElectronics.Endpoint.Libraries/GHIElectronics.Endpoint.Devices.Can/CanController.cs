@@ -1,6 +1,6 @@
 #pragma warning disable CS8601 // Possible null reference assignment.
 using GHIElectronics.Endpoint.Core;
-using static GHIElectronics.Endpoint.Core.Configuration;
+using static GHIElectronics.Endpoint.Core.EPM815;
 
 
 namespace GHIElectronics.Endpoint.Devices.Can
@@ -59,7 +59,7 @@ namespace GHIElectronics.Endpoint.Devices.Can
 
         public CanController(int controllerId, int nominalBitrate, int dataBitrate = 0)
         {            
-            if (controllerId != Configuration.Can.Can1 && controllerId != Configuration.Can.Can2) {
+            if (controllerId != EPM815.Can.Can1 && controllerId != EPM815.Can.Can2) {
                 throw new ArgumentException("Only CAN1 and CAN2 are supported.");
             }
 
@@ -163,14 +163,14 @@ namespace GHIElectronics.Endpoint.Devices.Can
         private void LoadResources()
         {
             // load pins 
-            var pinConfig = Configuration.Can.PinSettings[this.controllerId];
+            var pinConfig = EPM815.Can.PinSettings[this.controllerId];
 
             if (Gpio.IsPinReserved(pinConfig.TxPin)) {
-                Configuration.ThrowExceptionPinInUsed(pinConfig.TxPin);
+                EPM815.ThrowExceptionPinInUsed(pinConfig.TxPin);
             }
 
             if (Gpio.IsPinReserved(pinConfig.RxPin)) {
-                Configuration.ThrowExceptionPinInUsed(pinConfig.RxPin);
+                EPM815.ThrowExceptionPinInUsed(pinConfig.RxPin);
             }
 
             Gpio.SetModer(pinConfig.TxPin, Gpio.Moder.Alternate);
@@ -194,7 +194,7 @@ namespace GHIElectronics.Endpoint.Devices.Can
         private void UnLoadResources()
         {
             // releaset pins 
-            var pinConfig = Configuration.Can.PinSettings[this.controllerId];
+            var pinConfig = EPM815.Can.PinSettings[this.controllerId];
 
             
 

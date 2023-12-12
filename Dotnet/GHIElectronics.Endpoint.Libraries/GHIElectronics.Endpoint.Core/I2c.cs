@@ -8,7 +8,7 @@ using GHIElectronics.Endpoint.Core;
 
 namespace GHIElectronics.Endpoint.Core {
 
-    public static partial class Configuration {
+    public static partial class EPM815 {
         public static class I2c {
             /// <summary>I2c controller.</summary>
             public static int I2c1 = 1;
@@ -47,11 +47,11 @@ namespace GHIElectronics.Endpoint.Core {
                 var pinConfig = PinSettings[port];
 
                 if (Gpio.IsPinReserved(pinConfig.SclPin)) {
-                    Configuration.ThrowExceptionPinInUsed(pinConfig.SclPin);
+                    EPM815.ThrowExceptionPinInUsed(pinConfig.SclPin);
                 }
 
                 if (Gpio.IsPinReserved(pinConfig.SdaPin)) {
-                    Configuration.ThrowExceptionPinInUsed(pinConfig.SdaPin);
+                    EPM815.ThrowExceptionPinInUsed(pinConfig.SdaPin);
                 }
 
 

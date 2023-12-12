@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 
 namespace GHIElectronics.Endpoint.Core {
-    public static partial class Configuration {
+    public static partial class EPM815 {
         public static class Sdmmc {
             /// <summary>Can controller.</summary>            
             public static int SdCard2 = 0;

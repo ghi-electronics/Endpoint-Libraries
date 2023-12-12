@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 
 namespace GHIElectronics.Endpoint.Core {
 
-    public static partial class Configuration {
+    public static partial class EPM815 {
         public static class Pwm {
 
             public static class Pin {

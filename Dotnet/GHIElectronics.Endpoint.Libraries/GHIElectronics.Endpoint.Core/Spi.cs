@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using static GHIElectronics.Endpoint.Core.Configuration.Gpio;
+using static GHIElectronics.Endpoint.Core.EPM815.Gpio;
 
 
 namespace GHIElectronics.Endpoint.Core {
-    public static partial class Configuration {
+    public static partial class EPM815 {
         public static class Spi {
             /// <summary>SPI bus.</summary>
             public static int Spi1 = 1;
@@ -46,15 +46,15 @@ namespace GHIElectronics.Endpoint.Core {
                 var pinConfig = PinSettings[port];
 
                 if (IsPinReserved(pinConfig.MosiPin)) {
-                    Configuration.ThrowExceptionPinInUsed(pinConfig.MosiPin);
+                    EPM815.ThrowExceptionPinInUsed(pinConfig.MosiPin);
                 }
 
                 if (IsPinReserved(pinConfig.MisoPin)) {
-                    Configuration.ThrowExceptionPinInUsed(pinConfig.MisoPin);
+                    EPM815.ThrowExceptionPinInUsed(pinConfig.MisoPin);
                 }
 
                 if (IsPinReserved(pinConfig.ClockPin)) {
-                    Configuration.ThrowExceptionPinInUsed(pinConfig.ClockPin);
+                    EPM815.ThrowExceptionPinInUsed(pinConfig.ClockPin);
                 }
 
 

@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 [assembly: InternalsVisibleToAttribute("GHIElectronics.Endpoint.Devices.Sdmmc")]
 namespace GHIElectronics.Endpoint.Core {
 
-    public static partial class Configuration {
+    public static partial class EPM815 {
 
 
         

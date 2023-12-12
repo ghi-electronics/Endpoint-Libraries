@@ -4,11 +4,11 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using GHIElectronics.Endpoint.Core;
-using static GHIElectronics.Endpoint.Core.Configuration.Gpio;
+using static GHIElectronics.Endpoint.Core.EPM815.Gpio;
 
 
 namespace GHIElectronics.Endpoint.Core {
-    public static partial class Configuration {
+    public static partial class EPM815 {
         public static class Can {
             /// <summary>Can controller.</summary>
             public static int Can1 = 1;
