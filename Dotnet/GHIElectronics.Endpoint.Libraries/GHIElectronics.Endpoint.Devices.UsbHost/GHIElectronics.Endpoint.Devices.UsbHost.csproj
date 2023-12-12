@@ -1,11 +1,11 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
 	
-    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>	
+    <GeneratePackageOnBuild>False</GeneratePackageOnBuild>	
 	<Title>Endpoint</Title>
 	<PackageId>GHIElectronics.Endpoint.Devices.UsbHost</PackageId>
     <Description>The UsbHost driver for Endpoint.</Description>
@@ -30,7 +30,7 @@
   
   <ItemGroup>
 	<ProjectReference Include="..\GHIElectronics.Endpoint.Core\GHIElectronics.Endpoint.Core.csproj" />
-	<PackageReference Include="GHIElectronics.Endpoint.Devices.Usb" Version="0.0.2.5-alpha" />	
+	<ProjectReference Include="..\GHIElectronics.Endpoint.Devices.Usb\GHIElectronics.Endpoint.Devices.Usb.csproj" />	
   </ItemGroup>
 
 </Project>
