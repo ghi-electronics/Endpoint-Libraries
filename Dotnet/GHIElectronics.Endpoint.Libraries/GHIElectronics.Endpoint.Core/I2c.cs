@@ -46,11 +46,11 @@ namespace GHIElectronics.Endpoint.Core {
 
                 var pinConfig = PinSettings[port];
 
-                if (CheckPinInUsed(pinConfig.SclPin)) {
+                if (IsPinReserved(pinConfig.SclPin)) {
                     ThrowExceptionPinInUsed(pinConfig.SclPin);
                 }
 
-                if (CheckPinInUsed(pinConfig.SdaPin)) {
+                if (IsPinReserved(pinConfig.SdaPin)) {
                     ThrowExceptionPinInUsed(pinConfig.SdaPin);
                 }
 
@@ -70,8 +70,8 @@ namespace GHIElectronics.Endpoint.Core {
                 SetOutputType(pinConfig.SclPin, OutputType.OpenDrain);
                 SetOutputType(pinConfig.SdaPin, OutputType.OpenDrain);
 
-                RegisterPin(pinConfig.SclPin);
-                RegisterPin(pinConfig.SdaPin);
+                PinReserve(pinConfig.SclPin);
+                PinReserve(pinConfig.SdaPin);
 
             }
             public static void UnInitialize(int port) {
@@ -84,8 +84,8 @@ namespace GHIElectronics.Endpoint.Core {
 
                 var pinConfig = PinSettings[port];
 
-                UnRegisterPin(pinConfig.SclPin);
-                UnRegisterPin(pinConfig.SdaPin);
+                PinRelease(pinConfig.SclPin);
+                PinRelease(pinConfig.SdaPin);
 
                 SetModer(pinConfig.SclPin, Moder.Input);
                 SetModer(pinConfig.SdaPin, Moder.Input);

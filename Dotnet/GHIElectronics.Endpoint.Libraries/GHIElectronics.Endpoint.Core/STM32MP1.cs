@@ -6,6 +6,9 @@ using System.Threading.Tasks;
 
 namespace GHIElectronics.Endpoint.Core.STM32MP1 {
     public static class GpioPin {
+
+        internal static int MAX_PORT = 10;
+        internal static int MAX_PIN_PERPORT = 16;
         public enum Alternate : int {
             AF0 = 0,
             AF1 = 1,
@@ -613,10 +616,13 @@ namespace GHIElectronics.Endpoint.Core.STM32MP1 {
         }
 
         internal static uint[] Pins = new uint[10];
-        internal static void RegisterPin(int pin) {
+        public static void PinReserve(int pin) {
             var pin_port = pin / 16;
             var pin_num = pin % 16;
 
+            if (pin_port >= MAX_PORT || pin_num >= MAX_PIN_PERPORT) {
+                Configuration.ThrowExceptionPinNotInRange(pin);
+            }
 
             if ((Pins[pin_port] & (1 << pin_num)) != 0) {
                 Configuration.ThrowExceptionPinInUsed(pin);
@@ -626,19 +632,26 @@ namespace GHIElectronics.Endpoint.Core.STM32MP1 {
 
         }
 
-        internal static void UnRegisterPin(int pin) {
+        public static void PinRelease(int pin) {
             var pin_port = pin / 16;
             var pin_num = pin % 16;
+
+            if (pin_port >= MAX_PORT || pin_num >= MAX_PIN_PERPORT) {
+                Configuration.ThrowExceptionPinNotInRange(pin);
+            }
 
 
             Pins[pin_port] &= ~(uint)(1 << pin_num);
 
         }
 
-        public static bool CheckPinInUsed(int pin) {
+        public static bool IsPinReserved(int pin) {
             var pin_port = pin / 16;
             var pin_num = pin % 16;
 
+            if (pin_port >= MAX_PORT || pin_num >= MAX_PIN_PERPORT) {
+                Configuration.ThrowExceptionPinNotInRange(pin);
+            }
             return (Pins[pin_port] & (1 << pin_num)) != 0; ;
         }
         

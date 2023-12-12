@@ -61,11 +61,11 @@ namespace GHIElectronics.Endpoint.Core {
 
                 var pinConfig = PinSettings[port];
 
-                if (CheckPinInUsed(pinConfig.TxPin)) {
+                if (IsPinReserved(pinConfig.TxPin)) {
                     ThrowExceptionPinInUsed(pinConfig.TxPin);
                 }
 
-                if (CheckPinInUsed(pinConfig.RxPin)) {
+                if (IsPinReserved(pinConfig.RxPin)) {
                     ThrowExceptionPinInUsed(pinConfig.RxPin);
                 }
 
@@ -74,11 +74,11 @@ namespace GHIElectronics.Endpoint.Core {
                         throw new ArgumentException($"Port {port} does not support handshaking.");
                     }
 
-                    if (CheckPinInUsed(pinConfig.RtsPin)) {
+                    if (IsPinReserved(pinConfig.RtsPin)) {
                         ThrowExceptionPinInUsed(pinConfig.RtsPin);
                     }
 
-                    if (CheckPinInUsed(pinConfig.CtsPin)) {
+                    if (IsPinReserved(pinConfig.CtsPin)) {
                         ThrowExceptionPinInUsed(pinConfig.CtsPin);
                     }
 
@@ -90,8 +90,8 @@ namespace GHIElectronics.Endpoint.Core {
                 SetAlternate(pinConfig.TxPin, pinConfig.TxAlternate);
                 SetAlternate(pinConfig.RxPin, pinConfig.RxAlternate);
 
-                RegisterPin(pinConfig.TxPin);
-                RegisterPin(pinConfig.RxPin);
+                PinReserve(pinConfig.TxPin);
+                PinReserve(pinConfig.RxPin);
 
                 if (enableHardwareFlowControl) {
 
@@ -101,8 +101,8 @@ namespace GHIElectronics.Endpoint.Core {
                     SetModer(pinConfig.RtsPin, Moder.Alternate);
                     SetAlternate(pinConfig.RtsPin, pinConfig.RtsAlternate);
 
-                    RegisterPin(pinConfig.CtsPin);
-                    RegisterPin(pinConfig.RtsPin);
+                    PinReserve(pinConfig.CtsPin);
+                    PinReserve(pinConfig.RtsPin);
 
                 }
             }
@@ -132,16 +132,16 @@ namespace GHIElectronics.Endpoint.Core {
                 SetModer(pinConfig.TxPin, Moder.Input);
                 SetModer(pinConfig.RxPin, Moder.Input);
 
-                UnRegisterPin(pinConfig.TxPin);
-                UnRegisterPin(pinConfig.RxPin);
+                PinRelease(pinConfig.TxPin);
+                PinRelease(pinConfig.RxPin);
 
                 if (enabledHardwareFlowControl) {
 
                     SetModer(pinConfig.CtsPin, Moder.Input);
                     SetModer(pinConfig.RtsPin, Moder.Input);
 
-                    UnRegisterPin(pinConfig.CtsPin);
-                    UnRegisterPin(pinConfig.RtsPin);
+                    PinRelease(pinConfig.CtsPin);
+                    PinRelease(pinConfig.RtsPin);
                 }
             }
 

@@ -47,15 +47,15 @@ namespace GHIElectronics.Endpoint.Core {
 
                 var pinConfig = PinSettings[port];
 
-                if (CheckPinInUsed(pinConfig.MosiPin)) {
+                if (IsPinReserved(pinConfig.MosiPin)) {
                     ThrowExceptionPinInUsed(pinConfig.MosiPin);
                 }
 
-                if (CheckPinInUsed(pinConfig.MisoPin)) {
+                if (IsPinReserved(pinConfig.MisoPin)) {
                     ThrowExceptionPinInUsed(pinConfig.MisoPin);
                 }
 
-                if (CheckPinInUsed(pinConfig.ClockPin)) {
+                if (IsPinReserved(pinConfig.ClockPin)) {
                     ThrowExceptionPinInUsed(pinConfig.ClockPin);
                 }
 
@@ -69,9 +69,9 @@ namespace GHIElectronics.Endpoint.Core {
                 SetAlternate(pinConfig.MisoPin, pinConfig.MisoAlternate);
                 SetAlternate(pinConfig.ClockPin, pinConfig.ClockAlternate);
 
-                RegisterPin(pinConfig.MosiPin);
-                RegisterPin(pinConfig.MisoPin);
-                RegisterPin(pinConfig.ClockPin);
+                PinReserve(pinConfig.MosiPin);
+                PinReserve(pinConfig.MisoPin);
+                PinReserve(pinConfig.ClockPin);
 
                 // load driver
                 if (Directory.Exists("/sys/class/spidev"))
@@ -105,9 +105,9 @@ namespace GHIElectronics.Endpoint.Core {
                 SetModer(pinConfig.MisoPin, Moder.Input);
                 SetModer(pinConfig.ClockPin, Moder.Input);
 
-                UnRegisterPin(pinConfig.MosiPin);
-                UnRegisterPin(pinConfig.MisoPin);
-                UnRegisterPin(pinConfig.ClockPin);
+                PinRelease(pinConfig.MosiPin);
+                PinRelease(pinConfig.MisoPin);
+                PinRelease(pinConfig.ClockPin);
             }
         }
     }
