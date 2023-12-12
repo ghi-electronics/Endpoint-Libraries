@@ -32,7 +32,7 @@
   
 
   <ItemGroup>
-    <ProjectReference Include="..\GHIElectronics.Endpoint.Core\GHIElectronics.Endpoint.Core.csproj" />
+    <PackageReference Include="GHIElectronics.Endpoint.Core" Version="0.0.2.5-alpha" />
 	<PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="2.88.5" />
   </ItemGroup>
 
