@@ -49,14 +49,27 @@ namespace GHIElectronics.Endpoint.Native {
 
         }
 
-        public static double GetCpuUsageStatistic() {
-            var script = new Script("get_cpu_usage.sh", "./", "");
+        //public static double GetCpuUsageStatistic() {
+        //    var script = new Script("get_cpu_usage.sh", "./", "");
+
+        //    script.Start();
+
+        //    var ret = double.Parse(script.Output);
+
+        //    return ret;
+        //}
+
+        
+        public static bool SdBoot() {
+            var script = new Script("cat", "./", "/boot/extlinux/extlinux.conf");
 
             script.Start();
 
-            var ret = double.Parse(script.Output);
+            if (script.Output.Contains("mmcblk1"))
+                return true;
 
-            return ret;
+            return false;
+
         }
     }
 }
