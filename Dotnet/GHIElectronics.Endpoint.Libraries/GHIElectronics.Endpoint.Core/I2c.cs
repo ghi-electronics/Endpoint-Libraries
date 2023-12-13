@@ -41,7 +41,7 @@ namespace GHIElectronics.Endpoint.Core {
                     throw new ArgumentException("Invalid I2c port.");
                 }
 
-                port = port - 1;
+                //port = port - 1;
 
 
                 var pinConfig = PinSettings[port];
