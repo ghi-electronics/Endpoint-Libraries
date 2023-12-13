@@ -11,12 +11,12 @@ namespace GHIElectronics.Endpoint.Core {
     public static partial class EPM815 {
         public static class I2c {
             /// <summary>I2c controller.</summary>
-            public static int I2c1 = 1;
+            public static int I2c1 = 0;
             //public static int I2c2 = 2;
             //public static int I2c3 = 3;
-            public static int I2c4 = 4;
-            public static int I2c5 = 5;
-            public static int I2c6 = 6;
+            public static int I2c4 = 2;
+            public static int I2c5 = 1;
+            public static int I2c6 = 3;
 
             internal class I2cPinSettings {
                 public int SdaPin { get; set; }
@@ -27,10 +27,10 @@ namespace GHIElectronics.Endpoint.Core {
 
             internal static I2cPinSettings[] PinSettings = {
                 /*i2c1*/new I2cPinSettings { SdaPin = Gpio.Pin.PD13, SclPin = Gpio.Pin.PD12, SdaAlternate = Gpio.Alternate.AF5 ,  SclAlternate = Gpio.Alternate.AF5  },
-                /*i2c2*/new I2cPinSettings { SdaPin = Gpio.Pin.NONE, SclPin = Gpio.Pin.NONE, SdaAlternate = Gpio.Alternate.AF0 ,  SclAlternate = Gpio.Alternate.AF0  },
-                /*i2c3*/new I2cPinSettings { SdaPin = Gpio.Pin.NONE, SclPin = Gpio.Pin.NONE, SdaAlternate = Gpio.Alternate.AF0 ,  SclAlternate = Gpio.Alternate.AF0  },                
+                ///*i2c2*/new I2cPinSettings { SdaPin = Gpio.Pin.NONE, SclPin = Gpio.Pin.NONE, SdaAlternate = Gpio.Alternate.AF0 ,  SclAlternate = Gpio.Alternate.AF0  },
+                ///*i2c3*/new I2cPinSettings { SdaPin = Gpio.Pin.NONE, SclPin = Gpio.Pin.NONE, SdaAlternate = Gpio.Alternate.AF0 ,  SclAlternate = Gpio.Alternate.AF0  },                                
+                /*i2c5*/new I2cPinSettings { SdaPin = Gpio.Pin.PZ5 , SclPin = Gpio.Pin.PZ4 , SdaAlternate = Gpio.Alternate.AF4 ,  SclAlternate = Gpio.Alternate.AF4  },
                 /*i2c4*/new I2cPinSettings { SdaPin = Gpio.Pin.PF15, SclPin = Gpio.Pin.PB6 , SdaAlternate = Gpio.Alternate.AF4 ,  SclAlternate = Gpio.Alternate.AF6 },
-                /*i2c5*/new I2cPinSettings { SdaPin = Gpio.Pin.PZ5 , SclPin = Gpio.Pin.PZ4 , SdaAlternate = Gpio.Alternate.AF4 ,  SclAlternate = Gpio.Alternate.AF4  },                
                 /*i2c6*/new I2cPinSettings { SdaPin = Gpio.Pin.PD0, SclPin = Gpio.Pin.PD1 , SdaAlternate = Gpio.Alternate.AF2 ,  SclAlternate = Gpio.Alternate.AF2 },
 
             };
