@@ -47,11 +47,11 @@ namespace GHIElectronics.Endpoint.Core {
             //}
             public static void Initialize(int port) {
 
-                if (port < Spi1 || port > Spi5) {
+                if (port != Spi1 && port != Spi4 && port != Spi5) {
                     throw new ArgumentException($"Invalid Spi port. The device support only: 0 = SPI1; 1 = SPI4; 2 = SPI5");
                 }
 
-                port = port - 1;
+                //port = port - 1;
 
 
 
