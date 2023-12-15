@@ -33,6 +33,8 @@ namespace GHIElectronics.Endpoint.Native {
 
             Register.Write(RCC_MP_RSTSCLRR, 0x7FF);//RCC_MP_RSTSCLRR
             Register.Write(RCC_MP_SREQSETR, 1 << 0 | 1 << 1);//RCC_MP_SREQSETR_STPREQ
+
+            NativeUtils.WFI();
         }
     }
     public static class DeviceInformation {
