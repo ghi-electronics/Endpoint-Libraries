@@ -8,6 +8,32 @@ namespace GHIElectronics.Endpoint.Native {
             var script = new Script("reboot", "./", "");
             script.Start();
         }
+
+        public static void Shutdown() {
+            const uint RCC_BASE = 0x50000000U; // page 157
+            const uint RCC_MP_SREQSETR = RCC_BASE + 0x104U; // page 157
+            const uint RCC_MP_GRSTCSETR = RCC_BASE + 0x404U; // page 157
+            const uint RCC_MP_RSTSCLRR = RCC_BASE + 0x408U; // page 157
+
+            const uint PWR_BASE = 0x50001000U; // page 157
+
+            const uint PWR_CR1 = PWR_BASE + 0U; // 442
+            const uint PWR_MPUCR = PWR_BASE + 0x10U; //
+            const uint PWR_MCUCR = PWR_BASE + 0x14U; //
+
+            Register.SetBits(PWR_MPUCR, 1 << 9); //PWR_MPUCR_CSSF
+            Register.SetBits(PWR_MPUCR, 1 << 3); //PWR_MPUCR_CSTBYDIS
+            Register.SetBits(PWR_MPUCR, 1 << 0); //PWR_MPUCR_PDDS
+
+            Register.SetBits(PWR_MCUCR, 1 << 0); //PWR_MCUCR_PDDS
+
+            Register.SetBits(PWR_CR1, 1 << 0); //LPDS
+            Register.SetBits(PWR_CR1, 1 << 1); //LPCFG
+            Register.SetBits(PWR_CR1, 1 << 2); //LVDS
+
+            Register.Write(RCC_MP_RSTSCLRR, 0x7FF);//RCC_MP_RSTSCLRR
+            Register.Write(RCC_MP_SREQSETR, 1 << 0 | 1 << 1);//RCC_MP_SREQSETR_STPREQ
+        }
     }
     public static class DeviceInformation {
 
