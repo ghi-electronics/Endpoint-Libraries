@@ -112,52 +112,45 @@ namespace GHIElectronics.Endpoint.Devices.Rtc {
         }
 
         public void EnableWakeup(bool wakeupPin, DateTime dtwakeup) {
-            var arg = string.Empty;
-            var ret = true;
-            var ret_output = string.Empty;
-
+            var flag = true;
+            var message = string.Empty;
             Script script;
-
-            // for wakeup pin
+            string args;
             if (wakeupPin) {
-                arg = "gpio_keys.ko";
-
-                script = new Script("insmod", "/lib/modules/5.13.0/kernel/drivers/input/keyboard", arg);
-
+                args = "gpio_keys.ko";
+                script = new Script("insmod", "/lib/modules/5.13.0/kernel/drivers/input/keyboard", args);
                 script.Start();
             }
-            
 
-            arg = "--date ";
 
-            arg += dtwakeup.Year.ToString("d4");
-            arg += dtwakeup.Month.ToString("d2");
-            arg += dtwakeup.Day.ToString("d2");
-            arg += dtwakeup.Hour.ToString("d2");
-            arg += dtwakeup.Minute.ToString("d2");
-            arg += dtwakeup.Second.ToString("d2");
-
-            script = new Script("rtcwake", "./", arg);
-
+            script = new Script("rtcwake_clear.sh", "./", "");
             script.Start();
 
-            if (script.Output.Contains("wakeup from \"suspend\" using /dev/rtc0 at") == false) {
-                ret = false;
-                //throw new Exception(script.Output);
-                ret_output  = script.Output;
+
+            var dt = dtwakeup.Year.ToString("d4") + "-" + dtwakeup.Month.ToString("d2") + "-" + dtwakeup.Day.ToString("d2");
+
+            dt += " ";
+            dt += dtwakeup.Hour.ToString("d2") + ":" + dtwakeup.Minute.ToString("d2") + ":" + dtwakeup.Second.ToString("d2");
+
+            args = $"-m no --date \"{dt}\"";
+
+            script = new Script("rtcwake", "./", args);
+            script.Start();
+            if (!script.Output.Contains("wakeup using /dev/rtc0 at")) {
+                flag = false;
+                message = script.Error;
+
+
             }
 
-            // remove wakeup
             if (wakeupPin) {
-                arg = "gpio_keys.ko";
-
-                script = new Script("rmmod", "/lib/modules/5.13.0/kernel/drivers/input/keyboard", arg);
-
+                args = "gpio_keys.ko";
+                script = new Script("rmmod", "/lib/modules/5.13.0/kernel/drivers/input/keyboard", args);
                 script.Start();
             }
 
-            if (!ret) {
-                throw new Exception(ret_output);
+            if (!flag) {
+                throw new Exception(message);
             }
         }
 
