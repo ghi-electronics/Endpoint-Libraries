@@ -11,15 +11,29 @@ namespace GHIElectronics.Endpoint.Native {
 
         public static void Shutdown() {
             const uint RCC_BASE = 0x50000000U; // page 157
-            const uint RCC_MP_SREQSETR = RCC_BASE + 0x104U; // page 157
-            const uint RCC_MP_GRSTCSETR = RCC_BASE + 0x404U; // page 157
-            const uint RCC_MP_RSTSCLRR = RCC_BASE + 0x408U; // page 157
+            const uint RCC_MP_SREQSETR = RCC_BASE + 0x104U; 
+            //const uint RCC_MP_GRSTCSETR = RCC_BASE + 0x404U; 
+            const uint RCC_MP_RSTSCLRR = RCC_BASE + 0x408U; 
+            const uint RCC_PWRLPDLYCR = RCC_BASE + 0x41CU; 
+            const uint RCC_MP_CIFR = RCC_BASE + 0x418U; 
+            const uint RCC_MP_CIER = RCC_BASE + 0x414U; 
 
-            const uint PWR_BASE = 0x50001000U; // page 157
+            const uint PWR_BASE = 0x50001000U; 
 
             const uint PWR_CR1 = PWR_BASE + 0U; // 442
             const uint PWR_MPUCR = PWR_BASE + 0x10U; //
             const uint PWR_MCUCR = PWR_BASE + 0x14U; //
+
+            const uint RCC_PWRLPDLYCR_PWRLP_DLY_MASK = 0x3FFFFFU;
+
+            Register.ClearBits(RCC_PWRLPDLYCR, RCC_PWRLPDLYCR_PWRLP_DLY_MASK);
+            Register.SetBits(RCC_PWRLPDLYCR, 5); //Wait 6 HSI periods
+
+            /* Clear RCC interrupt before enabling it */
+            Register.SetBits(RCC_MP_CIFR, 1 << 20); //RCC_MP_CIFR_WKUPF
+
+            /* Enable RCC Wake-up */
+            Register.SetBits(RCC_MP_CIER, 1 << 20); //RCC_MP_CIFR_WKUPF
 
             Register.SetBits(PWR_MPUCR, 1 << 9); //PWR_MPUCR_CSSF
             Register.SetBits(PWR_MPUCR, 1 << 3); //PWR_MPUCR_CSTBYDIS
@@ -34,7 +48,8 @@ namespace GHIElectronics.Endpoint.Native {
             Register.Write(RCC_MP_RSTSCLRR, 0x7FF);//RCC_MP_RSTSCLRR
             Register.Write(RCC_MP_SREQSETR, 1 << 0 | 1 << 1);//RCC_MP_SREQSETR_STPREQ
 
-            NativeUtils.WFI();
+            for (; ; )
+                NativeUtils.WFI();
         }
     }
     public static class DeviceInformation {
