@@ -9,7 +9,7 @@ namespace GHIElectronics.Endpoint.Core {
     public static partial class EPM815 {
         public static class Sdmmc {
             /// <summary>Can controller.</summary>            
-            public static int SdCard2 = 0;
+            public const int SdCard2 = 0;
 
 
             internal class SdmmcPinSettings {

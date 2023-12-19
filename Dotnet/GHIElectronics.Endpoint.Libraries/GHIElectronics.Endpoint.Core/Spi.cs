@@ -10,11 +10,11 @@ namespace GHIElectronics.Endpoint.Core {
     public static partial class EPM815 {
         public static class Spi {
             /// <summary>SPI bus.</summary>
-            public static int Spi1 = 0;
+            public const int Spi1 = 0;
             //public static int Spi2 = 2;
             //public static int Spi3 = 3;
-            public static int Spi4 = 1;
-            public static int Spi5 = 2;
+            public const int Spi4 = 1;
+            public const int Spi5 = 2;
 
             const string CMD_LOCATION = "/sbin";
             const string DRIVER_LOCATION = "/lib/modules/5.13.0/kernel/drivers/spi/spidev.ko";

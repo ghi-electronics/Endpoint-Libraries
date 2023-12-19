@@ -11,8 +11,8 @@ namespace GHIElectronics.Endpoint.Core {
     public static partial class EPM815 {
         public static class Can {
             /// <summary>Can controller.</summary>
-            public static int Can1 = 1;
-            public static int Can2 = 2;
+            public const int Can1 = 1;
+            public const int Can2 = 2;
 
 
             internal class CanPinSettings {
