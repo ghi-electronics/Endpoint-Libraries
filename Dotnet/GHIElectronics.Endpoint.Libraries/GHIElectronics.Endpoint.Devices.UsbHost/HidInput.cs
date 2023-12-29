@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection.PortableExecutable;
@@ -9,7 +9,7 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost
 {
     public class HidInput : IDisposable
     {
-        private List<InputReader> _readers = new();
+        private List<InputReader> readers = new();
 
         public delegate void RaiseKeyPress(KeyPressEvent e);
         public delegate void RaiseMouseMove(MouseMoveEvent e);
@@ -35,7 +35,7 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost
                     reader.OnData += this.HandleOnData;
                     reader.OnDisconnected += this.ReaderOnDisconnected;
 
-                    this._readers.Add(reader);
+                    this.readers.Add(reader);
                 }
             }
             else
@@ -81,15 +81,15 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost
 
             if (disposing)
             {
-                foreach (var reader in this._readers)
+                foreach (var reader in this.readers)
                 {
                     reader.OnData -= this.HandleOnData;
                     reader.OnDisconnected -= this.ReaderOnDisconnected;
                     reader.Dispose();
                 }
 
-                this._readers.Clear();
-                this._readers = null;
+                this.readers.Clear();
+                this.readers = null;
             }
 
             this.disposed = true;
