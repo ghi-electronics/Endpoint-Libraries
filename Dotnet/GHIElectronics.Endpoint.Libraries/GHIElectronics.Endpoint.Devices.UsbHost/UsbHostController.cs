@@ -173,6 +173,7 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost
 
                 this.CheckUsbConnection("/dev/", "sd*", DeviceType.MassStorage);
                 this.CheckUsbConnection("/dev/input/", "event*", DeviceType.HID);
+                this.CheckUsbConnection("/dev/", "video*", DeviceType.Webcam);
 
                 Thread.Sleep(1000);
 
@@ -219,8 +220,14 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost
 
         private void LoadResources()
         {
+            var dev_videos = Directory.GetFiles("/dev/", "video*");
 
-            //TODO
+            if (dev_videos == null || dev_videos.Length == 0) {
+
+                var script = new Script("modprobe", "./", "uvcvideo");
+                script.Start();                
+            }
+            
         }
 
         private void UnLoadResources()

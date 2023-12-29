@@ -46,6 +46,28 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
 
                 return IntPtr.Zero;
             };
+            
+            var dev_videos = Directory.GetFiles("/dev/", "video*");            
+
+            if (dev_videos == null || dev_videos.Length == 0) {
+                                   
+                // wait for driver is loaded completely
+                var timeout = 0;
+                while (dev_videos == null || dev_videos.Length == 0) {
+                    Thread.Sleep(100);
+
+                    dev_videos = Directory.GetFiles("/dev/", "video*");
+
+                    timeout++;
+
+                    if (timeout == 20) {
+                        throw new ArgumentException("No camera found.");
+                    }
+                }
+
+            }
+            
+            
 
             this.DeviceName = deviceName;
             this.Width = width;
