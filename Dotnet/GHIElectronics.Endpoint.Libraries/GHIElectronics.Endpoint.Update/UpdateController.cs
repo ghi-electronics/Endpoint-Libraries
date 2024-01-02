@@ -2,14 +2,15 @@ using System.Device.Gpio;
 using System.Device.Gpio.Drivers;
 using System.Net;
 using GHIElectronics.Endpoint.Core;
+using GHIElectronics.Endpoint.Native;
 
 namespace GHIElectronics.Endpoint.Update {
     public class UpdateController {
         public enum Mode: uint {
-            SdToMmc=0,
+            ProgrameMMC=0,
             Firmware,
-            Bootloader,
-            Dotnet
+            //Bootloader, No need
+            //Dotnet // Can't update dotnet when dotnet is running. Use EP tool instead.
         }
 
         string sourcePath;
@@ -20,20 +21,27 @@ namespace GHIElectronics.Endpoint.Update {
         GpioController gpioController;
 
         bool updating;
-        public UpdateController(Mode mode, string sourcePath, int pinIndicator) {
-           
+        public UpdateController(Mode mode, int pinIndicator = EPM815.Gpio.Pin.NONE, string sourcePath = null) {           
+            if (mode == Mode.ProgrameMMC) {
+                if (!DeviceInformation.SdBoot()) {
+                    throw new ArgumentException("Program eMMC requires boot from SD.");
+                }
+            }
+            else {
+                if (sourcePath == null || !Directory.Exists(sourcePath))
+                    throw new Exception("Invalid source path");
+            }
 
-            if (sourcePath == null || !Directory.Exists(sourcePath))
-                throw new Exception("invalid source path");
+            if (pinIndicator != EPM815.Gpio.Pin.NONE) {
+                var pinPort = pinIndicator / 16;
+                var pinNumber = pinIndicator % 16;
 
-            var pinPort = pinIndicator / 16;
-            var pinNumber = pinIndicator % 16;
+                this.gpioDriver = new LibGpiodDriver(pinPort);
+                this.gpioController = new GpioController(PinNumberingScheme.Logical, this.gpioDriver);
 
-            this.gpioDriver = new LibGpiodDriver(pinPort);
-            this.gpioController = new GpioController(PinNumberingScheme.Logical, this.gpioDriver);
-
-            this.gpioController.OpenPin(pinNumber);
-            this.gpioController.SetPinMode(pinNumber, PinMode.Output);
+                this.gpioController.OpenPin(pinNumber);
+                this.gpioController.SetPinMode(pinNumber, PinMode.Output);
+            }
 
             this.mode = mode;
             this.sourcePath = sourcePath;
@@ -47,7 +55,9 @@ namespace GHIElectronics.Endpoint.Update {
 
             this.updating = true;
 
-            this.TaskIndicator();
+            if (this.pinIndicator != EPM815.Gpio.Pin.NONE) {
+                this.TaskIndicator();
+            }
 
             script.Start();
 

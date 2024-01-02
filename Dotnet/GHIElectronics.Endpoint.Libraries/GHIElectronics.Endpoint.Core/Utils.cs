@@ -1,35 +1,39 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
+using System.Runtime.Loader;
 using System.Text;
 using System.Threading.Tasks;
 
 namespace GHIElectronics.Endpoint.Core {
-    static public class Utils {
-        public static string GetUntil(this string that, char @char) {
-            return that[..(IndexOf() == -1 ? that.Length : IndexOf())];
-            int IndexOf() => that.IndexOf(@char);
-        }
+    public static class NativeUtils {
 
-        public static string FindAndSplitUntil(string str, string substr, char until) {
-            var pos_start = str.IndexOf(substr);
+        private const string LibNativeUtils = "nativeutils.so";
+        internal static IntPtr InvalidHandleValue;
 
-            if (pos_start == -1) {
-                return string.Empty;
-            }
+        static NativeUtils() {
+            InvalidHandleValue = new IntPtr(-1);
 
-            var pos_end = pos_start + substr.Length;
+            var currentAssembly = typeof(NativeUtils).Assembly;
 
-            while (pos_end < str.Length) {
-                if (str[pos_end] == until) {
-                    break;
+            AssemblyLoadContext.GetLoadContext(currentAssembly)!.ResolvingUnmanagedDll += (assembly, libmytestlibName) => {
+                if (assembly != currentAssembly || libmytestlibName != LibNativeUtils) {
+                    return IntPtr.Zero;
                 }
 
-                pos_end++;
-            }
 
-            return str.Substring(pos_start, pos_end - pos_start);
+                return IntPtr.Zero;
+            };
 
         }
+
+        public static void WFI() {
+            native_wfi(); ;
+        }
+
+        [DllImport(LibNativeUtils)]
+        internal static extern int native_wfi();
+        
     }
 }

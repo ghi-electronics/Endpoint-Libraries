@@ -24,6 +24,9 @@ namespace GHIElectronics.Endpoint.Devices.Usb
         /// <summary>Mass Storage. This includes USB storage devices such as USB Thumbs drives and USB hard disks.</summary>
         MassStorage,
 
+        /// <summary>Webcam.</summary>
+        Webcam,
+
         /// <summary>Printer.</summary>
         [Obsolete()]
         Printer,

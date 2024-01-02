@@ -58,6 +58,21 @@ namespace GHIElectronics.Endpoint.Core {
         public static uint Read(uint register) => MemRead(register);
         public static void Write(uint register, uint value) => MemWrite(register, value);
 
+        public static void SetBits(uint register, uint bits) {
+            var val = Read(register);
+
+            val |= (bits);
+
+            Write(register, val);
+        }
+        public static void ClearBits(uint register, uint bits) {
+            var val = Read(register);
+
+            val &= ~bits;
+
+            Write(register, val);
+        }
+
 
     }
 }

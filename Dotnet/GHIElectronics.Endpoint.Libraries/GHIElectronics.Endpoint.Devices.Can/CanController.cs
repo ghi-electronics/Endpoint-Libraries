@@ -1,7 +1,7 @@
 #pragma warning disable CS8601 // Possible null reference assignment.
 using GHIElectronics.Endpoint.Core;
-using GHIElectronics.Endpoint.Pins;
-using static GHIElectronics.Endpoint.Pins.STM32MP1;
+using static GHIElectronics.Endpoint.Core.EPM815;
+
 
 namespace GHIElectronics.Endpoint.Devices.Can
 {
@@ -41,7 +41,7 @@ namespace GHIElectronics.Endpoint.Devices.Can
 
         private CanRaw canRaw;
 
-        private CanMessage[] CanMessageRx;
+        private CanMessage[] canMessageRx;
         public int ReadBufferSize { get; set; } = 128;
         private int fifoRxIn;
         private int fifoRxOut;
@@ -59,7 +59,11 @@ namespace GHIElectronics.Endpoint.Devices.Can
 
         public CanController(int controllerId, int nominalBitrate, int dataBitrate = 0)
         {            
-            this.controllerId = controllerId;
+            if (controllerId != EPM815.Can.Can1 && controllerId != EPM815.Can.Can2) {
+                throw new ArgumentException("Only CAN1 and CAN2 are supported.");
+            }
+
+            this.controllerId = controllerId-1;
 
             var fdBaurate = dataBitrate > 0 ? string.Format(" dbitrate {0} fd on", dataBitrate) : "";
 
@@ -104,7 +108,7 @@ namespace GHIElectronics.Endpoint.Devices.Can
             {
                 // bring can up               
 
-                this.CanMessageRx = new CanMessage[this.ReadBufferSize];
+                this.canMessageRx = new CanMessage[this.ReadBufferSize];
 
                 this.fifoRxIn = 0;
                 this.fifoRxOut = 0;
@@ -145,7 +149,7 @@ namespace GHIElectronics.Endpoint.Devices.Can
 
         public void EnableError(uint error)
         {
-            this.canRaw.FilterError(error);
+            this.canRaw.FilterError(error); ;
         }
 
         public void Reset() {            
@@ -159,13 +163,21 @@ namespace GHIElectronics.Endpoint.Devices.Can
         private void LoadResources()
         {
             // load pins 
-            var pinConfig = STM32MP1.Can.PinSettings[this.controllerId];
+            var pinConfig = EPM815.Can.PinSettings[this.controllerId];
 
-            STM32MP1.GpioPin.SetModer(pinConfig.TxPin, STM32MP1.Moder.Alternate);
-            STM32MP1.GpioPin.SetModer(pinConfig.RxPin, STM32MP1.Moder.Alternate);
+            if (Gpio.IsPinReserved(pinConfig.TxPin)) {
+                EPM815.ThrowExceptionPinInUsed(pinConfig.TxPin);
+            }
 
-            STM32MP1.GpioPin.SetAlternate(pinConfig.TxPin, pinConfig.TxAlternate);
-            STM32MP1.GpioPin.SetAlternate(pinConfig.RxPin, pinConfig.RxAlternate);
+            if (Gpio.IsPinReserved(pinConfig.RxPin)) {
+                EPM815.ThrowExceptionPinInUsed(pinConfig.RxPin);
+            }
+
+            Gpio.SetModer(pinConfig.TxPin, Gpio.Moder.Alternate);
+            Gpio.SetModer(pinConfig.RxPin, Gpio.Moder.Alternate);
+
+            Gpio.SetAlternate(pinConfig.TxPin, pinConfig.TxAlternate);
+            Gpio.SetAlternate(pinConfig.RxPin, pinConfig.RxAlternate);
 
             // load driver
             // Can always loaded
@@ -175,20 +187,26 @@ namespace GHIElectronics.Endpoint.Devices.Can
 
             script.Start();
 
-
+            Gpio.PinReserve(pinConfig.TxPin);
+            Gpio.PinReserve(pinConfig.RxPin);
         }
 
         private void UnLoadResources()
         {
             // releaset pins 
-            var pinConfig = STM32MP1.Can.PinSettings[this.controllerId];
+            var pinConfig = EPM815.Can.PinSettings[this.controllerId];
 
-            STM32MP1.GpioPin.SetModer(pinConfig.TxPin, STM32MP1.Moder.Input);
-            STM32MP1.GpioPin.SetModer(pinConfig.RxPin, STM32MP1.Moder.Input);
+            
 
             var script = new Script("ifconfig", "./", "can" + this.controllerId + " down");
 
             script.Start();
+
+            Gpio.PinRelease(pinConfig.TxPin);
+            Gpio.PinRelease(pinConfig.RxPin);
+
+            Gpio.SetModer(pinConfig.TxPin, Gpio.Moder.Input);
+            Gpio.SetModer(pinConfig.RxPin, Gpio.Moder.Input);
         }
 
         public void Write(CanMessage message)
@@ -229,7 +247,7 @@ namespace GHIElectronics.Endpoint.Devices.Can
 
             if (this.fifoRxCount > 0)
             {
-                var message = this.CanMessageRx[this.fifoRxOut];
+                var message = this.canMessageRx[this.fifoRxOut];
 
                 this.fifoRxOut = (this.fifoRxOut + 1) % this.ReadBufferSize;
 
@@ -248,7 +266,7 @@ namespace GHIElectronics.Endpoint.Devices.Can
         {
             add
             {
-                this.messageReceivedCallbacks += value;
+                this.messageReceivedCallbacks += value; ;
             }
             remove
             {
@@ -263,7 +281,7 @@ namespace GHIElectronics.Endpoint.Devices.Can
         {
             add
             {
-                this.errorReceivedCallbacks += value;
+                this.errorReceivedCallbacks += value; ;
             }
             remove
             {
@@ -284,8 +302,8 @@ namespace GHIElectronics.Endpoint.Devices.Can
 
                     var read = false;
                     CanId canId;
-                    int frameLength = -1;
-                    bool bitrateSwitch = false;
+                    var frameLength = -1;
+                    var bitrateSwitch = false;
 
                     if (IsCanFd) {
                         read = this.canRaw.TryReadFrameFd(data64, out var v1, out var v2, out var v3);
@@ -303,7 +321,7 @@ namespace GHIElectronics.Endpoint.Devices.Can
                     {
                         var data = new byte[frameLength];                        
 
-                        for (int i = 0; i < frameLength; i++)
+                        for (var i = 0; i < frameLength; i++)
                         {
                             data[i] = data64[i]; 
                         }
@@ -324,7 +342,7 @@ namespace GHIElectronics.Endpoint.Devices.Can
                         };
 
 
-                        this.CanMessageRx[this.fifoRxIn] = message;
+                        this.canMessageRx[this.fifoRxIn] = message;
 
                         this.fifoRxIn = (this.fifoRxIn + 1) % this.ReadBufferSize;
 
@@ -333,7 +351,7 @@ namespace GHIElectronics.Endpoint.Devices.Can
                             this.fifoRxCount++;
                         }
 
-                        messageReceivedCallbacks?.Invoke(this);
+                        this.messageReceivedCallbacks?.Invoke(this);
                     }
                     else
                     {
@@ -343,7 +361,7 @@ namespace GHIElectronics.Endpoint.Devices.Can
                         }
                     }
                 }
-            });
+            }); ;
         }
 
         private bool disposed = false;

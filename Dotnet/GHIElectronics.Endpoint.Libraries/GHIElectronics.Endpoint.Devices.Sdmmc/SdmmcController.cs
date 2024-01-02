@@ -1,5 +1,6 @@
 using System.Collections;
-using GHIElectronics.Endpoint.Pins; 
+using GHIElectronics.Endpoint.Core;
+using static GHIElectronics.Endpoint.Core.EPM815;
 namespace GHIElectronics.Endpoint.Devices.Mmc {
 
     public class Sdmmc {
@@ -190,36 +191,67 @@ namespace GHIElectronics.Endpoint.Devices.Mmc {
         private void LoadResources() {
             if (this.Type == SdmmcType.SdCard2) {
 
-                var pinConfig = STM32MP1.Sdmmc.PinSettings[STM32MP1.Sdmmc.SdCard2];
+                var pinConfig = EPM815.Sdmmc.PinSettings[EPM815.Sdmmc.SdCard2];
 
-                STM32MP1.GpioPin.SetModer(pinConfig.PinD0, STM32MP1.Moder.Alternate);
-                STM32MP1.GpioPin.SetModer(pinConfig.PinD1, STM32MP1.Moder.Alternate);
-                STM32MP1.GpioPin.SetModer(pinConfig.PinD2, STM32MP1.Moder.Alternate);
-                STM32MP1.GpioPin.SetModer(pinConfig.PinD3, STM32MP1.Moder.Alternate);
-                STM32MP1.GpioPin.SetModer(pinConfig.PinCmd, STM32MP1.Moder.Alternate);
-                STM32MP1.GpioPin.SetModer(pinConfig.PinClock, STM32MP1.Moder.Alternate);
+                if (Gpio.IsPinReserved(pinConfig.PinD0)) {
+                    EPM815.ThrowExceptionPinInUsed(pinConfig.PinD0);
+                }
+
+                if (Gpio.IsPinReserved(pinConfig.PinD1)) {
+                    EPM815.ThrowExceptionPinInUsed(pinConfig.PinD1);
+                }
+
+                if (Gpio.IsPinReserved(pinConfig.PinD2)) {
+                    EPM815.ThrowExceptionPinInUsed(pinConfig.PinD2);
+                }
+
+                if (Gpio.IsPinReserved(pinConfig.PinD3)) {
+                    EPM815.ThrowExceptionPinInUsed(pinConfig.PinD3);
+                }
+
+                if (Gpio.IsPinReserved(pinConfig.PinCmd)) {
+                    EPM815.ThrowExceptionPinInUsed(pinConfig.PinCmd);
+                }
+
+                if (Gpio.IsPinReserved(pinConfig.PinClock)) {
+                    EPM815.ThrowExceptionPinInUsed(pinConfig.PinClock);
+                }
+
+                Gpio.SetModer(pinConfig.PinD0, Gpio.Moder.Alternate);
+                Gpio.SetModer(pinConfig.PinD1, Gpio.Moder.Alternate);
+                Gpio.SetModer(pinConfig.PinD2, Gpio.Moder.Alternate);
+                Gpio.SetModer(pinConfig.PinD3, Gpio.Moder.Alternate);
+                Gpio.SetModer(pinConfig.PinCmd, Gpio.Moder.Alternate);
+                Gpio.SetModer(pinConfig.PinClock, Gpio.Moder.Alternate);
                 
 
-                STM32MP1.GpioPin.SetAlternate(pinConfig.PinD0, pinConfig.AlternatePinD0);
-                STM32MP1.GpioPin.SetAlternate(pinConfig.PinD1, pinConfig.AlternatePinD1);
-                STM32MP1.GpioPin.SetAlternate(pinConfig.PinD2, pinConfig.AlternatePinD2);
-                STM32MP1.GpioPin.SetAlternate(pinConfig.PinD3, pinConfig.AlternatePinD3);
-                STM32MP1.GpioPin.SetAlternate(pinConfig.PinCmd, pinConfig.AlternatePinCmd);
-                STM32MP1.GpioPin.SetAlternate(pinConfig.PinClock, pinConfig.AlternatePinClock);
+                Gpio.SetAlternate(pinConfig.PinD0, pinConfig.AlternatePinD0);
+                Gpio.SetAlternate(pinConfig.PinD1, pinConfig.AlternatePinD1);
+                Gpio.SetAlternate(pinConfig.PinD2, pinConfig.AlternatePinD2);
+                Gpio.SetAlternate(pinConfig.PinD3, pinConfig.AlternatePinD3);
+                Gpio.SetAlternate(pinConfig.PinCmd, pinConfig.AlternatePinCmd);
+                Gpio.SetAlternate(pinConfig.PinClock, pinConfig.AlternatePinClock);
                 
             }
         }
 
         private void UnLoadResources() {
             if (this.Type == SdmmcType.SdCard2) {
-                var pinConfig = STM32MP1.Sdmmc.PinSettings[STM32MP1.Sdmmc.SdCard2];                
+                var pinConfig = EPM815.Sdmmc.PinSettings[EPM815.Sdmmc.SdCard2];                
 
-                STM32MP1.GpioPin.SetModer(pinConfig.PinD0, STM32MP1.Moder.Input);
-                STM32MP1.GpioPin.SetModer(pinConfig.PinD1, STM32MP1.Moder.Input);
-                STM32MP1.GpioPin.SetModer(pinConfig.PinD2, STM32MP1.Moder.Input);
-                STM32MP1.GpioPin.SetModer(pinConfig.PinD3, STM32MP1.Moder.Input);
-                STM32MP1.GpioPin.SetModer(pinConfig.PinCmd, STM32MP1.Moder.Input);
-                STM32MP1.GpioPin.SetModer(pinConfig.PinClock, STM32MP1.Moder.Input);
+                Gpio.SetModer(pinConfig.PinD0, Gpio.Moder.Input);
+                Gpio.SetModer(pinConfig.PinD1, Gpio.Moder.Input);
+                Gpio.SetModer(pinConfig.PinD2, Gpio.Moder.Input);
+                Gpio.SetModer(pinConfig.PinD3, Gpio.Moder.Input);
+                Gpio.SetModer(pinConfig.PinCmd, Gpio.Moder.Input);
+                Gpio.SetModer(pinConfig.PinClock, Gpio.Moder.Input);
+
+                Gpio.PinRelease(pinConfig.PinD0);
+                Gpio.PinRelease(pinConfig.PinD1);
+                Gpio.PinRelease(pinConfig.PinD2);
+                Gpio.PinRelease(pinConfig.PinD3);
+                Gpio.PinRelease(pinConfig.PinCmd);
+                Gpio.PinRelease(pinConfig.PinClock);
             }
         }
 
