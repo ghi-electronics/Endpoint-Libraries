@@ -129,6 +129,7 @@ namespace GHIElectronics.Endpoint.Devices.Adc
         }
 
         private bool disposed = false;
+        /// <exclude />
         ~AdcController() {
             this.Dispose(disposing: false);
         }
@@ -137,6 +138,8 @@ namespace GHIElectronics.Endpoint.Devices.Adc
             this.Dispose(true);
             GC.SuppressFinalize(this);
         }
+
+        /// <exclude />
         protected void Dispose(bool disposing) {
             if (this.disposed)
                 return;

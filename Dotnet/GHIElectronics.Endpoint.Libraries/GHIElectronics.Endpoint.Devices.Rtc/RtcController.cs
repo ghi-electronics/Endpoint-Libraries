@@ -227,6 +227,8 @@ namespace GHIElectronics.Endpoint.Devices.Rtc {
         }
 
         private bool disposed = false;
+
+        /// <exclude />
         ~RtcController() {
             this.Dispose(disposing: false);
         }
@@ -236,6 +238,8 @@ namespace GHIElectronics.Endpoint.Devices.Rtc {
             this.Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
+
+        /// <exclude />
         protected void Dispose(bool disposing) {
             if (this.disposed)
                 return;

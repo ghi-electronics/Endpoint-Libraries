@@ -236,6 +236,7 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost
             //TODO
         }
 
+        /// <exclude />
         ~UsbHostController()
         {
             this.Dispose(disposing: false);
@@ -246,6 +247,8 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost
             this.Dispose(true);
             GC.SuppressFinalize(this);
         }
+
+        /// <exclude />
         protected void Dispose(bool disposing)
         {
             if (this.disposed)
