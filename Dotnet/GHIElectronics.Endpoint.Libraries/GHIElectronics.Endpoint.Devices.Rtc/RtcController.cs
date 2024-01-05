@@ -233,14 +233,14 @@ namespace GHIElectronics.Endpoint.Devices.Rtc {
             this.Dispose(disposing: false);
         }
 
-        public void Dispose() {
+        public new void Dispose() {
             base.Dispose(); 
             this.Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
 
         /// <exclude />
-        protected void Dispose(bool disposing) {
+        protected new void Dispose(bool disposing) {
             if (this.disposed)
                 return;
 
