@@ -8,6 +8,7 @@ using System.Threading.Tasks;
 
 [assembly: InternalsVisibleToAttribute("GHIElectronics.Endpoint.Devices.Can")]
 [assembly: InternalsVisibleToAttribute("GHIElectronics.Endpoint.Devices.Sdmmc")]
+[assembly: InternalsVisibleToAttribute("GHIElectronics.Endpoint.Devices.Dcmi")]
 namespace GHIElectronics.Endpoint.Core {
 
     public static partial class EPM815 {

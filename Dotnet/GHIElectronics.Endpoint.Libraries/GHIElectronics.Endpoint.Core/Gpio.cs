@@ -659,6 +659,9 @@ namespace GHIElectronics.Endpoint.Core {
                 return (Pins[pin_port] & (1 << pin_num)) != 0; ;
             }
 
+            public static int GetPort(int pin) => pin / 16;
+            public static int GetPin(int pin) => pin % 16;
+
 
         }
 

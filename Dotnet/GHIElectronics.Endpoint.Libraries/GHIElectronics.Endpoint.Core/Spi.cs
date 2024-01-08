@@ -16,6 +16,8 @@ namespace GHIElectronics.Endpoint.Core {
             public const int Spi4 = 1;
             public const int Spi5 = 2;
 
+            private static bool initialized = false;
+
             const string CMD_LOCATION = "/sbin";
             const string DRIVER_LOCATION = "/lib/modules/5.13.0/kernel/drivers/spi/spidev.ko";
             internal class SpiPinSettings {
@@ -53,7 +55,8 @@ namespace GHIElectronics.Endpoint.Core {
 
                 //port = port - 1;
 
-
+                if (initialized)
+                    return;
 
 
                 var pinConfig = PinSettings[port];
@@ -91,7 +94,11 @@ namespace GHIElectronics.Endpoint.Core {
                 var script = new Script("insmod", CMD_LOCATION, DRIVER_LOCATION);
                 script.Start();
 
-                while (!Directory.Exists("/sys/class/spidev")) ;
+                while (!Directory.Exists("/sys/class/spidev")) {
+                    Thread.Sleep(10);
+                }
+
+                initialized = true;
 
             }
             public static void UnInitialize(int port) {
@@ -100,25 +107,28 @@ namespace GHIElectronics.Endpoint.Core {
                     throw new ArgumentException("Invalid Spi port.");
                 }
 
-                port = port - 1;
+                if (initialized) {
+                    port = port - 1;
 
 
-                var pinConfig = PinSettings[port];
+                    var pinConfig = PinSettings[port];
 
-                // release driver
-                if (!Directory.Exists("/sys/class/spidev")) // unloaded
-                    return;
+                    // release driver
+                    if (!Directory.Exists("/sys/class/spidev")) // unloaded
+                        return;
 
-                var script = new Script("rmmod", CMD_LOCATION, DRIVER_LOCATION);
-                script.Start();
+                    var script = new Script("rmmod", CMD_LOCATION, DRIVER_LOCATION);
+                    script.Start();
 
-                SetModer(pinConfig.MosiPin, Moder.Input);
-                SetModer(pinConfig.MisoPin, Moder.Input);
-                SetModer(pinConfig.ClockPin, Moder.Input);
+                    SetModer(pinConfig.MosiPin, Moder.Input);
+                    SetModer(pinConfig.MisoPin, Moder.Input);
+                    SetModer(pinConfig.ClockPin, Moder.Input);
 
-                PinRelease(pinConfig.MosiPin);
-                PinRelease(pinConfig.MisoPin);
-                PinRelease(pinConfig.ClockPin);
+                    PinRelease(pinConfig.MosiPin);
+                    PinRelease(pinConfig.MisoPin);
+                    PinRelease(pinConfig.ClockPin);
+                    initialized = false;
+                }
             }
         }
     }

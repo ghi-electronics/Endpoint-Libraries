@@ -21,6 +21,8 @@ namespace GHIElectronics.Endpoint.Core {
             public const string Uart7 = "/dev/ttySTM6";
             public const string Uart8 = "/dev/ttySTM7";
 
+            private static bool initialized = false;
+
             internal class UartPinSettings {
                 public int TxPin { get; set; }
                 public int RxPin { get; set; }
@@ -43,6 +45,8 @@ namespace GHIElectronics.Endpoint.Core {
                 /* 8 */ new UartPinSettings { TxPin = Gpio.Pin.PE1 , RxPin = Gpio.Pin.PE0 , RtsPin = Gpio.Pin.NONE, CtsPin = Gpio.Pin.NONE, TxAlternate = Alternate.AF8 , RxAlternate = Alternate.AF8 , RtsAlternate = Alternate.NONE,  CtsAlternate = Alternate.NONE },
             };
             public static void Initialize(string portname, bool enableHardwareFlowControl = false) {
+
+                if (initialized) return;
 
                 int port;
                 try {
@@ -105,43 +109,49 @@ namespace GHIElectronics.Endpoint.Core {
                     PinReserve(pinConfig.RtsPin);
 
                 }
+
+                initialized = true;
             }
 
             public static void UnInitialize(string portname, bool enabledHardwareFlowControl) {
 
+                if (initialized) {
 
-                int port;
-                try {
-                    port = int.Parse("" + portname[portname.Length - 1]);
-                }
-                catch {
-                    throw new ArgumentException("Invalid Serialport.");
-                }
+                    int port;
+                    try {
+                        port = int.Parse("" + portname[portname.Length - 1]);
+                    }
+                    catch {
+                        throw new ArgumentException("Invalid Serialport.");
+                    }
 
-                if (port < 1 || port > 8) {
-                    throw new ArgumentException("Invalid Serial port.");
-                }
+                    if (port < 1 || port > 8) {
+                        throw new ArgumentException("Invalid Serial port.");
+                    }
 
-                port = port - 1;
-
-
-                var pinConfig = PinSettings[port];
+                    port = port - 1;
 
 
+                    var pinConfig = PinSettings[port];
 
-                SetModer(pinConfig.TxPin, Moder.Input);
-                SetModer(pinConfig.RxPin, Moder.Input);
 
-                PinRelease(pinConfig.TxPin);
-                PinRelease(pinConfig.RxPin);
 
-                if (enabledHardwareFlowControl) {
+                    SetModer(pinConfig.TxPin, Moder.Input);
+                    SetModer(pinConfig.RxPin, Moder.Input);
 
-                    SetModer(pinConfig.CtsPin, Moder.Input);
-                    SetModer(pinConfig.RtsPin, Moder.Input);
+                    PinRelease(pinConfig.TxPin);
+                    PinRelease(pinConfig.RxPin);
 
-                    PinRelease(pinConfig.CtsPin);
-                    PinRelease(pinConfig.RtsPin);
+                    if (enabledHardwareFlowControl) {
+
+                        SetModer(pinConfig.CtsPin, Moder.Input);
+                        SetModer(pinConfig.RtsPin, Moder.Input);
+
+                        PinRelease(pinConfig.CtsPin);
+                        PinRelease(pinConfig.RtsPin);
+                    }
+
+                    initialized = false;
                 }
             }
 

@@ -32,8 +32,15 @@ namespace GHIElectronics.Endpoint.Core {
             native_wfi(); ;
         }
 
+        public static void JpegtoRGB888(byte[] src, int size, byte[] dest) {
+            native_jpegrgb888(src, size, dest); ;
+        }
+
         [DllImport(LibNativeUtils)]
         internal static extern int native_wfi();
-        
+
+        [DllImport(LibNativeUtils)]
+        internal static extern int native_jpegrgb888(byte[] src, int size, byte[] dest);
+
     }
 }

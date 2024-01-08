@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using GHIElectronics.Endpoint.Core;
+using Iot.Device.Card.Ultralight;
 
 
 namespace GHIElectronics.Endpoint.Devices.Display {
@@ -22,9 +23,7 @@ namespace GHIElectronics.Endpoint.Devices.Display {
         static IntPtr fbPtr = IntPtr.Zero;
 
         const string CMD_LOCATION = "./";
-        const string DRIVER_LOCATION = "/lib/modules/5.13.0/kernel/drivers/gpu/drm/panel/panel-simple.ko";
 
-        const string LTDC_GENERIC_PATH = "/dev/ltdc-generic";
         const string FB_PATH = "/dev/fb0";
 
         const string FB_STRIDE = "/sys/class/graphics/fb0/stride";
@@ -41,44 +40,45 @@ namespace GHIElectronics.Endpoint.Devices.Display {
                 throw new Exception("The configuration can not be null");
             }
 
-            if (!File.Exists(LTDC_GENERIC_PATH)) {
-                throw new Exception("No ltdc generic driver found!");
-            }
-
             this.Width = configuration.Width;
             this.Height = configuration.Height;
             this.configuration = (ParallelConfiguration)configuration;
 
             this.Acquire();
         }
-        public void Flush(byte[] data, int offset, int length) {
+
+        public void Flush(byte[] data, int offset, int length, int width, int height) {
             unsafe {
                 var mptr = (byte*)fbPtr;
 
-
                 var idx = 0;
 
-                var w2 = this.Width << 1;
-                var fbW2 = fbWidth << 1;
+                
+                var widthDest2 = fbWidth << 1;
+                var widthSrc2 = width << 1;
 
-                for (var y = 0; y < this.Height; y++) {
-                    for (var x = 0; x < w2; x++) {
+                var y_min = Math.Min(height, this.Height);
 
-                        var posDest = (y * fbW2) + x;
-                        var posSrc = (y * w2) + x;
+                var x_min = Math.Min(widthDest2, widthSrc2);
+
+                x_min = Math.Min(x_min, this.Width << 1);
+
+                for (var y = 0; y < y_min; y++) {
+                    for (var x = 0; x < x_min; x++) {
+
+                        var posDest = (y * widthDest2) + x;
+                        var posSrc = (y * widthSrc2) + x;
 
                         mptr[posDest] = data[posSrc + offset];
 
-                        idx++;
 
-                        if (idx == length) {
-                            return;
-                        }
 
                     }
                 }
             }
+
         }
+        public void Flush(byte[] data, int offset, int length) => this.Flush(data, offset, length, this.Width, this.Height);
 
         private void Acquire() {
             if (initializeCount == 0) {
@@ -97,22 +97,21 @@ namespace GHIElectronics.Endpoint.Devices.Display {
         }
 
         private unsafe void LoadResources() {
-            var script_lsmod = new Script("lsmod", CMD_LOCATION, "");
-            script_lsmod.Start();
 
-            if (script_lsmod.Output.IndexOf("panel_simple") > 0) {
-                var script_rm = new Script("rmmod", CMD_LOCATION, DRIVER_LOCATION);
-                script_rm.Start();
-            }
+            var setting = $"{this.configuration.Clock},";
 
+            setting += $"{this.configuration.Width},{this.configuration.Hsync_start},{this.configuration.Hsync_end},{this.configuration.Htotal},";
+            setting += $"{this.configuration.Height},{this.configuration.Vsync_start},{this.configuration.Vsync_end},{this.configuration.Vtotal},";
+            setting += $"{this.configuration.Num_modes},{this.configuration.Dpi_width},{this.configuration.Dpi_height},{this.configuration.Bus_flags},{this.configuration.Bus_format},{this.configuration.Connector_type},{this.configuration.Bpc}";
+                       
 
-            var script_config = new Script("ltdc-config.sh", "./", this.configuration.ToString());
-            script_config.Start();
-
-            var script_insmod = new Script("insmod", CMD_LOCATION, DRIVER_LOCATION);
+            var script_insmod = new Script("modprobe", CMD_LOCATION, $"panel-simple ltdc_generic_setting={setting}");
             script_insmod.Start();
 
-            while (!File.Exists(FB_PATH)) ;
+           
+            while (!File.Exists(FB_PATH)) {
+                Thread.Sleep(10);
+            }
 
 
             if (fbHandle < 0) {
@@ -157,7 +156,7 @@ namespace GHIElectronics.Endpoint.Devices.Display {
             // Disable cursor
             while (!File.Exists("/sys/class/graphics/fbcon/cursor_blink")) ;
 
-            script_config = new Script("ghi_disable_cursor.sh", "./", "");
+            var script_config = new Script("ghi_disable_cursor.sh", "./", "");
 
             script_config.Start();
 
@@ -182,18 +181,11 @@ namespace GHIElectronics.Endpoint.Devices.Display {
 
             stride = -1;
 
-            var script_lsmod = new Script("lsmod", CMD_LOCATION, "");
-            script_lsmod.Start();
-
-            if (script_lsmod.Output.IndexOf("panel_simple") > 0) {
-                var script_rmmod = new Script("rmmod", CMD_LOCATION, DRIVER_LOCATION);
-                script_rmmod.Start();
-            }
         }
 
         private bool disposed = false;
-
-        /// <exclude />
+		
+		/// <exclude />
         ~FBDisplay() {
             this.Dispose(disposing: false);
         }
@@ -202,8 +194,8 @@ namespace GHIElectronics.Endpoint.Devices.Display {
             this.Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
-
-        /// <exclude />
+		
+		/// <exclude />
         protected void Dispose(bool disposing) {
             if (this.disposed)
                 return;
@@ -226,12 +218,13 @@ namespace GHIElectronics.Endpoint.Devices.Display {
             public int Vsync_start { get; set; }
             public int Vsync_end { get; set; }
             public int Vtotal { get; set; }
-            public int Num_modes { get; set; } = 0;
+            public int Num_modes { get; set; } = 1;
             public int Dpi_width { get; set; } = 0;
             public int Dpi_height { get; set; } = 0;
             public int Bus_flags { get; set; } = 0;
             public int Bus_format { get; set; } = 0;
             public int Connector_type { get; set; } = 0;
+            public int Bpc { get; set; } = 8;
 
             public override string ToString() {
                 var command = "";

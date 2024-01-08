@@ -18,6 +18,8 @@ namespace GHIElectronics.Endpoint.Core {
             public const int I2c5 = 1;
             public const int I2c6 = 3;
 
+            private static bool initialized = false;
+
             internal class I2cPinSettings {
                 public int SdaPin { get; set; }
                 public int SclPin { get; set; }
@@ -35,12 +37,15 @@ namespace GHIElectronics.Endpoint.Core {
 
             };
 
+            public static void Initialize(int port) => Initialize(port, 0); // default 400KHz
             public static void Initialize(int port, int frequency_hz) {
 
                 if (port < I2c1 || port > I2c6) {
                     throw new ArgumentException("Invalid I2c port.");
                 }
 
+                if (initialized)
+                    return;
                 //port = port - 1;
 
 
@@ -169,6 +174,8 @@ namespace GHIElectronics.Endpoint.Core {
                 Gpio.PinReserve(pinConfig.SclPin);
                 Gpio.PinReserve(pinConfig.SdaPin);
 
+                initialized = true;
+
             }
             public static void UnInitialize(int port) {
 
@@ -176,15 +183,19 @@ namespace GHIElectronics.Endpoint.Core {
                     throw new ArgumentException("Invalid I2c port.");
                 }
 
-                port = port - 1;
+                if (initialized) {
 
-                var pinConfig = PinSettings[port];
+                    port = port - 1;
 
-                Gpio.PinRelease(pinConfig.SclPin);
-                Gpio.PinRelease(pinConfig.SdaPin);
+                    var pinConfig = PinSettings[port];
 
-                Gpio.SetModer(pinConfig.SclPin, Gpio.Moder.Input);
-                Gpio.SetModer(pinConfig.SdaPin, Gpio.Moder.Input);
+                    Gpio.PinRelease(pinConfig.SclPin);
+                    Gpio.PinRelease(pinConfig.SdaPin);
+
+                    Gpio.SetModer(pinConfig.SclPin, Gpio.Moder.Input);
+                    Gpio.SetModer(pinConfig.SdaPin, Gpio.Moder.Input);
+                    initialized = false;
+                }
             }
 
         }

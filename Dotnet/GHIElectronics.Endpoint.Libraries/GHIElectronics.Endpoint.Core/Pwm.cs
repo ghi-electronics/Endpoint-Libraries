@@ -235,7 +235,18 @@ namespace GHIElectronics.Endpoint.Core {
                 return channelId;
             }
 
+            private static bool initialized = false;
             public static void Initialize(int pin) {
+
+                if (initialized)
+                    return;
+
+                if (Gpio.IsPinReserved(pin)) {
+                    EPM815.ThrowExceptionPinInUsed(pin);
+                }
+
+
+
                 var pwm_pin = GetPinEncodeFromPin(pin);
 
                 if (pwm_pin == Gpio.Pin.NONE)
@@ -254,20 +265,26 @@ namespace GHIElectronics.Endpoint.Core {
                 Gpio.SetAlternate(pinId, (Gpio.Alternate)alternateId);
 
                 Gpio.PinReserve(pinId);
+
+                initialized = true;
             }
 
             public static void UnInitialize(int pin) {
-                var pwm_pin = GetPinEncodeFromPin(pin);
+                if (initialized) {
+                    var pwm_pin = GetPinEncodeFromPin(pin);
 
-                if (pwm_pin == Gpio.Pin.NONE)
-                    throw new Exception($"The pin {pin} does not support pwm.");
+                    if (pwm_pin == Gpio.Pin.NONE)
+                        throw new Exception($"The pin {pin} does not support pwm.");
 
-                var pinId = (pwm_pin >> 8) & 0xFF;
-                var alternateId = (pwm_pin >> 0) & 0xFF;
+                    var pinId = (pwm_pin >> 8) & 0xFF;
+                    var alternateId = (pwm_pin >> 0) & 0xFF;
 
-                Gpio.SetModer(pinId, Gpio.Moder.Input);
+                    Gpio.SetModer(pinId, Gpio.Moder.Input);
 
-                Gpio.PinRelease(pinId);
+                    Gpio.PinRelease(pinId);
+
+                    initialized = false;
+                }
 
             }
 
