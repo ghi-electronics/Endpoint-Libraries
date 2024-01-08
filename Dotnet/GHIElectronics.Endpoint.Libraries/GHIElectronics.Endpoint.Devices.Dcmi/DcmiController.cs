@@ -4,22 +4,35 @@ using GHIElectronics.Endpoint.Core;
 using static GHIElectronics.Endpoint.Core.EPM815;
 
 namespace GHIElectronics.Endpoint.Devices.Dcmi {
+    public enum PixelFormat {
+        Rgb565 = 0,
+        Rgb888 = 1,
+        Jpeg = 2,
+    }
+
+    public class DcmiSetting {
+        public int Width { get; set; }
+        public int Height { get; set; }
+
+        public int ImageQuality { get; set; } = 100;
+
+        public string DeviceName { get; set; } = "/dev/video0";
+
+        public PixelFormat PixelFormat { get; set; } = PixelFormat.Rgb565;
+    }
     public abstract class DcmiController : IDisposable {
 
         private const string LibNativeDcmi = "nativedcmi.so";
         internal static IntPtr InvalidHandleValue;
 
-        public int Width { get; private set; }
-        public int Height { get; private set; }
-
-        public int ImageQuality { get; private set; }
-
-        public string DeviceName { get; private set; } = "/dev/video0";
-
         public bool IsOpened { get; private set; }
 
+        public DcmiSetting Setting { get; private set; }
+
+        public int Width => this.Setting.Width;
+        public int Height => this.Setting.Height;
+
         private byte[] buffer;
-        private byte[] dataJpeg;
 
         public bool IsVideoStreaming { get; private set; }
 
@@ -32,8 +45,7 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
 
         private static int initializeCount = 0;
 
-        public DcmiController(int width, int height, int imageQuality = 70) {
-
+        public DcmiController(DcmiSetting setting) {
 
             InvalidHandleValue = new IntPtr(-1);
 
@@ -48,12 +60,7 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
                 return IntPtr.Zero;
             };
 
-
-
-
-            this.Width = width;
-            this.Height = height;
-            this.ImageQuality = imageQuality;
+            this.Setting = setting;
 
             this.Acquire();
 
@@ -272,16 +279,16 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
 
         protected void Open() {
             if (this.IsOpened)
-                throw new Exception($"Device {this.DeviceName} is already opened.");
+                throw new Exception($"Device {this.Setting.DeviceName} is already opened.");
 
-            var error = NativeDeviceOpen($"{this.DeviceName}", this.Width, this.Height, this.ImageQuality);
+            var error = NativeDeviceOpen($"{this.Setting.DeviceName}", this.Setting.Width, this.Setting.Height, this.Setting.ImageQuality);
             if (0 != error)
-                throw new Exception($"Could not open the device {this.DeviceName}. Error: {error}");
+                throw new Exception($"Could not open the device {this.Setting.DeviceName}. Error: {error}");
 
             error = NativeDeviceInit();
 
             if (0 != error) {
-                throw new Exception($"Could not initialize the device {this.DeviceName}.Error: {error}");
+                throw new Exception($"Could not initialize the device {this.Setting.DeviceName}.Error: {error}");
             }
 
             this.buffer = new byte[GetBufferSize()];
@@ -289,7 +296,7 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
             this.IsOpened = true;
         }
 
-        protected void Close() {            
+        protected void Close() {
             if (!this.IsOpened)
                 return;
 
@@ -297,11 +304,11 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
 
             var error = NativeDeviceUninit();
             if (0 != error)
-                throw new Exception($"Could not uninit the device {this.DeviceName}. Error: {error}");
+                throw new Exception($"Could not uninit the device {this.Setting.DeviceName}. Error: {error}");
 
             error = NativeDeviceClose();
             if (0 != error)
-                throw new Exception($"Could not close the device {this.DeviceName}. Error: {error}");
+                throw new Exception($"Could not close the device {this.Setting.DeviceName}. Error: {error}");
 
             this.IsOpened = false;
         }
@@ -309,10 +316,10 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
 
         public byte[] Capture() {
             if (!this.IsOpened)
-                throw new Exception($"The device {this.DeviceName} need to be opened.");
+                throw new Exception($"The device {this.Setting.DeviceName} need to be opened.");
 
             if (this.IsVideoStreaming) {
-                throw new Exception($"The device {this.DeviceName} is busy for streaming.");
+                throw new Exception($"The device {this.Setting.DeviceName} is busy for streaming.");
             }
 
             lock (lockObj) {
@@ -358,7 +365,9 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
 
                         var data = this.ProgressDataImage(this.buffer);
 
-                        this.onFrameReceivedCallbacks?.Invoke(this, data);
+                        if (data != null) {
+                            this.onFrameReceivedCallbacks?.Invoke(this, data);
+                        }
 
 
                     }
@@ -384,10 +393,12 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
         }
 
         private byte[] ProgressDataImage(byte[] inBuffer) {
-            var data = new byte[inBuffer.Length];
+            
 
             if (inBuffer[0] == 0xFF && inBuffer[1] == 0xD8) {
                 var jpeg_size = inBuffer.Length - 1;
+
+
                 for (; jpeg_size > 2; jpeg_size--) {
                     if (inBuffer[jpeg_size] == 0xD9 && inBuffer[jpeg_size - 1] == 0xFF)
                         break;
@@ -396,34 +407,43 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
                 if (jpeg_size > 2) {
                     jpeg_size++;
 
-                    this.dataJpeg = new byte[jpeg_size];
+                    var dataJpeg = new byte[jpeg_size];
 
-                    Array.Copy(inBuffer, 0, this.dataJpeg, 0, this.dataJpeg.Length);
+                    Array.Copy(inBuffer, 0, dataJpeg, 0, dataJpeg.Length);
 
-                    var data888 = new byte[this.Width * this.Height * 3];
+                    switch (this.Setting.PixelFormat) {
+                        case PixelFormat.Jpeg:
+                            return dataJpeg;
 
-                    NativeUtils.JpegtoRGB888(this.dataJpeg, jpeg_size, data888);
+                        case PixelFormat.Rgb888:
+                        case PixelFormat.Rgb565:
 
-                    var index = 0;
-                    // to 565
-                    for (var i = 0; i < data888.Length; i += 3) {
-                        var color = (uint)(data888[i + 2] | (data888[i + 1] << 8) | (data888[i + 0] << 16));
+                            var data888 = new byte[this.Setting.Width * this.Setting.Height * 3];
 
-                        data[0 + index + 0] = (byte)(((color & 0x00001c00) >> 5) | ((color & 0x000000f8) >> 3));
-                        data[0 + index + 1] = (byte)(((color & 0x00f80000) >> 16) | ((color & 0x0000e000) >> 13));
+                            NativeUtils.JpegtoRGB888(dataJpeg, jpeg_size, data888);
+                            if (this.Setting.PixelFormat == PixelFormat.Rgb888) {
+                                return data888;
+                            }
 
-                        index += 2;
-                    }
+                            var data = new byte[inBuffer.Length];
+                            var index = 0;
+                            // to 565
+                            for (var i = 0; i < data888.Length; i += 3) {
+                                var color = (uint)(data888[i + 2] | (data888[i + 1] << 8) | (data888[i + 0] << 16));
+
+                                data[0 + index + 0] = (byte)(((color & 0x00001c00) >> 5) | ((color & 0x000000f8) >> 3));
+                                data[0 + index + 1] = (byte)(((color & 0x00f80000) >> 16) | ((color & 0x0000e000) >> 13));
+
+                                index += 2;
+                            }
+
+                            return data;
+                    }                    
 
                 }
 
             }
-            else {
-                // bypass data (RGB)
-                Array.Copy(inBuffer, 0, data, 0, data.Length);
-            }
-
-            return data;
+            return null;
 
 
         }
