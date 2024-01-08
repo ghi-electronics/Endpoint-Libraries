@@ -74,6 +74,8 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost
             this.Dispose(true);
             GC.SuppressFinalize(this);
         }
+
+        /// <exclude />
         protected void Dispose(bool disposing)
         {
             if (this.disposed)

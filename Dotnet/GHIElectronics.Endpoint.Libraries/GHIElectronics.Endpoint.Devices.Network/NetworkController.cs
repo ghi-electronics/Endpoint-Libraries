@@ -437,6 +437,8 @@ namespace GHIElectronics.Endpoint.Devices.Network {
             ); ;
 
         }
+
+        /// <exclude />
         ~NetworkController() {
             this.Dispose(disposing: false);
         }
@@ -445,6 +447,8 @@ namespace GHIElectronics.Endpoint.Devices.Network {
             this.Dispose(true);
             GC.SuppressFinalize(this);
         }
+
+        /// <exclude />
         protected void Dispose(bool disposing) {
             if (this.disposed)
                 return;

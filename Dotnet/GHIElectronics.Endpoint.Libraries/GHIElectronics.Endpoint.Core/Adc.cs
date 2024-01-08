@@ -5,7 +5,10 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace GHIElectronics.Endpoint.Core {
+
     public static partial class EPM815 {
+
+
         public static class Adc {
 
             public static class Pin {

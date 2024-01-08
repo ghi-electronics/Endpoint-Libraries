@@ -3,16 +3,32 @@ using GHIElectronics.Endpoint.Core;
 
 namespace GHIElectronics.Endpoint.Devices.Adc
 {
+    /**<example>
+      ADC is used to read Analog values from a specific pin
+      <code>
+      using GHIElectronics.Endpoint.Core;
+      using GHIElectronics.Endpoint.Devices.Adc;
+          
+      var adcController = new AdcController(EPM815.Adc.Pin.ANA1); 
+          
+      while (true){
+          var v = adcController.Read();
+          var v1 = (v * 3.3 / 65535);
+          Console.WriteLine(v1.ToString());
+          Thread.Sleep(1000);
+      }
+      </code>
+      </example>*/
+
     public class AdcController : IDisposable {
         static int initializeCount;
         private int controllerId;
         private int channelId;
         private int pinId;
-
         private int fd = -1;        
 
         public int ResolutionInBits { get; } = 16;
-       
+
         internal static int GetPinEncodeFromPin(int pin) {
             switch (pin) {
                 //case AdcPin.ANA0: return AdcPin.ANA0;
@@ -42,11 +58,9 @@ namespace GHIElectronics.Endpoint.Devices.Adc
                 pin = GetPinEncodeFromPin(adcPin);
             }
 
-
             this.controllerId = (pin >> 24) & 0xFF;
             this.channelId = (pin >> 16) & 0xFF;
             this.pinId = (pin>> 0) & 0xFFFF;
-
 
             this.Acquire();
 
@@ -60,7 +74,6 @@ namespace GHIElectronics.Endpoint.Devices.Adc
                 this.Release();
                 throw new Exception("Could not create device");
             }
-
         }
 
         public uint Read() {
@@ -107,14 +120,12 @@ namespace GHIElectronics.Endpoint.Devices.Adc
                 EPM815.Gpio.SetModer(this.pinId, EPM815.Gpio.Moder.Analog);
 
                 EPM815.Gpio.PinReserve(this.pinId);
-            }
-            
+            }          
             // load driver
-
         }
 
         private void UnLoadResources() {
-            // releaset pins
+            // release pins
             if (this.controllerId == 0 && (this.channelId < 2))
                 return; // ANA0 and ANA1 are special, no pin
 
@@ -125,10 +136,10 @@ namespace GHIElectronics.Endpoint.Devices.Adc
 
                 EPM815.Gpio.PinRelease(this.pinId);
             }
-
         }
 
         private bool disposed = false;
+        /// <exclude />
         ~AdcController() {
             this.Dispose(disposing: false);
         }
@@ -137,6 +148,8 @@ namespace GHIElectronics.Endpoint.Devices.Adc
             this.Dispose(true);
             GC.SuppressFinalize(this);
         }
+
+        /// <exclude />
         protected void Dispose(bool disposing) {
             if (this.disposed)
                 return;
@@ -151,3 +164,6 @@ namespace GHIElectronics.Endpoint.Devices.Adc
         }
     }
 }
+
+
+

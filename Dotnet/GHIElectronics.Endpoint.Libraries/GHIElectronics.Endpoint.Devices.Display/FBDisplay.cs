@@ -192,6 +192,8 @@ namespace GHIElectronics.Endpoint.Devices.Display {
         }
 
         private bool disposed = false;
+
+        /// <exclude />
         ~FBDisplay() {
             this.Dispose(disposing: false);
         }
@@ -200,6 +202,8 @@ namespace GHIElectronics.Endpoint.Devices.Display {
             this.Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
+
+        /// <exclude />
         protected void Dispose(bool disposing) {
             if (this.disposed)
                 return;

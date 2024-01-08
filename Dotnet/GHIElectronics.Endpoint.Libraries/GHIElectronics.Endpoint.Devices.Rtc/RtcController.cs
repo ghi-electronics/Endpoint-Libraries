@@ -227,16 +227,20 @@ namespace GHIElectronics.Endpoint.Devices.Rtc {
         }
 
         private bool disposed = false;
+
+        /// <exclude />
         ~RtcController() {
             this.Dispose(disposing: false);
         }
 
-        public void Dispose() {
+        public new void Dispose() {
             base.Dispose(); 
             this.Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
-        protected void Dispose(bool disposing) {
+
+        /// <exclude />
+        protected new void Dispose(bool disposing) {
             if (this.disposed)
                 return;
 

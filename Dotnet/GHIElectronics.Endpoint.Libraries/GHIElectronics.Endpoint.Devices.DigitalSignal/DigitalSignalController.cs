@@ -252,6 +252,7 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
             }
         }
 
+        /// <exclude />
         ~DigitalSignalController() {
             if (File.Exists("/dev/rpmsg0"))
                 NativeRpmsgHelper.Release();

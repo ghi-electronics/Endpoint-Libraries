@@ -365,6 +365,7 @@ namespace GHIElectronics.Endpoint.Devices.Can
         }
 
         private bool disposed = false;
+        /// <exclude />
         ~CanController()
         {
             this.Dispose(disposing: false);
@@ -375,6 +376,7 @@ namespace GHIElectronics.Endpoint.Devices.Can
             this.Dispose(true);
             GC.SuppressFinalize(this);
         }
+        /// <exclude />
         protected void Dispose(bool disposing)
         {
             if (this.disposed)

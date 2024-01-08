@@ -254,7 +254,7 @@ namespace GHIElectronics.Endpoint.Devices.Mmc {
                 Gpio.PinRelease(pinConfig.PinClock);
             }
         }
-
+        /// <exclude />
         ~SdmmcController() {
             this.Dispose(disposing: false);
         }
@@ -263,6 +263,7 @@ namespace GHIElectronics.Endpoint.Devices.Mmc {
             this.Dispose(true);
             GC.SuppressFinalize(this);
         }
+        /// <exclude />
         protected void Dispose(bool disposing) {
             if (this.disposed)
                 return;
