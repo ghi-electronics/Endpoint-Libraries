@@ -66,16 +66,24 @@ namespace GHIElectronics.Endpoint.Devices.Camera {
             }
 
             if (imageData[0] == 0xFF && imageData[1] == 0xD8) {
-                var jpeg_size = imageData.Length - 1;
+                //var jpeg_size = imageData.Length - 1;
 
 
-                for (; jpeg_size > 2; jpeg_size--) {
-                    if (imageData[jpeg_size] == 0xD9 && imageData[jpeg_size - 1] == 0xFF)
+                //for (; jpeg_size > 2; jpeg_size--) {
+                //    if (imageData[jpeg_size] == 0xD9 && imageData[jpeg_size - 1] == 0xFF)
+                //        break;
+                //}
+
+                var jpeg_size = 2;
+
+                for (; jpeg_size < imageData.Length-2; jpeg_size++) {
+                    if (imageData[jpeg_size] == 0xFF && imageData[jpeg_size + 1] == 0xD9) {
                         break;
+                    }
                 }
 
                 if (jpeg_size > 2) {
-                    jpeg_size++;
+                    jpeg_size+=2;
 
                     var dataJpeg = new byte[jpeg_size];
 

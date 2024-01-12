@@ -38,7 +38,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Dev
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Devices.Dcmi", "GHIElectronics.Endpoint.Devices.Dcmi\GHIElectronics.Endpoint.Devices.Dcmi.csproj", "{3E513EDD-CE44-41DE-BD86-415A2E443B0B}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Devices.Camera", "GHIElectronics.Endpoint.Devices.CameraSetting\GHIElectronics.Endpoint.Devices.Camera.csproj", "{624E78A0-D5A1-446C-8AAF-5D9C5896293B}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Devices.Camera", "GHIElectronics.Endpoint.Devices.Camera\GHIElectronics.Endpoint.Devices.Camera.csproj", "{624E78A0-D5A1-446C-8AAF-5D9C5896293B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

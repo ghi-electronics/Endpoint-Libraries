@@ -328,6 +328,10 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
 
 
         public byte[] Capture() {
+            if (this.setting == null || this.Width == 0 || this.Height == 0) {
+                throw new Exception($"Invalid configuration.");
+            }
+
             if (!this.isOpened)
                 throw new Exception($"The device {this.devicePath} is not opened yet.");
 
@@ -359,6 +363,11 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
 
         bool videostreamstart = false;
         public void VideoStreamStart() {
+            if (this.setting == null || this.Width == 0 || this.Height == 0) {
+                throw new Exception($"Invalid configuration.");
+            }
+
+
             if (!this.isOpened)
                 throw new Exception($"The device {this.devicePath} is not opened yet.");
 

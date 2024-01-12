@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using GHIElectronics.Endpoint.Core;
-using Iot.Device.Card.Ultralight;
+
 
 
 namespace GHIElectronics.Endpoint.Devices.Display {
