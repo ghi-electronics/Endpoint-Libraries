@@ -1,36 +1,38 @@
+using System.Collections;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 using GHIElectronics.Endpoint.Core;
+using GHIElectronics.Endpoint.Devices.CameraSetting;
 using static GHIElectronics.Endpoint.Core.EPM815;
 
 namespace GHIElectronics.Endpoint.Devices.Dcmi {
-    public enum PixelFormat {
-        Rgb565 = 0,
-        Rgb888 = 1,
-        Jpeg = 2,
-    }
 
-    public class DcmiSetting {
-        public int Width { get; set; }
-        public int Height { get; set; }
-
-        public int ImageQuality { get; set; } = 100;
-
-        public string DeviceName { get; set; } = "/dev/video0";
-
-        public PixelFormat PixelFormat { get; set; } = PixelFormat.Rgb565;
-    }
     public abstract class DcmiController : IDisposable {
 
-        private const string LibNativeDcmi = "nativedcmi.so";
+        private const string LibNativeDcmi = "nativecamera.so";
         internal static IntPtr InvalidHandleValue;
 
-        public bool IsOpened { get; private set; }
+        private CameraConfiguration setting = null;
+        public CameraConfiguration Setting {
+            get => this.setting;
+            set {
+                if (this.setting == value) return;
+                this.setting = value;
 
-        public DcmiSetting Setting { get; private set; }
+                this.Width = this.setting.Width;
+                this.Height = this.setting.Height;
+                NativeDeviceInit(this.setting.Width, this.setting.Height, this.setting.FrameRate, this.ImageQuality);
 
-        public int Width => this.Setting.Width;
-        public int Height => this.Setting.Height;
+                this.buffer = new byte[GetBufferSize()];
+               
+            }
+
+        }
+
+        public int Width { get; private set; }
+        public int Height { get; private set; }
+
+        private string devicePath;
 
         private byte[] buffer;
 
@@ -45,7 +47,11 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
 
         private static int initializeCount = 0;
 
-        public DcmiController(DcmiSetting setting) {
+        private bool isOpened = false;
+
+        private int ImageQuality { get; set; } = 70;
+
+        public DcmiController(string devicePath= "/dev/video0") {
 
             InvalidHandleValue = new IntPtr(-1);
 
@@ -60,10 +66,11 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
                 return IntPtr.Zero;
             };
 
-            this.Setting = setting;
-
+            this.devicePath = devicePath;
             this.Acquire();
+           
 
+            
         }
 
         private void Acquire() {
@@ -166,18 +173,7 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
 
             var script_insmod = new Script("modprobe", "/.", $"stm32-dcmi");
             script_insmod.Start();
-
-            var dev_videos = Directory.GetFiles("/dev/", "video*");
-
-            while (dev_videos == null || dev_videos.Length == 0) {
-                dev_videos = Directory.GetFiles("/dev/", "video*");
-                Thread.Sleep(10);
-            }
-
-            if (dev_videos.Length > 1) {
-                throw new ArgumentException("More than one camera detected.");
-            }
-
+           
             Gpio.PinReserve(pinConfig.DcmiHsync);
             Gpio.PinReserve(pinConfig.DcmiVsync);
             Gpio.PinReserve(pinConfig.DcmiPixclk);
@@ -234,7 +230,7 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
                 Gpio.SetAlternate(CLOCK_PIN, Gpio.Alternate.AF2);
 
 
-                var value = (uint)((0 << 12) | (2 << 4) | 0); // Set MCO1 = 21MHz
+                var value = (uint)((0 << 12) | (3 << 4) | 0); // Set MCO1 = 21MHz
 
                 Register.Write(RCC_MCO1CFGR, value);
 
@@ -276,50 +272,70 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
             }
         }
 
+        public string[] GetResolution() => CameraConfiguration.GetResolution();
 
         protected void Open() {
-            if (this.IsOpened)
-                throw new Exception($"Device {this.Setting.DeviceName} is already opened.");
 
-            var error = NativeDeviceOpen($"{this.Setting.DeviceName}", this.Setting.Width, this.Setting.Height, this.Setting.ImageQuality);
-            if (0 != error)
-                throw new Exception($"Could not open the device {this.Setting.DeviceName}. Error: {error}");
-
-            error = NativeDeviceInit();
-
-            if (0 != error) {
-                throw new Exception($"Could not initialize the device {this.Setting.DeviceName}.Error: {error}");
+            if (this.isOpened) {
+                throw new Exception($"The device {this.devicePath} is already opened.");
             }
 
-            this.buffer = new byte[GetBufferSize()];
+            if (!File.Exists(this.devicePath)) {
+                throw new ArgumentException("No camera found.");
+            }
 
-            this.IsOpened = true;
+            var error = NativeDeviceOpen($"{this.devicePath}", 0); // 0 is IO_METHOD_READ for fast
+            if (0 != error)
+                throw new Exception($"Could not open the device {this.devicePath}. Error: {error}");
+
+            //error = NativeDeviceInit();
+
+            //if (0 != error) {
+            //    throw new Exception($"Could not initialize the device {this.devicePath}.Error: {error}");
+            //}
+
+            //this.buffer = new byte[GetBufferSize()];
+
+            //this.IsOpened = true;
+
+            // skip first 5 frame because of dask
+            //for (var i = 0; i < 4; i++) {
+            //    this.Capture();
+            //}
+
+            this.isOpened = true;
         }
 
         protected void Close() {
-            if (!this.IsOpened)
+
+            if (!this.isOpened)
                 return;
 
             this.VideoStreamStop();
 
             var error = NativeDeviceUninit();
             if (0 != error)
-                throw new Exception($"Could not uninit the device {this.Setting.DeviceName}. Error: {error}");
+                throw new Exception($"Could not uninit the device {this.devicePath}. Error: {error}");
 
             error = NativeDeviceClose();
             if (0 != error)
-                throw new Exception($"Could not close the device {this.Setting.DeviceName}. Error: {error}");
+                throw new Exception($"Could not close the device {this.devicePath}. Error: {error}");
 
-            this.IsOpened = false;
+            this.isOpened = false;
+
+
         }
 
 
         public byte[] Capture() {
-            if (!this.IsOpened)
-                throw new Exception($"The device {this.Setting.DeviceName} need to be opened.");
+            if (!this.isOpened)
+                throw new Exception($"The device {this.devicePath} is not opened yet.");
+
+            if (this.buffer == null)
+                throw new Exception($"Invalid setting found.");
 
             if (this.IsVideoStreaming) {
-                throw new Exception($"The device {this.Setting.DeviceName} is busy for streaming.");
+                throw new Exception($"The device {this.devicePath} is busy for streaming.");
             }
 
             lock (lockObj) {
@@ -343,6 +359,12 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
 
         bool videostreamstart = false;
         public void VideoStreamStart() {
+            if (!this.isOpened)
+                throw new Exception($"The device {this.devicePath} is not opened yet.");
+
+            if (this.buffer == null)
+                throw new Exception($"Invalid setting found.");
+
             this.IsVideoStreaming = true;
             this.videostreamstart = true;
 
@@ -393,7 +415,7 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
         }
 
         private byte[] ProgressDataImage(byte[] inBuffer) {
-            
+
 
             if (inBuffer[0] == 0xFF && inBuffer[1] == 0xD8) {
                 var jpeg_size = inBuffer.Length - 1;
@@ -411,21 +433,21 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
 
                     Array.Copy(inBuffer, 0, dataJpeg, 0, dataJpeg.Length);
 
-                    switch (this.Setting.PixelFormat) {
-                        case PixelFormat.Jpeg:
+                    switch (this.Setting.ImageFormat) {
+                        case Format.Jpeg:
                             return dataJpeg;
 
-                        case PixelFormat.Rgb888:
-                        case PixelFormat.Rgb565:
+                        case Format.Rgb888:
+                        case Format.Rgb565:
 
                             var data888 = new byte[this.Setting.Width * this.Setting.Height * 3];
 
                             NativeUtils.JpegtoRGB888(dataJpeg, jpeg_size, data888);
-                            if (this.Setting.PixelFormat == PixelFormat.Rgb888) {
+                            if (this.Setting.ImageFormat == Format.Rgb888) {
                                 return data888;
                             }
 
-                            var data = new byte[inBuffer.Length];
+                            var data = new byte[this.Setting.Width * this.Setting.Height * 2];
                             var index = 0;
                             // to 565
                             for (var i = 0; i < data888.Length; i += 3) {
@@ -438,7 +460,7 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
                             }
 
                             return data;
-                    }                    
+                    }
 
                 }
 
@@ -449,10 +471,10 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
         }
 
         [DllImport(LibNativeDcmi)]
-        internal static extern int NativeDeviceOpen(string dev, int width, int height, int imageQuality);
+        internal static extern int NativeDeviceOpen(string dev, int mode);
 
         [DllImport(LibNativeDcmi)]
-        internal static extern int NativeDeviceInit();
+        internal static extern int NativeDeviceInit(int width, int height, int fps, int imageQuality);
 
         [DllImport(LibNativeDcmi)]
         internal static extern int NativeCaptureStart();
