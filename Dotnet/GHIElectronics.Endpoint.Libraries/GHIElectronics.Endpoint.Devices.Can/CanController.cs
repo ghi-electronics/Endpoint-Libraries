@@ -5,6 +5,7 @@ using static GHIElectronics.Endpoint.Core.EPM815;
 
 namespace GHIElectronics.Endpoint.Devices.Can
 {
+    
 
     public delegate void MessageReceivedEventHandler(CanController sender);
     public delegate void ErrorReceivedEventHandler(CanController sender, ErrorReceivedEventArgs e);
@@ -33,6 +34,58 @@ namespace GHIElectronics.Endpoint.Devices.Can
             this.Timestamp = timestamp;
         }
     }
+
+    /**<example>
+    <code>
+        using GHIElectronics.Endpoint.Core;
+        using GHIElectronics.Endpoint.Devices.Can;
+
+        var canController = new CanController(EPM815.Can.Can2, 250_000, 500_000);
+
+        int messageCount = 0;
+        canController.MessageReceived += (a) =>{
+            messageCount++;
+            Console.WriteLine("Receiving message: " + messageCount);
+        };
+
+        canController.ErrorReceived += (a, b) =>{
+            uint error = (uint)b.Error;
+            if ((error &amp; (uint)CanError.ErrorBusOff) == (uint)CanError.ErrorBusOff){
+                Console.WriteLine("Error bus off");
+            }
+            else{
+                Console.WriteLine("Receiving error: 0x" + error.ToString("x8"));
+            }  
+        };
+        canController.Disable();
+        canController.EnableFilter(new uint[] { 0x123 }, new uint[] { 0x000007FF}, true);
+        canController.EnableError(0x1FF);
+        canController.Enable();
+        while (true){
+            if (canController.MessagesToRead > 0){
+                var msgRead = canController.Read();
+
+                    if (msgRead != null){
+                        Console.WriteLine("ID: " + msgRead.ArbitrationId.ToString("x8"));
+                        Console.WriteLine("Ext: " + msgRead.ExtendedFrameFormat);
+                        Console.WriteLine("Remote: " + msgRead.RemoteTransmissionRequest);
+
+                        var msgWrite = msgRead;             
+                        var data = new byte[msgRead.Data.Length];
+
+                        for (int i = 0; i &lt; data.Length; i++){
+                            data[i] = (byte)(msgRead.Data[i] + 1);
+                        }
+             
+                        msgWrite.Data = data;
+                        msgWrite.ArbitrationId = msgRead.ArbitrationId + 1;         
+                        canController.Write(msgWrite);
+                    }
+             }
+            Thread.Sleep(2);
+        }
+    </code>
+    </example>*/
 
     public class CanController : IDisposable
     {
