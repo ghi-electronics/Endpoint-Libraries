@@ -51,8 +51,6 @@ namespace GHIElectronics.Endpoint.Devices.Display {
             unsafe {
                 var mptr = (byte*)fbPtr;
 
-                var idx = 0;
-
                 
                 var widthDest2 = fbWidth << 1;
                 var widthSrc2 = width << 1;

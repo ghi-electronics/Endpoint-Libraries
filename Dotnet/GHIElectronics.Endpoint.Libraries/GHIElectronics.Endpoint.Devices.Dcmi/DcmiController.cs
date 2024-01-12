@@ -2,7 +2,7 @@ using System.Collections;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 using GHIElectronics.Endpoint.Core;
-using GHIElectronics.Endpoint.Devices.CameraSetting;
+using GHIElectronics.Endpoint.Devices.Camera;
 using static GHIElectronics.Endpoint.Core.EPM815;
 
 namespace GHIElectronics.Endpoint.Devices.Dcmi {

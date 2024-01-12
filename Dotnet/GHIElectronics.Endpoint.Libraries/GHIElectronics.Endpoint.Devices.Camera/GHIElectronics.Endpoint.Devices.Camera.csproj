@@ -4,11 +4,12 @@
     <TargetFramework>net8.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>disable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	
-    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>	
+	<GeneratePackageOnBuild>True</GeneratePackageOnBuild>	
 	<Title>Endpoint</Title>
-	<PackageId>GHIElectronics.Endpoint.Devices.UsbHost</PackageId>
-    <Description>The UsbHost driver for Endpoint.</Description>
+	<PackageId>GHIElectronics.Endpoint.Devices.Camera</PackageId>
+    <Description>The Camera configuration for Endpoint.</Description>
     <Copyright>Copyright GHI Electronics, LLC 2023</Copyright>
     <PackageProjectUrl>https://ghielectronics.com/</PackageProjectUrl>
     <PackageTags>Endpoint</PackageTags>
@@ -27,12 +28,10 @@
       <PackagePath>\</PackagePath>
     </None>
   </ItemGroup>
-  
+
   <ItemGroup>
-	<PackageReference Include="GHIElectronics.Endpoint.Core" Version="0.0.2.6-alpha" />
-	<PackageReference Include="GHIElectronics.Endpoint.Devices.Usb" Version="0.0.2.6-alpha" />
-	<PackageReference Include="GHIElectronics.Endpoint.Devices.Camera" Version="0.0.2.6-alpha" />		
+    <PackageReference Include="GHIElectronics.Endpoint.Core" Version="0.0.2.6-alpha" />
+	  
   </ItemGroup>
-  
-  
+
 </Project>

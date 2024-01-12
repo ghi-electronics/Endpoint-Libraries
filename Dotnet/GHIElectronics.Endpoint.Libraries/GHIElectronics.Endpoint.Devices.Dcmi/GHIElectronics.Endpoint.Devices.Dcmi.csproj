@@ -31,7 +31,7 @@
   
   <ItemGroup>
     <PackageReference Include="GHIElectronics.Endpoint.Core" Version="0.0.2.6-alpha" />
-    <PackageReference Include="GHIElectronics.Endpoint.Devices.CameraSetting" Version="0.0.2.6-alpha" />    
+    <PackageReference Include="GHIElectronics.Endpoint.Devices.Camera" Version="0.0.2.6-alpha" />    
   </ItemGroup>
 
 </Project>

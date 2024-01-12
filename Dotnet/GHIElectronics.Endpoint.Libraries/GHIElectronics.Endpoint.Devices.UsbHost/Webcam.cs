@@ -7,7 +7,7 @@ using System.Runtime.Loader;
 using System.Text;
 using System.Threading.Tasks;
 using GHIElectronics.Endpoint.Core;
-using GHIElectronics.Endpoint.Devices.CameraSetting;
+using GHIElectronics.Endpoint.Devices.Camera;
 
 namespace GHIElectronics.Endpoint.Devices.UsbHost {
 
