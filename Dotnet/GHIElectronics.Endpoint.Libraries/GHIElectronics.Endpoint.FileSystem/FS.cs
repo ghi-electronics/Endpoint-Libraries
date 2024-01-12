@@ -8,19 +8,19 @@ namespace GHIElectronics.Endpoint {
 
         //public static string Mount(string deviceName, int deviceId) => Mount(deviceName, deviceId, "");
 
-        const string ROOT_FS_FOLDER = "/root/.media";
+        const string ROOT_FS_FOLDER = "/media/.fsmount";
         public static string Mount(string deviceName) {
 
             var rnd = new Random();
             var num = rnd.Next();
-
-            var arg = string.Empty;
             Script script;
 
+
+            string arg;
             if (!Directory.Exists(ROOT_FS_FOLDER)) {
 
                 arg = string.Format("{0}", ROOT_FS_FOLDER);
-                script = new Script("mkdir", "/root", arg);
+                script = new Script("mkdir", "./", arg);
 
                 script.Start();
 
@@ -44,7 +44,7 @@ namespace GHIElectronics.Endpoint {
 
             if (!Directory.Exists(dir)) {
                 arg = string.Format("{0}", dir);
-                script = new Script("mkdir", "/root", arg);
+                script = new Script("mkdir", "./", arg);
 
                 script.Start();
             }
@@ -53,7 +53,7 @@ namespace GHIElectronics.Endpoint {
 
                 arg = string.Format("{0} {1}", deviceName, dir);
 
-                script = new Script("mount", "/root", arg);
+                script = new Script("mount", "./", arg);
 
                 script.Start();
 
@@ -75,7 +75,7 @@ namespace GHIElectronics.Endpoint {
 
             var dir = path;
 
-            var script = new Script("umount", "/root", dir);
+            var script = new Script("umount", "./", dir);
 
             script.Start();
 
@@ -83,7 +83,7 @@ namespace GHIElectronics.Endpoint {
 
                 var arg = string.Format("-r {0}", dir);
 
-                script = new Script("rm", "/root", arg);
+                script = new Script("rm", "./", arg);
 
                 script.Start();
 
@@ -95,6 +95,12 @@ namespace GHIElectronics.Endpoint {
             throw new Exception("Could not umount the device " + dir);
 
 
+        }
+
+        public static void Flush() {
+            var script = new Script("sync", "./", "");
+
+            script.Start();
         }
     }
 }
