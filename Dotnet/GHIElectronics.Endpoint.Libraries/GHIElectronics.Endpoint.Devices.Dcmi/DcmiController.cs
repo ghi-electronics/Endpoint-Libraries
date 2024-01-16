@@ -224,13 +224,15 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
         private void SetPclk(bool enable) {
             const uint RCC_BASE = 0x50000000U;
             const uint RCC_MCO1CFGR = RCC_BASE + 0x800;
+            const uint RCC_OCENSETR = 0x50000000U + 0x00C;
             if (enable) {
+
                 Gpio.SetOutputType(CLOCK_PIN, Gpio.OutputType.PushPull);
                 Gpio.SetModer(CLOCK_PIN, Gpio.Moder.Alternate);
                 Gpio.SetAlternate(CLOCK_PIN, Gpio.Alternate.AF2);
 
 
-                var value = (uint)((0 << 12) | (3 << 4) | 0); // Set MCO1 = 21MHz
+                var value = (uint)((0 << 12) | (0 << 4) | 1); // Set MCO1 = 8MHz
 
                 Register.Write(RCC_MCO1CFGR, value);
 
