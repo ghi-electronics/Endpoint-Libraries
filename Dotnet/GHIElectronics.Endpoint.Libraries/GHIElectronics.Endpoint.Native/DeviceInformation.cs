@@ -69,13 +69,13 @@ namespace GHIElectronics.Endpoint.Native {
         public static void EnableAutoRun(string applicationName) {
             var application_fullpath = "/root/.epdata/" + applicationName + "/" + applicationName + ".dll";
             
-                var script = new Script("csharp_generate_startup.sh", "./", "1 /etc/init.d/S90custom " + application_fullpath);
+                var script = new Script("csharp_generate_startup.sh", "./", "1 /etc/init.d/S29custom " + application_fullpath);
 
                 script.Start();                                                
         }
 
         public static void DisableAutoRun() {
-            var script = new Script("csharp_generate_startup.sh", "./", "0 /etc/init.d/S90custom");
+            var script = new Script("csharp_generate_startup.sh", "./", "0 /etc/init.d/S29custom");
 
             script.Start();
         }
