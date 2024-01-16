@@ -224,7 +224,6 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
         private void SetPclk(bool enable) {
             const uint RCC_BASE = 0x50000000U;
             const uint RCC_MCO1CFGR = RCC_BASE + 0x800;
-            const uint RCC_OCENSETR = 0x50000000U + 0x00C;
             if (enable) {
 
                 Gpio.SetOutputType(CLOCK_PIN, Gpio.OutputType.PushPull);
