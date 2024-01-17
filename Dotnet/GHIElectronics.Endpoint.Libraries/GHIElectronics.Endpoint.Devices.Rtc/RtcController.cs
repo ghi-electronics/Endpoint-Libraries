@@ -105,7 +105,7 @@ namespace GHIElectronics.Endpoint.Devices.Rtc {
         private static string[] months = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
         //public void SetDateTime(DateTime value) {
 
-        //    //date -s 2023.08.31-17:02:00
+        //    //date -s 2024.08.31-17:02:00
         //    var arg = "-s ";
 
         //    arg += value.Year + ".";
