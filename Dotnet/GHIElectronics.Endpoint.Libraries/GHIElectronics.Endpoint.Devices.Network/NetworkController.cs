@@ -4,9 +4,16 @@ using System.Xml.Linq;
 using GHIElectronics.Endpoint.Core;
 
 namespace GHIElectronics.Endpoint.Devices.Network {
+
+
+
+    /// <exclude />
     public delegate void NetworkLinkConnectedChangedEventHandler(NetworkController sender, NetworkLinkConnectedChangedEventArgs e);
+
+    /// <exclude />
     public delegate void NetworkAddressChangedEventHandler(NetworkController sender, NetworkAddressChangedEventArgs e);
 
+    /// <exclude />
     public class NetworkLinkConnectedChangedEventArgs : EventArgs {
         public bool Connected { get; }
         public DateTime Timestamp { get; }
@@ -17,6 +24,7 @@ namespace GHIElectronics.Endpoint.Devices.Network {
         }
     }
 
+    /// <exclude />
     public class NetworkAddressChangedEventArgs : EventArgs {
         public DateTime Timestamp { get; }
 
@@ -33,11 +41,13 @@ namespace GHIElectronics.Endpoint.Devices.Network {
             this.MACAddress = mac;
         }
     }
+    /// <exclude />
     public enum NetworkInterfaceType {
         Ethernet = 0,
         WiFi = 1,
     }
 
+    /// <exclude />
     public class NetworkInterfaceSettings {
         public IPAddress Address { get; set; }
         public IPAddress SubnetMask { get; set; }
@@ -50,10 +60,80 @@ namespace GHIElectronics.Endpoint.Devices.Network {
         //public bool MulticastDnsEnable { get; set; } = false;
     }
 
+
+    /**<example>
+    Wi-Fi Network 
+    <code>
+    var networkType = NetworkInterfaceType.WiFi;
+
+    var networkSetting = new WifiNetworkInterfaceSetting {
+        Ssid = ******,
+        Password = ******,
+        DhcpEnable = true,
+    };
+
+    var network = new NetworkController(networkType, networkSetting);
+
+    network.NetworkLinkConnectedChanged += (a, b) => {
+        if (b.Connected) {
+            Console.WriteLine("Connected");
+        }
+        else {
+            Console.WriteLine("Disconnected");
+        }
+    };
+
+    network.NetworkAddressChanged += (a, b) => {
+        Console.WriteLine(string.Format("Address: {0}\n gateway: {1}\n DNS: {2}\n MAC: {3} ", b.Address, b.Gateway, b.Dns[0], b.MACAddress));
+    };
+
+    network.Enable();
+    Thread.Sleep(-1);
+    network.Disable();
+    </code>
+    </example>*/
+
+
     public class WiFiNetworkInterfaceSettings : NetworkInterfaceSettings {
         public string Ssid { get; set; }
         public string Password { get; set; }
     }
+
+    /**<example>
+    Ethernet Network 
+    <code>
+    var networkType = NetworkInterfaceType.Ethernet;
+
+    var networkSetting = new NetworkInterfaceSettings {
+        Address = new IPAddress(new byte[] { 192, 168, 86, 106 }),
+        SubnetMask = new IPAddress(new byte[] { 255, 255, 255, 0 }),
+        GatewayAddress = new IPAddress(new byte[] { 192, 168, 86, 1 }),
+        DnsAddresses = new IPAddress[] { new IPAddress(new byte[] { 75, 75, 75, 75 }) },
+        DhcpEnable = false,
+    };
+
+    var network = new NetworkController(networkType, networkSetting);
+
+    network.NetworkLinkConnectedChanged += (a, b) => {
+        if (b.Connected) {
+            Console.WriteLine("Connected");
+        }
+        else {
+            Console.WriteLine("Disconnected");
+        }
+    };
+
+    network.NetworkAddressChanged += (a, b) => {
+        Console.WriteLine(string.Format("Address: {0}\n gateway: {1}\n DNS: {2}\n MAC: {3} ", b.Address, b.Gateway, b.Dns[0], b.MACAddress));
+    };
+
+    network.Enable();
+    Thread.Sleep(-1);
+    network.Disable();
+    </code>
+    </example>*/
+
+
     public class NetworkController : IDisposable {
         static int initializeCount;
 
@@ -63,8 +143,10 @@ namespace GHIElectronics.Endpoint.Devices.Network {
         private bool disposed = false;
         private bool enabled = false;
 
+        /// <exclude />
         public NetworkInterfaceSettings ActiveInterfaceSettings { get; private set; }
 
+        /// <exclude />
         public NetworkInterfaceType InterfaceType { get; private set; }
 
         private string interfaceName = string.Empty;
