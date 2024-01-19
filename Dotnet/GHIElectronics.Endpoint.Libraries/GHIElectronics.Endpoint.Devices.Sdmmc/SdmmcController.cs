@@ -1,8 +1,27 @@
 using System.Collections;
 using GHIElectronics.Endpoint.Core;
 using static GHIElectronics.Endpoint.Core.EPM815;
+
+
+/**<example>
+  Connecting to an SD Card
+  <code>
+  using GHIElectronics.Endpoint.Devices.Mmc;
+        
+  var sdcard = new SdmmcController(SdmmcType.SdCard2);
+  sdcard.OnConnectionChangedEvent += Sdcard_OnConnectionChangedEvent;
+  sdcard.Enable();
+        
+  private static void Sdcard_OnConnectionChangedEvent(SdmmcController sender, DeviceConnectionEventArgs e){
+      Console.WriteLine("Detect SDCard connection changed on" + e.DeviceName + ", status: " + e.DeviceStatus + ", id = " + e.DeviceId);
+  }
+  </code>
+  </example>*/
+
+
 namespace GHIElectronics.Endpoint.Devices.Mmc {
 
+   
     public class Sdmmc {
         public string DeviceName { get; }        
         public int DeviceId { get; }
@@ -47,6 +66,22 @@ namespace GHIElectronics.Endpoint.Devices.Mmc {
             this.DeviceStatus = deviceStatus;
         }
     }
+
+    /**<example>
+    Connecting to an SD Card
+    <code>
+    using GHIElectronics.Endpoint.Devices.Mmc;
+          
+    var sdcard = new SdmmcController(SdmmcType.SdCard2);
+    sdcard.OnConnectionChangedEvent += Sdcard_OnConnectionChangedEvent;
+    sdcard.Enable();
+          
+    private static void Sdcard_OnConnectionChangedEvent(SdmmcController sender, DeviceConnectionEventArgs e){
+        Console.WriteLine("Detect SDCard connection changed on" + e.DeviceName + ", status: " + e.DeviceStatus + ", id = " + e.DeviceId);
+    }
+    </code>
+    </example>*/
+
     public class SdmmcController : IDisposable {
 
         private static bool enabled;

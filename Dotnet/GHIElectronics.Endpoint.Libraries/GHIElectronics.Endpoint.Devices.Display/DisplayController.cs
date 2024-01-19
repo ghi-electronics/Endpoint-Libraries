@@ -14,14 +14,16 @@ namespace GHIElectronics.Endpoint.Devices.Display
     using SkiaSharp;
     using EndpointDisplayTest.Properties;
 
-    var gpioDriver = new LibGpiodDriver((int)STM32MP1.Port.D);
+    var backlightPort = EPM815.Gpio.Pin.PD14 /16;
+    var backlightPin = EPM815.Gpio.Pin.PD14 % 16;
+
+    var gpioDriver = new LibGpiodDriver((int)backlightPort);
     var gpioController = new GpioController(PinNumberingScheme.Logical, gpioDriver);
+    gpioController.OpenPin(backlightPin, PinMode.Output);
+    gpioController.Write(backlightPin, PinValue.High); 
     var screenWidth = 480;
     var screenHeight = 272;
-
-    gpioController.OpenPin(14, PinMode.Output);
-    gpioController.Write(14, PinValue.High); 
-
+    
     SKBitmap bitmap = new SKBitmap(screenWidth, screenHeight, SKImageInfo.PlatformColorType, SKAlphaType.Premul);
     bitmap.Erase(SKColors.Transparent);
 

@@ -7,13 +7,13 @@ namespace GHIElectronics.Endpoint.Devices.Network {
 
 
 
-    /// <exclude />
+    
     public delegate void NetworkLinkConnectedChangedEventHandler(NetworkController sender, NetworkLinkConnectedChangedEventArgs e);
 
-    /// <exclude />
+   
     public delegate void NetworkAddressChangedEventHandler(NetworkController sender, NetworkAddressChangedEventArgs e);
 
-    /// <exclude />
+    
     public class NetworkLinkConnectedChangedEventArgs : EventArgs {
         public bool Connected { get; }
         public DateTime Timestamp { get; }
@@ -24,7 +24,7 @@ namespace GHIElectronics.Endpoint.Devices.Network {
         }
     }
 
-    /// <exclude />
+    
     public class NetworkAddressChangedEventArgs : EventArgs {
         public DateTime Timestamp { get; }
 
@@ -41,13 +41,13 @@ namespace GHIElectronics.Endpoint.Devices.Network {
             this.MACAddress = mac;
         }
     }
-    /// <exclude />
+   
     public enum NetworkInterfaceType {
         Ethernet = 0,
         WiFi = 1,
     }
 
-    /// <exclude />
+    
     public class NetworkInterfaceSettings {
         public IPAddress Address { get; set; }
         public IPAddress SubnetMask { get; set; }

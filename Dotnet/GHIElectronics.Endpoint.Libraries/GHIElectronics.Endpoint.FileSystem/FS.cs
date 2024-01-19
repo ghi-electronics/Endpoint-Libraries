@@ -2,7 +2,27 @@ using System.IO;
 using GHIElectronics.Endpoint.Core;
 
 namespace GHIElectronics.Endpoint {
+
+
+    /**<example>
+    Write file to USB
+    <code>
+    using System.Text;
+    using GHIElectronics.Endpoint.Devices.UsbHost;
+
+    var usbhost = new UsbHostController();
+    usbhost.OnConnectionChangedEvent += Usbhost_OnConnectionChangedEvent;
+
+
+    </code>
+    </example>*/
+
     public static class FileSystem {
+
+
+
+
+
 
         //public static string Mount(string deviceName, string mountedName = "") => Mount(deviceName, -1, mountedName);
 
