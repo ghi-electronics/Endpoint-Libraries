@@ -6,7 +6,7 @@
     <Nullable>disable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	
-	<GeneratePackageOnBuild>True</GeneratePackageOnBuild>	
+	<GeneratePackageOnBuild>False</GeneratePackageOnBuild>	
 	<PackageId>GHIElectronics.Endpoint.Core</PackageId>
 	<Title>Endpoint</Title>
     <Description>The Core driver for Endpoint.</Description>
@@ -33,5 +33,9 @@
     <PackageReference Include="System.Device.Gpio" Version="3.1.0" />
 	<PackageReference Include="System.Resources.Extensions" Version="8.0.0" />
   </ItemGroup>
-   
+  
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="call dopacknuget.bat" />
+  </Target>
+    
 </Project>

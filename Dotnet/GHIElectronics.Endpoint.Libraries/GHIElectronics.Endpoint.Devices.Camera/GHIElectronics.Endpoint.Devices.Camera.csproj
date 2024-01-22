@@ -33,5 +33,9 @@
     <PackageReference Include="GHIElectronics.Endpoint.Core" Version="0.0.2.7-alpha" />
 	  
   </ItemGroup>
+  
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="call dopacknuget.bat" />
+  </Target>
 
 </Project>

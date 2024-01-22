@@ -28,5 +28,7 @@
     </None>
   </ItemGroup>
 
-
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="call dopacknuget.bat" />
+  </Target>
 </Project>
