@@ -14,7 +14,7 @@ namespace GHIElectronics.Endpoint {
 
             var folder_name = Guid.NewGuid().ToString("d");
 
-
+           
 
             var dir = ROOT_FS_FOLDER + "/" + folder_name;
 
