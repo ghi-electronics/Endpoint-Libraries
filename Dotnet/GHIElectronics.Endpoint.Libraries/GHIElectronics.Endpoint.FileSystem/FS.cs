@@ -4,6 +4,18 @@ using GHIElectronics.Endpoint.Core;
 namespace GHIElectronics.Endpoint {
     public static class FileSystem {
 
+    /**<example>
+    Write file to USB
+    <code>
+    using System.Text;
+    using GHIElectronics.Endpoint.Devices.UsbHost;
+
+    var usbhost = new UsbHostController();
+    usbhost.OnConnectionChangedEvent += Usbhost_OnConnectionChangedEvent;
+
+    </code>
+    </example>*/
+
         const string ROOT_FS_FOLDER = "/media";
         public static string Mount(string deviceName) {
             Script script;
