@@ -6,7 +6,7 @@
     <Nullable>disable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	
-    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>	
+    <GeneratePackageOnBuild>False</GeneratePackageOnBuild>	
 	<Title>Endpoint</Title>
 	<PackageId>GHIElectronics.Endpoint.Native</PackageId>
     <Description>The Native driver for Endpoint.</Description>

@@ -5,7 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
 	
-    <GeneratePackageOnBuild>True</GeneratePackageOnBuild>	
+    <GeneratePackageOnBuild>False</GeneratePackageOnBuild>	
 	<Title>Endpoint</Title>
 	<PackageId>GHIElectronics.Endpoint.Devices.Watchdog</PackageId>
     <Description>The Watchdog driver for Endpoint.</Description>

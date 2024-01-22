@@ -6,7 +6,7 @@
     <Nullable>disable</Nullable>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	
-	<GeneratePackageOnBuild>True</GeneratePackageOnBuild>	
+	<GeneratePackageOnBuild>False</GeneratePackageOnBuild>	
 	<Title>Endpoint</Title>
 	<PackageId>GHIElectronics.Endpoint.Devices.Can</PackageId>
     <Description>The CAN driver for Endpoint.</Description>

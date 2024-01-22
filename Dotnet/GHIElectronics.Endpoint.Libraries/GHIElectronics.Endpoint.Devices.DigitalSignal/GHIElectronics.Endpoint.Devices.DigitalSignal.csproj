@@ -7,7 +7,7 @@
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
 
-		<GeneratePackageOnBuild>True</GeneratePackageOnBuild>	
+		<GeneratePackageOnBuild>False</GeneratePackageOnBuild>	
 		<Title>Endpoint</Title>
 		<PackageId>GHIElectronics.Endpoint.Devices.DigitalSignal</PackageId>
 		<Description>The DigitalSignal driver for Endpoint.</Description>
