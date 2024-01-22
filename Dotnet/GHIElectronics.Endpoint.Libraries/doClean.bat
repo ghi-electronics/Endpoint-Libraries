@@ -13,4 +13,8 @@ for /f "tokens=*" %%a in ('dir /b /s /a:d ".\"') do (
 	)	
 )
 
+pushd output
+	DEL /Q *.nupkg
+popd
+
 
