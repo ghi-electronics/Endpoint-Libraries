@@ -8,6 +8,7 @@ IF "%DoAssemblySign%" == "true" (
 	pushd "%CurrentDir%"
 	
 	IF NOT EXIST "..\output" (
+		echo Creating output folder...
 		MKDIR "..\output"	
 	)
 
