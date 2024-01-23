@@ -7,13 +7,9 @@ SET CurrentDir=%CD%
 IF "%DoAssemblySign%" == "true" (
 	pushd "%CurrentDir%"
 	
-	IF EXIST "..\output" (
-		echo Deleting old folder...
-		rd /q /s ..\output	
+	IF NOT EXIST "..\output" (
+		MKDIR "..\output"	
 	)
-	
-	echo Creating output folder...
-	MKDIR "..\output"
 
 	signtool.exe sign /fd sha512 /f "%VsixSignerCertificatePath%" /p "%VsixSignerCertificatePassword%" /t "http://timestamp.digicert.com" /sha1 "%AssemblySignerCertificateSha1%" "%OutputLocation%\%OutputAssemblyName%.dll"
 	nuget pack "%OutputAssemblyName%.nuspec" -Properties Configuration=%BuildMode% -OutputDirectory "..\output"
