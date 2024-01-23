@@ -33,7 +33,7 @@ namespace GHIElectronics.Endpoint.Devices.Display {
         public int Width { get; }
         public int Height { get; }
 
-        private ParallelConfiguration configuration;
+        private Configuration configuration;
         public FBDisplay(DisplayConfiguration configuration) {
 
             if (configuration == null) {
@@ -42,7 +42,7 @@ namespace GHIElectronics.Endpoint.Devices.Display {
 
             this.Width = configuration.Width;
             this.Height = configuration.Height;
-            this.configuration = (ParallelConfiguration)configuration;
+            this.configuration = (Configuration)configuration;
 
             this.Acquire();
         }
@@ -208,7 +208,7 @@ namespace GHIElectronics.Endpoint.Devices.Display {
             this.disposed = true;
         }
 
-        public class ParallelConfiguration : DisplayConfiguration {
+        public class Configuration : DisplayConfiguration {
             public int Clock { get; set; }
             public int Hsync_start { get; set; }
             public int Hsync_end { get; set; }
