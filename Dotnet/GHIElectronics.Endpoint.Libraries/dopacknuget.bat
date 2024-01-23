@@ -10,9 +10,8 @@ IF "%DoAssemblySign%" == "true" (
 	DEL /Q *.nupkg
 
 	signtool.exe sign /fd sha512 /f "%VsixSignerCertificatePath%" /p "%VsixSignerCertificatePassword%" /t "http://timestamp.digicert.com" /sha1 "%AssemblySignerCertificateSha1%" "%OutputLocation%\%OutputAssemblyName%.dll"
-	nuget pack "%OutputAssemblyName%.csproj" -Properties Configuration=%BuildMode%
-	xcopy /q /y %OutputAssemblyName%*.nupkg ..\output\
-	xcopy /q /y %OutputAssemblyName%*.nupkg %NugetPackerOutputDirectory%
+	nuget pack "%OutputAssemblyName%.nuspec" -Properties Configuration=%BuildMode% -OutputDirectory "..\output"
+	xcopy /q /y ..\output\%OutputAssemblyName%*.nupkg %NugetPackerOutputDirectory%
 
 	popd
 )
