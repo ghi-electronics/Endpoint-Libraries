@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Device.Gpio;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -68,6 +69,12 @@ namespace GHIElectronics.Endpoint.Core {
                 Medium = 1,
                 High = 2,
                 VeryHigh = 3,
+            }
+
+            public enum Edge: int {
+                Rising = PinEventTypes.Rising,
+                Falling = PinEventTypes.Falling,
+               
             }
 
             public static class Pin {
