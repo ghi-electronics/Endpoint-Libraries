@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 using GHIElectronics.Endpoint.Core;
+using static GHIElectronics.Endpoint.Core.EPM815.Gpio;
 
 
 namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
@@ -203,7 +204,7 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
 
 
 
-                    if (error != Error.None) {
+                    if (error == Error.None) {
                         var buffer = new uint[capturedPulseCount];
 
 
@@ -215,26 +216,27 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
 
                             //Convert to double
                             var d = new double[buffer.Length];
-                            var scale = 4.863;
+                            var scale = 4.863; // 1000000000/205.6MHz
 
                             if (capturedPulseCount > 0) {
-                                d[0] = buffer[0] * scale;
+                                //d[0] = buffer[0] * scale;
 
                                 for (var i = 1; i < buffer.Length; i++) {
-                                    d[i] = (buffer[i] - buffer[i - 1]) * scale;
+                                    d[i-1] = (buffer[i] - buffer[i - 1]) * scale;
                                 }
 
 
                             }
-                            if (waitForEdge) {
-                                var d2 = new double[d.Length - 1];
-                                Array.Copy(d, 1, d2, 0, d2.Length);
+                            //if (waitForEdge) {
+                            //    var d2 = new double[d.Length - 1];
+                            //    Array.Copy(d, 1, d2, 0, d2.Length);
 
-                                this.pulseCaptureCallback?.Invoke(this, d2, (uint)d2.Length, initialState, aborted);
-                            }
-                            else {
-                                this.pulseCaptureCallback?.Invoke(this, d, capturedPulseCount, initialState, aborted);
-                            }
+                            //    this.pulseCaptureCallback?.Invoke(this, d2, (uint)d2.Length, initialState, aborted);
+                            //}
+                            //else {
+                            //    this.pulseCaptureCallback?.Invoke(this, d, capturedPulseCount, initialState, aborted);
+                            //}
+                            this.pulseCaptureCallback?.Invoke(this, d, capturedPulseCount, initialState, aborted);
 
 
                         }
@@ -258,7 +260,7 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
                 NativeRpmsgHelper.Release();
         }
 
-        public void Generate(uint[] data, uint offset, int count, uint multiplier, uint edge) {
+        public void Generate(uint[] data, uint offset, int count, uint multiplier, Edge edge) {
 
             if (!this.CanGeneratePulse) {
                 throw new Exception("Generate mode is busy");
@@ -308,7 +310,7 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
             NativeRpmsgHelper.Send(buffer, 0, buffer.Length);
         }
 
-        public void ReadPulse(uint pulseNum, uint edge, bool waitForEdge) {
+        public void ReadPulse(uint pulseNum, Edge edge, bool waitForEdge=false) {
             if (!this.CanReadPulse) {
                 throw new Exception("ReadPulse mode is busy");
             }
@@ -328,7 +330,7 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
             buffer[3] = pulseNum; // count in uint
 
             // param 4
-            buffer[4] = edge; ;
+            buffer[4] = (uint)edge;
 
             // param 5      
             buffer[5] = waitForEdge == true ? 1U : 0;
@@ -338,8 +340,8 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
 
         }
 
-        public void Capture(uint count, uint edge, bool waitForEdge) => this.Capture(count, edge, waitForEdge, TimeSpan.Zero);
-        public void Capture(uint count, uint edge, bool waitForEdge, TimeSpan timeout) {
+        public void Capture(uint count, Edge edge, bool waitForEdge = false) => this.Capture(count, edge, waitForEdge, TimeSpan.Zero);
+        public void Capture(uint count, Edge edge, bool waitForEdge, TimeSpan timeout) {
 
             if (!this.CanCapture) {
                 throw new Exception("CanCapture mode is busy");
@@ -360,7 +362,7 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
             buffer[3] = count; // count in uint
 
             // param 4
-            buffer[4] = edge;
+            buffer[4] = (uint)edge;
 
             // param 5      
             buffer[5] = waitForEdge == true ? 1U : 0;
