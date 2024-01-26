@@ -41,23 +41,23 @@ namespace GHIElectronics.Endpoint.Devices.Watchdog {
                
         }
 
-        public bool Stop() {
-            if (this.Started) {
-                var arg = "watchdog";
+        //public bool Stop() {
+        //    if (this.Started) {
+        //        var arg = "watchdog";
 
-                var script = new Script("killall", "./", arg);
+        //        var script = new Script("killall", "./", arg);
 
-                script.Start();
+        //        script.Start();
 
-                if ((script.Error == null || script.Error.Length == 0) && script.ExitCode == 0 && script.Output.Length == 0)
-                    return true;
+        //        if ((script.Error == null || script.Error.Length == 0) && script.ExitCode == 0 && script.Output.Length == 0)
+        //            return true;
 
                
-            }
+        //    }
 
-            return false;
+        //    return false;
 
-        }
+        //}
 
     }
 }
