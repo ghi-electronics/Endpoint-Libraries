@@ -57,75 +57,79 @@ namespace GHIElectronics.Endpoint.Devices.Rtc {
 
         }
 
-        //public DateTime GetDateTime() {
-        //    var script = new Script("hwclock", "./", "");
+        public DateTime GetSystemTime() {
+            //var script = new Script("hwclock", "./", "");
+            var script = new Script("date", "./", "");
 
-        //    script.Start();
+            script.Start();
 
-        //    if (script.Output.Length > 0) {
-        //        var elements = script.Output.Split(' ');
-        //        var id = 0;
+            if (script.Output.Length > 0) {
+                var elements = script.Output.Split(' ');
+                var id = 0;
 
-        //        // month
-        //        var month = -1;
-        //        id++;
-        //        for (var i = 0; i < months.Length; i++) {
-        //            if (elements[id] == months[i]) {
-        //                month = i;
-        //                month++;
-        //                break;
-        //            }
-        //        }
+                // month
+                var month = -1;
+                id++;
+                for (var i = 0; i < months.Length; i++) {
+                    if (elements[id] == months[i]) {
+                        month = i;
+                        month++;
+                        break;
+                    }
+                }
 
-        //        // dayofmonth
-        //        id++;                
-        //        if (elements[id] == string.Empty) // day < 10
-        //            id++;
+                // dayofmonth
+                id++;
+                if (elements[id] == string.Empty) // day < 10
+                    id++;
 
-        //        var dayofmonth = int.Parse(elements[id]);
+                var dayofmonth = int.Parse(elements[id]);
 
-        //        // hour:min:sec
-        //        id++;
-        //        var elements2 = elements[id].Split(':');
-        //        var hour = int.Parse(elements2[0]);
-        //        var minute = int.Parse(elements2[1]);
-        //        var second = int.Parse(elements2[2]);
+                // hour:min:sec
+                id++;
+                var elements2 = elements[id].Split(':');
+                var hour = int.Parse(elements2[0]);
+                var minute = int.Parse(elements2[1]);
+                var second = int.Parse(elements2[2]);
 
-        //        // year
-        //        id++;
-        //        var year = int.Parse(elements[id]);
+                //Ignore UTC
+                id++;
+ 
+                // year
+                id++;
+                var year = int.Parse(elements[id]);
 
-        //        return new DateTime(year, month, dayofmonth, hour, minute, second);
+                return new DateTime(year, month, dayofmonth, hour, minute, second);
 
-        //    }
+            }
 
-        //    throw new Exception("Invalid rtc time!");
-        //}
+            throw new Exception("Invalid rtc time!");
+        }
 
         private static string[] months = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
-        //public void SetDateTime(DateTime value) {
+        public void SetSystemTime(DateTime value) {
 
-        //    //date -s 2024.08.31-17:02:00
-        //    var arg = "-s ";
+            //date -s 2024.08.31-17:02:00
+            var arg = "-s ";
 
-        //    arg += value.Year + ".";
-        //    arg += value.Month + ".";
-        //    arg += value.Day;
+            arg += value.Year + ".";
+            arg += value.Month + ".";
+            arg += value.Day;
 
-        //    arg += "-";
-        //    arg += value.Hour + ":";
-        //    arg += value.Minute + ":";
-        //    arg += value.Second;
+            arg += "-";
+            arg += value.Hour + ":";
+            arg += value.Minute + ":";
+            arg += value.Second;
 
-        //    var script = new Script("date", "/sbin/", arg);
+            var script = new Script("date", "/sbin/", arg);
 
-        //    script.Start();
+            script.Start();
 
-        //    arg = "-w";
-        //    script = new Script("hwclock", "/sbin/", arg);
+            //arg = "-w";
+            //script = new Script("hwclock", "/sbin/", arg);
 
-        //    script.Start();
-        //}
+            //script.Start();
+        }
 
         public void EnableWakeup(WakeupPin wakeupPin, PinEventTypes edge) {
             this.EnableWakeup(System.DateTime.MaxValue, wakeupPin, edge); ;
