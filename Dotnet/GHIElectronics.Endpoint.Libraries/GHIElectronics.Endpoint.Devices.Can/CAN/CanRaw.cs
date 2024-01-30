@@ -204,10 +204,10 @@ namespace GHIElectronics.Endpoint.Devices.Can {
         /// </summary>
         /// <param name="id">Recipient identifier</param>
         /// <param name="mask">mask</param>
-        public void Filter(uint[] id, uint[] mask, bool invert) {
+        public void Filter(uint[] id, uint[] mask, bool invert=false) {
 
             Span<Interop.CanFilter> filters = stackalloc Interop.CanFilter[id.Length];
-            for (int i = 0; i < id.Length; i++) {
+            for (var i = 0; i < id.Length; i++) {
                 filters[i].can_id = id[i];
 
                 if (invert) {
