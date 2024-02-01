@@ -152,7 +152,9 @@ namespace GHIElectronics.Endpoint.Devices.Display {
             }
 
             // Disable cursor
-            while (!File.Exists("/sys/class/graphics/fbcon/cursor_blink")) ;
+            while (!File.Exists("/sys/class/graphics/fbcon/cursor_blink")) {
+                Thread.Sleep(10);
+            }
 
             var script_config = new Script("ghi_disable_cursor.sh", "./", "");
 
