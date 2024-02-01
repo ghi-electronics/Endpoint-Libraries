@@ -36,8 +36,8 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
 
 
         public delegate void PulseGenerateEventHandler(DigitalSignalController sender, uint endState, bool aborted);
-        public delegate void PulseReadEventHandler(DigitalSignalController sender, TimeSpan duration, uint count, uint initialState, bool aborted);
-        public delegate void PulseCaptureEventHandler(DigitalSignalController sender, double[] buffer, uint count, uint initialState, bool aborted);
+        public delegate void PulseReadEventHandler(DigitalSignalController sender, TimeSpan duration, uint count, uint pinState, bool aborted);
+        public delegate void PulseCaptureEventHandler(DigitalSignalController sender, double[] buffer, uint count, uint pinState, bool aborted);
 
         public delegate void ErrorEventHandler(DigitalSignalController sender, Mode mode, Error error);
 
@@ -260,6 +260,12 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
                 NativeRpmsgHelper.Release();
         }
 
+        public void Generate(uint[] data) {
+            this.Generate(data, 0, data.Length); ;
+        }
+        public void Generate(uint[] data, uint offset, int count) {
+            this.Generate(data, offset, count, 100, Edge.Falling); ;
+        }
         public void Generate(uint[] data, uint offset, int count, uint multiplier, Edge edge) {
 
             if (!this.CanGeneratePulse) {
