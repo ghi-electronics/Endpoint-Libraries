@@ -14,17 +14,7 @@ namespace GHIElectronics.Endpoint.Devices.Rtc {
         Slow = 2
     }
 
-    public enum WakeupPin: uint {
-        PA0 = 0,
-        PA2 = 1,
-        PC13 = 2,
-        PI8 = 3,
-        PI11 = 4,
-        PC1 = 5,
-        None = 0xFF
-
-
-    }
+    
 
     public class RtcController : RtcBase {
         static int initializeCount = 0;
@@ -131,71 +121,71 @@ namespace GHIElectronics.Endpoint.Devices.Rtc {
             //script.Start();
         }
 
-        public void EnableWakeup(WakeupPin wakeupPin, PinEventTypes edge) {
-            this.EnableWakeup(System.DateTime.MaxValue, wakeupPin, edge); ;
-        }
-        public void EnableWakeup(System.DateTime dtWakeup, WakeupPin wakeupPin = WakeupPin.None, PinEventTypes edge = PinEventTypes.Rising) {
-            var flag = true;
-            var message = string.Empty;
-            Script script;
-            string args;
+        //public void EnableWakeup(WakeupPin wakeupPin, PinEventTypes edge) {
+        //    this.EnableWakeup(System.DateTime.MaxValue, wakeupPin, edge); ;
+        //}
+        //public void EnableWakeup(System.DateTime dtWakeup, WakeupPin wakeupPin = WakeupPin.None, PinEventTypes edge = PinEventTypes.Rising) {
+        //    var flag = true;
+        //    var message = string.Empty;
+        //    Script script;
+        //    string args;
             
-            if (wakeupPin != WakeupPin.None) {
+        //    if (wakeupPin != WakeupPin.None) {
 
-                const uint PWR_BASE = 0x50001000U; // page 157
-                const uint PWR_WKUPCR = PWR_BASE + 0x20U; // page 157
-                const uint PWR_MPUWKUPENR = PWR_BASE + 0x28U; // page 157
+        //        const uint PWR_BASE = 0x50001000U; // page 157
+        //        const uint PWR_WKUPCR = PWR_BASE + 0x20U; // page 157
+        //        const uint PWR_MPUWKUPENR = PWR_BASE + 0x28U; // page 157
 
-                if (edge == PinEventTypes.None)
-                    throw new Exception("PinEventTypes edge supports Rising or Falling only.");
-
-
-                Register.Write(PWR_MPUWKUPENR, 0); // clear
-
-                var cr = 0x3FU; // clear wakeup flag
-
-                var pin = (int)wakeupPin;
-                var polarity = edge == PinEventTypes.Falling ? 0 : 1;
-
-                if (polarity == 0) // detect on low
-                {
-                    cr |= (uint)((1 << 8) << pin); // detect on low
-                    cr |= (uint)((1 << 16) << pin); // pull up
-                }
-                else {
-                    cr |= (uint)((2 << 16) << pin); // pull down
-                }
-
-                Register.Write(PWR_WKUPCR, cr); // set
-                Register.Write(PWR_MPUWKUPENR, (uint)(1 << pin)); // set
-            }
-
-            if (dtWakeup != System.DateTime.MaxValue) {
-                script = new Script("rtcwake_clear.sh", "./", "");
-                script.Start();
+        //        if (edge == PinEventTypes.None)
+        //            throw new Exception("PinEventTypes edge supports Rising or Falling only.");
 
 
-                var dt = dtWakeup.Year.ToString("d4") + "-" + dtWakeup.Month.ToString("d2") + "-" + dtWakeup.Day.ToString("d2");
+        //        Register.Write(PWR_MPUWKUPENR, 0); // clear
 
-                dt += " ";
-                dt += dtWakeup.Hour.ToString("d2") + ":" + dtWakeup.Minute.ToString("d2") + ":" + dtWakeup.Second.ToString("d2");
+        //        var cr = 0x3FU; // clear wakeup flag
 
-                args = $"-m no --date \"{dt}\"";
+        //        var pin = (int)wakeupPin;
+        //        var polarity = edge == PinEventTypes.Falling ? 0 : 1;
 
-                script = new Script("rtcwake", "./", args);
-                script.Start();
-                if (!script.Output.Contains("wakeup using /dev/rtc0 at")) {
-                    flag = false;
-                    message = script.Error;
+        //        if (polarity == 0) // detect on low
+        //        {
+        //            cr |= (uint)((1 << 8) << pin); // detect on low
+        //            cr |= (uint)((1 << 16) << pin); // pull up
+        //        }
+        //        else {
+        //            cr |= (uint)((2 << 16) << pin); // pull down
+        //        }
+
+        //        Register.Write(PWR_WKUPCR, cr); // set
+        //        Register.Write(PWR_MPUWKUPENR, (uint)(1 << pin)); // set
+        //    }
+
+        //    if (dtWakeup != System.DateTime.MaxValue) {
+        //        script = new Script("rtcwake_clear.sh", "./", "");
+        //        script.Start();
 
 
-                }
-            }
+        //        var dt = dtWakeup.Year.ToString("d4") + "-" + dtWakeup.Month.ToString("d2") + "-" + dtWakeup.Day.ToString("d2");
+
+        //        dt += " ";
+        //        dt += dtWakeup.Hour.ToString("d2") + ":" + dtWakeup.Minute.ToString("d2") + ":" + dtWakeup.Second.ToString("d2");
+
+        //        args = $"-m no --date \"{dt}\"";
+
+        //        script = new Script("rtcwake", "./", args);
+        //        script.Start();
+        //        if (!script.Output.Contains("wakeup using /dev/rtc0 at")) {
+        //            flag = false;
+        //            message = script.Error;
+
+
+        //        }
+        //    }
             
-            if (!flag) {
-                throw new Exception(message);
-            }
-        }
+        //    if (!flag) {
+        //        throw new Exception(message);
+        //    }
+        //}
 
         public DateTime Now {
             get => this.ReadTime();
