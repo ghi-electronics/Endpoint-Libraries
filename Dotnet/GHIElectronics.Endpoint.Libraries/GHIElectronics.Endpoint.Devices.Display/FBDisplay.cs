@@ -117,7 +117,8 @@ namespace GHIElectronics.Endpoint.Devices.Display {
             }
 
             if (stride < 0) {
-                while (!File.Exists(FB_STRIDE)) ;
+                while (!File.Exists(FB_STRIDE))
+                    Thread.Sleep(10);
 
                 strideHandle = Interop.Open(FB_STRIDE, Interop.FileOpenFlags.O_RDONLY);
 
