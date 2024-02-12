@@ -32,6 +32,7 @@ namespace GHIElectronics.Endpoint.Devices.Display {
 
         public int Width { get; }
         public int Height { get; }
+        DisplayConfiguration IDisplayProvider.Configuration => this.configuration;
 
         private Configuration configuration;
         public FBDisplay(DisplayConfiguration configuration) {
