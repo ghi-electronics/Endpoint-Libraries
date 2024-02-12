@@ -166,7 +166,7 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
                 else if (mode == MODE_READ_PULSE) {
                     var durationTick = data[CMD_RAW_DATA_START_OFFSET / 2 + 0];
                     var readPulseCount = data[CMD_RAW_DATA_START_OFFSET / 2 + 1];
-                    var initialState = data[CMD_RAW_DATA_START_OFFSET / 2 + 2]; ;
+                    var pinState = data[CMD_RAW_DATA_START_OFFSET / 2 + 2]; ;
                     var aborted = data[CMD_RAW_DATA_START_OFFSET / 2 + 3] == 0 ? false : true;
                     var durationTime = TimeSpan.FromTicks(durationTick);
                     var error = (Error)data[CMD_RAW_DATA_START_OFFSET / 2 + 4];
@@ -182,7 +182,7 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
                     else {
 
                         if (this.pulseReadCallback != null) {
-                            this.pulseReadCallback?.Invoke(this, durationTime, readPulseCount, initialState, aborted);
+                            this.pulseReadCallback?.Invoke(this, durationTime, readPulseCount, pinState, aborted);
 
 
                         }
@@ -194,7 +194,7 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
                 if (mode == MODE_CAPTURE_PULSE) {
 
                     var capturedPulseCount = data[CMD_RAW_DATA_START_OFFSET / 2 + 0];
-                    var initialState = data[CMD_RAW_DATA_START_OFFSET / 2 + 1];
+                    var pinState = data[CMD_RAW_DATA_START_OFFSET / 2 + 1];
 
                     var waitForEdge = data[CMD_RAW_DATA_START_OFFSET / 2 + 2] != 0 ? true : false;
                     var aborted = data[CMD_RAW_DATA_START_OFFSET / 2 + 3] == 0 ? false : true;
@@ -219,7 +219,7 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
                             var scale = 4.863; // 1000000000/205.6MHz
 
                             if (capturedPulseCount > 0) {
-                                //d[0] = buffer[0] * scale;
+                        
 
                                 for (var i = 1; i < buffer.Length; i++) {
                                     d[i-1] = (buffer[i] - buffer[i - 1]) * scale;
@@ -227,16 +227,8 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
 
 
                             }
-                            //if (waitForEdge) {
-                            //    var d2 = new double[d.Length - 1];
-                            //    Array.Copy(d, 1, d2, 0, d2.Length);
-
-                            //    this.pulseCaptureCallback?.Invoke(this, d2, (uint)d2.Length, initialState, aborted);
-                            //}
-                            //else {
-                            //    this.pulseCaptureCallback?.Invoke(this, d, capturedPulseCount, initialState, aborted);
-                            //}
-                            this.pulseCaptureCallback?.Invoke(this, d, capturedPulseCount, initialState, aborted);
+                            
+                            this.pulseCaptureCallback?.Invoke(this, d, capturedPulseCount, pinState, aborted);
 
 
                         }
