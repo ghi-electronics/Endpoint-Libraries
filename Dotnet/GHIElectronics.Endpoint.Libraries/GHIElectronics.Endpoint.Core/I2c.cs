@@ -18,7 +18,8 @@ namespace GHIElectronics.Endpoint.Core {
             public const int I2c5 = 1;
             public const int I2c6 = 3;
 
-            private static bool initialized = false;
+            //private static int initialized = 0;
+            private static List<int> initializedList = new List<int>();
 
             internal class I2cPinSettings {
                 public int SdaPin { get; set; }
@@ -44,8 +45,13 @@ namespace GHIElectronics.Endpoint.Core {
                     throw new ArgumentException("Invalid I2c port.");
                 }
 
-                if (initialized)
+                //if ((initialized & (1 << port)) != 0)
+                //    return;
+
+                if (initializedList.Contains(port)) {
                     return;
+                    
+                }
                 //port = port - 1;
 
 
@@ -174,7 +180,8 @@ namespace GHIElectronics.Endpoint.Core {
                 Gpio.PinReserve(pinConfig.SclPin);
                 Gpio.PinReserve(pinConfig.SdaPin);
 
-                initialized = true;
+                //initialized |= (1 << port);
+                initializedList.Add(port);
 
             }
             public static void UnInitialize(int port) {
@@ -183,9 +190,9 @@ namespace GHIElectronics.Endpoint.Core {
                     throw new ArgumentException("Invalid I2c port.");
                 }
 
-                if (initialized) {
+                if (initializedList.Contains(port)) {
 
-                    port = port - 1;
+                    //port = port - 1;
 
                     var pinConfig = PinSettings[port];
 
@@ -194,7 +201,8 @@ namespace GHIElectronics.Endpoint.Core {
 
                     Gpio.SetModer(pinConfig.SclPin, Gpio.Moder.Input);
                     Gpio.SetModer(pinConfig.SdaPin, Gpio.Moder.Input);
-                    initialized = false;
+                    //initialized &= ~(1 << port);
+                    initializedList.Remove(port);
                 }
             }
 
