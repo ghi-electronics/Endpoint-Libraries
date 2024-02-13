@@ -34,5 +34,8 @@
 	<PackageReference Include="System.Resources.Extensions" Version="8.0.0" />
   </ItemGroup>
   
+  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
+    <Exec Command="call ..\dopacknuget.bat $(MSBuildProjectName)" />
+  </Target>
     
 </Project>
