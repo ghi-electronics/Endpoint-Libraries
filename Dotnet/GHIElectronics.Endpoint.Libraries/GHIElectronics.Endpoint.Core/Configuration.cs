@@ -6,9 +6,9 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 
-[assembly: InternalsVisibleToAttribute("GHIElectronics.Endpoint.Devices.Can")]
-[assembly: InternalsVisibleToAttribute("GHIElectronics.Endpoint.Devices.Sdmmc")]
-[assembly: InternalsVisibleToAttribute("GHIElectronics.Endpoint.Devices.Dcmi")]
+[assembly: InternalsVisibleTo("GHIElectronics.Endpoint.Devices.Can")]
+[assembly: InternalsVisibleTo("GHIElectronics.Endpoint.Devices.Sdmmc")]
+[assembly: InternalsVisibleTo("GHIElectronics.Endpoint.Devices.Dcmi")]
 namespace GHIElectronics.Endpoint.Core {
 
     public static partial class EPM815 {

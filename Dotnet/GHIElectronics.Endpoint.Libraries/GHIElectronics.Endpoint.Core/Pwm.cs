@@ -235,10 +235,12 @@ namespace GHIElectronics.Endpoint.Core {
                 return channelId;
             }
 
-            private static bool initialized = false;
+            //private static bool initialized = false;
+            private static List<int> initializedList = new List<int>();
+
             public static void Initialize(int pin) {
 
-                if (initialized)
+                if (initializedList.Contains(pin))
                     return;
 
                 if (Gpio.IsPinReserved(pin)) {
@@ -266,11 +268,12 @@ namespace GHIElectronics.Endpoint.Core {
 
                 Gpio.PinReserve(pinId);
 
-                initialized = true;
+                //initialized = true;
+                initializedList.Add(pin);
             }
 
             public static void UnInitialize(int pin) {
-                if (initialized) {
+                if (initializedList.Contains(pin)) {
                     var pwm_pin = GetPinEncodeFromPin(pin);
 
                     if (pwm_pin == Gpio.Pin.NONE)
@@ -283,7 +286,8 @@ namespace GHIElectronics.Endpoint.Core {
 
                     Gpio.PinRelease(pinId);
 
-                    initialized = false;
+                    //initialized = false;
+                    initializedList.Remove(pin);
                 }
 
             }

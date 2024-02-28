@@ -1,63 +1,55 @@
+using System.Runtime.InteropServices;
+using System.Runtime.Loader;
 using GHIElectronics.Endpoint.Core;
 
 namespace GHIElectronics.Endpoint.Devices.Watchdog {
     public class WatchdogController {
-        
+
+
+        private const string LibNativeWatchdog = "nativewatchdog.so";
+        internal IntPtr invalidHandleValue;
+
+        public WatchdogController() {
+            this.invalidHandleValue = new IntPtr(-1);
+
+            var currentAssembly = typeof(WatchdogController).Assembly;
+
+            AssemblyLoadContext.GetLoadContext(currentAssembly)!.ResolvingUnmanagedDll += (assembly, libname) => {
+                if (assembly != currentAssembly || libname != LibNativeWatchdog) {
+                    return IntPtr.Zero;
+                }
+
+
+                return IntPtr.Zero;
+            };
+
+        }
+
         public uint MaxTimeout { get; } = 32;
         public uint Timeout { get; private set; }
-        public bool Start(uint timeout) {
-            if (timeout == 0 || timeout > this.MaxTimeout) {
+        public bool Start(uint second) {
+            if (second == 0 || second > this.MaxTimeout) {
                 throw new Exception("Invalid Timeout");
-            }            
-
-            var arg = string.Format("-T {0} /dev/watchdog", timeout);
-            var script = new Script("watchdog", "./", arg);
-
-            script.Start();
-
-            if (script.ExitCode == 0 && script.Output == "") {
-                this.Timeout = timeout;
-                return true;
             }
 
-            return false;
+            this.Timeout = second;
+
+            return native_wd_enable((int)second) >=0;
+
+
         }
 
-        public bool Started {
-
-            get  {
-                var arg = "watchdog";
-
-                var script = new Script("ghi_ps.sh", "./", arg);
-
-                script.Start();
-
-                if (script.Output.Contains("-T") && script.Output.Contains("/dev/watchdog"))
-                    return true;
-
-                return false;
-            }
-
-               
+        public void Reset() {
+            native_wd_reset(); ;
         }
 
-        //public bool Stop() {
-        //    if (this.Started) {
-        //        var arg = "watchdog";
+        
 
-        //        var script = new Script("killall", "./", arg);
+        [DllImport(LibNativeWatchdog)]
+        internal static extern int native_wd_enable(int timeout);
 
-        //        script.Start();
-
-        //        if ((script.Error == null || script.Error.Length == 0) && script.ExitCode == 0 && script.Output.Length == 0)
-        //            return true;
-
-               
-        //    }
-
-        //    return false;
-
-        //}
+        [DllImport(LibNativeWatchdog)]
+        internal static extern int native_wd_reset();     
 
     }
 }

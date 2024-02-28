@@ -224,6 +224,8 @@ namespace GHIElectronics.Endpoint.Devices.Display
         private IDisplayProvider iDisplay;
         public DisplayController(IDisplayProvider display) => this.iDisplay = display;
 
+        public DisplayConfiguration Configuration => this.iDisplay.Configuration;
+
         public void Flush(byte[] data) => this.Flush(data, 0, data.Length);
         public void Flush(byte[] data, int offset, int length) => this.iDisplay.Flush(data, offset, length);
 

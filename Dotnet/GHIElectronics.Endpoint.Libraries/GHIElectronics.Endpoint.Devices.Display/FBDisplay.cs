@@ -32,6 +32,7 @@ namespace GHIElectronics.Endpoint.Devices.Display {
 
         public int Width { get; }
         public int Height { get; }
+        DisplayConfiguration IDisplayProvider.Configuration => this.configuration;
 
         private Configuration configuration;
         public FBDisplay(DisplayConfiguration configuration) {
@@ -117,7 +118,8 @@ namespace GHIElectronics.Endpoint.Devices.Display {
             }
 
             if (stride < 0) {
-                while (!File.Exists(FB_STRIDE)) ;
+                while (!File.Exists(FB_STRIDE))
+                    Thread.Sleep(10);
 
                 strideHandle = Interop.Open(FB_STRIDE, Interop.FileOpenFlags.O_RDONLY);
 
@@ -152,7 +154,9 @@ namespace GHIElectronics.Endpoint.Devices.Display {
             }
 
             // Disable cursor
-            while (!File.Exists("/sys/class/graphics/fbcon/cursor_blink")) ;
+            while (!File.Exists("/sys/class/graphics/fbcon/cursor_blink")) {
+                Thread.Sleep(10);
+            }
 
             var script_config = new Script("ghi_disable_cursor.sh", "./", "");
 

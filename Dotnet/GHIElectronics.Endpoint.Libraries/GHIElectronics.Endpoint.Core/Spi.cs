@@ -16,7 +16,8 @@ namespace GHIElectronics.Endpoint.Core {
             public const int Spi4 = 1;
             public const int Spi5 = 2;
 
-            private static bool initialized = false;
+            //private static bool initialized = false;
+            private static List<int> initializedList = new List<int>();
 
             const string CMD_LOCATION = "/sbin";
             const string DRIVER_LOCATION = "/lib/modules/5.13.0/kernel/drivers/spi/spidev.ko";
@@ -55,7 +56,7 @@ namespace GHIElectronics.Endpoint.Core {
 
                 //port = port - 1;
 
-                if (initialized)
+                if (initializedList.Contains(port))
                     return;
 
 
@@ -98,7 +99,8 @@ namespace GHIElectronics.Endpoint.Core {
                     Thread.Sleep(10);
                 }
 
-                initialized = true;
+                //initialized = true;
+                initializedList.Add(port);
 
             }
             public static void UnInitialize(int port) {
@@ -107,8 +109,8 @@ namespace GHIElectronics.Endpoint.Core {
                     throw new ArgumentException("Invalid Spi port.");
                 }
 
-                if (initialized) {
-                    port = port - 1;
+                if (initializedList.Contains(port)) {
+                    //port = port - 1;
 
 
                     var pinConfig = PinSettings[port];
@@ -127,7 +129,7 @@ namespace GHIElectronics.Endpoint.Core {
                     PinRelease(pinConfig.MosiPin);
                     PinRelease(pinConfig.MisoPin);
                     PinRelease(pinConfig.ClockPin);
-                    initialized = false;
+                    initializedList.Remove(port);
                 }
             }
         }

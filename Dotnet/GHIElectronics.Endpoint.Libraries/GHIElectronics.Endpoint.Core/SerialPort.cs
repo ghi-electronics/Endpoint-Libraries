@@ -21,7 +21,8 @@ namespace GHIElectronics.Endpoint.Core {
             public const string Uart7 = "/dev/ttySTM6";
             public const string Uart8 = "/dev/ttySTM7";
 
-            private static bool initialized = false;
+            //private static bool initialized = false;
+            private static List<string> initializedList = new List<string>();
 
             internal class UartPinSettings {
                 public int TxPin { get; set; }
@@ -46,7 +47,8 @@ namespace GHIElectronics.Endpoint.Core {
             };
             public static void Initialize(string portname, bool enableHardwareFlowControl = false) {
 
-                if (initialized) return;
+                if (initializedList.Contains(portname))
+                    return;
 
                 int port;
                 try {
@@ -110,12 +112,12 @@ namespace GHIElectronics.Endpoint.Core {
 
                 }
 
-                initialized = true;
+                initializedList.Add(portname);
             }
 
             public static void UnInitialize(string portname, bool enabledHardwareFlowControl) {
 
-                if (initialized) {
+                if (initializedList.Contains(portname)) {
 
                     int port;
                     try {
@@ -151,7 +153,7 @@ namespace GHIElectronics.Endpoint.Core {
                         PinRelease(pinConfig.RtsPin);
                     }
 
-                    initialized = false;
+                    initializedList.Remove(portname);
                 }
             }
 

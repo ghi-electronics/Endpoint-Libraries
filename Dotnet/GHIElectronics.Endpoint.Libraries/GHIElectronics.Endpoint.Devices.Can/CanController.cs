@@ -200,7 +200,7 @@ namespace GHIElectronics.Endpoint.Devices.Can
             this.canRaw.Filter(id, mask, invert);
         }
 
-        public void EnableError(uint error)
+        public void EnableErrorEvent(uint error)
         {
             this.canRaw.FilterError(error); ;
         }
