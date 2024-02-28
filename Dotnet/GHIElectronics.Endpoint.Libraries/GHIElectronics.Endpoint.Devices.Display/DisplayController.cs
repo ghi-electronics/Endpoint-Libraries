@@ -9,7 +9,7 @@ namespace GHIElectronics.Endpoint.Devices.Display
 
     using System.Device.Gpio;
     using System.Device.Gpio.Drivers;
-    using GHIElectronics.Endpoint.Pins;
+    using GHIElectronics.Endpoint.Core;
     using GHIElectronics.Endpoint.Devices.Display;
     using SkiaSharp;
     using EndpointDisplayTest.Properties;
@@ -27,7 +27,7 @@ namespace GHIElectronics.Endpoint.Devices.Display
     SKBitmap bitmap = new SKBitmap(screenWidth, screenHeight, SKImageInfo.PlatformColorType, SKAlphaType.Premul);
     bitmap.Erase(SKColors.Transparent);
 
-    var configuration = new FBDisplay.ParallelConfiguration(){
+    var configuration = new FBDisplay.Configuration(){
         Clock = 10000,
         Width = 480,
         Hsync_start = 480 + 2,
