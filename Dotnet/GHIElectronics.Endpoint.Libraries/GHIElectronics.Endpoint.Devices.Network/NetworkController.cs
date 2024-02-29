@@ -45,6 +45,7 @@ namespace GHIElectronics.Endpoint.Devices.Network {
     public enum NetworkInterfaceType {
         Ethernet = 0,
         WiFi = 1,
+        UsbEthernet=2,
     }
 
     
@@ -158,10 +159,17 @@ namespace GHIElectronics.Endpoint.Devices.Network {
 
             if (this.InterfaceType == NetworkInterfaceType.Ethernet) {
                 this.interfaceName = "eth";
+                this.controllerId = 0;
             }
 
-            if (this.InterfaceType == NetworkInterfaceType.WiFi) {
+            else if (this.InterfaceType == NetworkInterfaceType.WiFi) {
                 this.interfaceName = "wlan";
+                this.controllerId = 0;
+            }
+
+            else if (this.InterfaceType == NetworkInterfaceType.UsbEthernet) {
+                this.interfaceName = "eth";
+                this.controllerId = 1;
             }
 
             this.Acquire();
@@ -286,13 +294,16 @@ namespace GHIElectronics.Endpoint.Devices.Network {
                     }
                 }
             }
+            else if (this.InterfaceType == NetworkInterfaceType.UsbEthernet) {
+                var script = new Script("modprobe", "", "r8153_ecm");
+
+                script.Start();
+            }
         }
 
         private void UnLoadResources() {
 
             if (this.InterfaceType == NetworkInterfaceType.WiFi) {
-
-                var setting = this.ActiveInterfaceSettings as WiFiNetworkInterfaceSettings;
 
                 var script = new Script("lsmod", "/sbin/", "");
                 script.Start();
@@ -303,6 +314,10 @@ namespace GHIElectronics.Endpoint.Devices.Network {
                     script.Start();
                 }
             }
+            else if (this.InterfaceType == NetworkInterfaceType.UsbEthernet) {
+               // Do we need to unload???
+            }
+
         }
 
         public event NetworkLinkConnectedChangedEventHandler NetworkLinkConnectedChanged {
@@ -421,10 +436,10 @@ namespace GHIElectronics.Endpoint.Devices.Network {
 
               
 
-                var networklist = new string[] { "eth0", "wlan0" };
-                var detect_connection_changed = new bool[] { false, false };
-                var connect = new bool[] { false, false };
-                var lastconnect = new bool[] { false, false };
+                var networklist = new string[] { "eth0", "wlan0", "eth1" };
+                var detect_connection_changed = new bool[] { false, false, false };
+                var connect = new bool[] { false, false, false };
+                var lastconnect = new bool[] { false, false, false };
 
                 var index = 0;
                 while (this.enabled && !this.disposed)
