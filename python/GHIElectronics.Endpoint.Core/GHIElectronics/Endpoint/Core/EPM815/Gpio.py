@@ -1,10 +1,12 @@
 from enum import Enum
-import Register
+from enum import IntEnum
+
+import GHIElectronics.Endpoint.Core.EPM815.Register as Register
 
 MAX_PORT = 10
 MAX_PIN_PERPORT = 16
 
-class Alternate(Enum):
+class Alternate(IntEnum):
     AF0=0
     AF1=1
     AF2=2
@@ -22,33 +24,33 @@ class Alternate(Enum):
     AF14=14
     AF15=15
 
-class Moder(Enum):
+class Moder(IntEnum):
     Input = 0
     Output = 1
     Alternate = 2
     Analog = 3
     NONE = -1
 
-class OutputType(Enum):
+class OutputType(IntEnum):
     PushPull = 0
     OpenDrain = 1
 
-class Pull(Enum):
+class Pull(IntEnum):
     NONE = 0
     Up = 1
     Down = 2
 
-class Speed(Enum):
+class Speed(IntEnum):
     Low = 0,
     Medium = 1,
     High = 2,
     VeryHigh = 3,
 
-class Speed(Enum):
+class Speed(IntEnum):
     Rising = 1,
     Falling = 2,
 
-class Pin(Enum):
+class Pin(IntEnum):
     #  <summary>GPIO pin.</summary>
     PA0 = 0
     #  <summary>GPIO pin.</summary>
@@ -420,21 +422,21 @@ class Pin(Enum):
     #  <summary>GPIO pin.</summary>
     NONE = -1
 
-RCC_MP_AHB4ENSETR = 0x50000A28
+_RCC_MP_AHB4ENSETR = 0x50000A28
 
-RCC_MP_AHB5ENSETR = 0x50000210
+_RCC_MP_AHB5ENSETR = 0x50000210
 
-GPIO_BASE_REG = 0x50002000
-GPIOZ_BASE_REG = 0x54004000
+_GPIO_BASE_REG = 0x50002000
+_GPIOZ_BASE_REG = 0x54004000
 
-GPIO_MODER_REG_OFFSET = 0x00000000
-GPIO_OTYPER_REG_OFFSET = 0x00000004
-GPIO_OSPEEDR_REG_OFFSET = 0x00000008
-GPIO_PUPDR_REG_OFFSET = 0x0000000C
-GPIO_AFRL_REG_OFFSET = 0x00000020
-GPIO_AFRH_REG_OFFSET = 0x00000024
+_GPIO_MODER_REG_OFFSET = 0x00000000
+_GPIO_OTYPER_REG_OFFSET = 0x00000004
+_GPIO_OSPEEDR_REG_OFFSET = 0x00000008
+_GPIO_PUPDR_REG_OFFSET = 0x0000000C
+_GPIO_AFRL_REG_OFFSET = 0x00000020
+_GPIO_AFRH_REG_OFFSET = 0x00000024
 
-Pins = [0] * 10
+_Pins = [0] * 10
 def ThrowExceptionPinNotInRange(pin_id: int):
     raise Exception(f'{pin_id} is out of cpu supported range.')
 
@@ -442,22 +444,22 @@ def ThrowExceptionPinInUsed(pin_id: int):
     raise Exception(f'{pin_id} is already in used.')
 
 def SetModer(pin_id: int, moder: Moder):
-    port_id = pin_id / 16
-    port_base = GPIO_BASE_REG + port_id * 0x1000
+    port_id = int(pin_id / 16)
+    port_base = _GPIO_BASE_REG + port_id * 0x1000
 
     pin_id = pin_id % 16
 
     if (port_id == 9) :
-        port_base = GPIOZ_BASE_REG
+        port_base = _GPIOZ_BASE_REG
         port_id = 0
-        Register.Write(RCC_MP_AHB5ENSETR, 1 << port_id)
+        Register.Write(_RCC_MP_AHB5ENSETR, 1 << port_id)
     
     else:     
         
-        Register.Write(RCC_MP_AHB4ENSETR, 1 << port_id)
+        Register.Write(_RCC_MP_AHB4ENSETR, 1 << port_id)
     
 
-    value = Register.Read(port_base + GPIO_MODER_REG_OFFSET)
+    value = Register.Read(port_base + _GPIO_MODER_REG_OFFSET)
 
     clear = 3 << (pin_id * 2) 
 
@@ -467,34 +469,34 @@ def SetModer(pin_id: int, moder: Moder):
 
     value |= set
 
-    Register.Write(port_base + GPIO_MODER_REG_OFFSET, value)
+    Register.Write(port_base + _GPIO_MODER_REG_OFFSET, value)
 
 def SetAlternate(pin_id: int, alt: Alternate):
-    port_id = pin_id / 16
-    port_base = GPIO_BASE_REG + port_id * 0x1000
+    port_id = int(pin_id / 16)
+    port_base = _GPIO_BASE_REG + port_id * 0x1000
 
     pin_id = pin_id % 16
 
     if (port_id == 9) :
     
-        port_base = GPIOZ_BASE_REG
+        port_base = _GPIOZ_BASE_REG
         port_id = 0
-        Register.Write(RCC_MP_AHB5ENSETR,(1 << port_id))
+        Register.Write(_RCC_MP_AHB5ENSETR,(1 << port_id))
     
     else :
    
-        Register.Write(RCC_MP_AHB4ENSETR,(1 << port_id))
+        Register.Write(_RCC_MP_AHB4ENSETR,(1 << port_id))
     
     id = pin_id
 
     if (pin_id > 7):
         id = pin_id - 8
 
-    reg = port_base + GPIO_AFRL_REG_OFFSET
+    reg = port_base + _GPIO_AFRL_REG_OFFSET
 
     if (pin_id > 7): 
 
-        reg = port_base + GPIO_AFRH_REG_OFFSET
+        reg = port_base + _GPIO_AFRH_REG_OFFSET
 
     value = Register.Read(reg)
 
@@ -509,23 +511,23 @@ def SetAlternate(pin_id: int, alt: Alternate):
     Register.Write(reg, value)
 
 def SetOutputType(pin_id: int, typeOutputType):
-    port_id = pin_id / 16
-    port_base = GPIO_BASE_REG + port_id * 0x1000
+    port_id = int(pin_id / 16)
+    port_base = _GPIO_BASE_REG + port_id * 0x1000
 
     pin_id = pin_id % 16
 
     if (port_id == 9) :
     
-        port_base = GPIOZ_BASE_REG
+        port_base = _GPIOZ_BASE_REG
         port_id = 0
-        Register.Write(RCC_MP_AHB5ENSETR, (1 << port_id))
+        Register.Write(_RCC_MP_AHB5ENSETR, (1 << port_id))
     
     else :
     
-        Register.Write(RCC_MP_AHB4ENSETR, (1 << port_id))
+        Register.Write(_RCC_MP_AHB4ENSETR, (1 << port_id))
     
 
-    value = Register.Read(port_base + GPIO_OTYPER_REG_OFFSET)
+    value = Register.Read(port_base + _GPIO_OTYPER_REG_OFFSET)
 
     if (type == OutputType.PushPull):
         value &= ~(1 << pin_id)
@@ -533,24 +535,24 @@ def SetOutputType(pin_id: int, typeOutputType):
     else :
         value |= (1 << pin_id)
     
-    Register.Write(port_base + GPIO_OTYPER_REG_OFFSET, value)
+    Register.Write(port_base + _GPIO_OTYPER_REG_OFFSET, value)
 
 def SetPull(pin_id: int, pull: Pull):
-    port_id = pin_id / 16
-    port_base = GPIO_BASE_REG + port_id * 0x1000
+    port_id = int(pin_id / 16)
+    port_base = _GPIO_BASE_REG + port_id * 0x1000
 
     if (port_id == 9):
-        port_base = GPIOZ_BASE_REG
+        port_base = _GPIOZ_BASE_REG
         port_id = 0
-        Register.Write(RCC_MP_AHB5ENSETR, (1 << port_id))
+        Register.Write(_RCC_MP_AHB5ENSETR, (1 << port_id))
     
     else:    
-        Register.Write(RCC_MP_AHB4ENSETR, (1 << port_id))
+        Register.Write(_RCC_MP_AHB4ENSETR, (1 << port_id))
     
 
     pin_id = pin_id % 16
 
-    value = Register.Read(port_base + GPIO_PUPDR_REG_OFFSET)
+    value = Register.Read(port_base + _GPIO_PUPDR_REG_OFFSET)
 
     clear = 3 << (pin_id * 2) 
 
@@ -560,27 +562,27 @@ def SetPull(pin_id: int, pull: Pull):
 
     value |= set
 
-    Register.Write(port_base + GPIO_PUPDR_REG_OFFSET, value)
+    Register.Write(port_base + _GPIO_PUPDR_REG_OFFSET, value)
 
 def SetSpeed(pin_id : int , speed: Speed ):
 
-    port_id = pin_id / 16
-    port_base = GPIO_BASE_REG + port_id * 0x1000
+    port_id = int(pin_id / 16)
+    port_base = _GPIO_BASE_REG + port_id * 0x1000
 
     pin_id = pin_id % 16
 
     if (port_id == 9):
     
-        port_base = GPIOZ_BASE_REG
+        port_base = _GPIOZ_BASE_REG
         port_id = 0
-        Register.Write(RCC_MP_AHB5ENSETR, (1 <<port_id))
+        Register.Write(_RCC_MP_AHB5ENSETR, (1 <<port_id))
     
     else :
     
-        Register.Write(RCC_MP_AHB4ENSETR, (1 <<port_id))
+        Register.Write(_RCC_MP_AHB4ENSETR, (1 <<port_id))
     
 
-    value = Register.Read(port_base + GPIO_OSPEEDR_REG_OFFSET)
+    value = Register.Read(port_base + _GPIO_OSPEEDR_REG_OFFSET)
 
     clear = 3 << (pin_id * 2) 
 
@@ -590,39 +592,39 @@ def SetSpeed(pin_id : int , speed: Speed ):
 
     value |= set
 
-    Register.Write(port_base + GPIO_OSPEEDR_REG_OFFSET, value)
+    Register.Write(port_base + _GPIO_OSPEEDR_REG_OFFSET, value)
 
 def PinReserve(pin: int):
-    pin_port = pin / 16
-    pin_num = pin % 16
+    pin_port = int(pin / 16)
+    pin_num = int(pin % 16)
 
     if (pin_port >= MAX_PORT or pin_num >= MAX_PIN_PERPORT):
         ThrowExceptionPinNotInRange(pin)
     
 
-    if ((Pins[pin_port] & (1 << pin_num)) != 0):
+    if ((_Pins[pin_port] & (1 << pin_num)) != 0):
         ThrowExceptionPinInUsed(pin)
     
 
-    Pins[pin_port] |= (1 << pin_num)
+    _Pins[pin_port] |= (1 << pin_num)
     
 def PinRelease(pin: int):
-    pin_port = pin / 16
-    pin_num = pin % 16
+    pin_port = int(pin / 16)
+    pin_num = int(pin % 16)
 
     if (pin_port >= MAX_PORT or pin_num >= MAX_PIN_PERPORT):
         ThrowExceptionPinNotInRange(pin)
 
-    Pins[pin_port] &= ~(1 << pin_num)
+    _Pins[pin_port] &= ~(1 << pin_num)
 
 def IsPinReserved(pin: int)->bool:
-    pin_port = pin / 16
-    pin_num = pin % 16
+    pin_port = int(pin / 16)
+    pin_num = int(pin % 16)
 
     if (pin_port >= MAX_PORT or pin_num >= MAX_PIN_PERPORT):
         ThrowExceptionPinNotInRange(pin)
 
-    return (Pins[pin_port] & (1 << pin_num)) != 0
+    return (_Pins[pin_port] & (1 << pin_num)) != 0
 
 def GetPort(pin: int):
     return pin/ MAX_PORT
