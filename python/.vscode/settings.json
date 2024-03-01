@@ -1,0 +1,7 @@
+{
+   "sshUser": "root",
+   "sshEndpoint": "192.168.82.2",
+   "workingFolder":"/root/.epdata",
+   "ouputFile": "test_core.py"   
+
+}
