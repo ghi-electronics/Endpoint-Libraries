@@ -47,7 +47,7 @@ namespace GHIElectronics.Endpoint.Core {
 
             public enum Moder : int {
                 Input = 0,
-                Gpio = 1,
+                Output = 1,
                 Alternate = 2,
                 Analog = 3,
                 NONE = -1,
