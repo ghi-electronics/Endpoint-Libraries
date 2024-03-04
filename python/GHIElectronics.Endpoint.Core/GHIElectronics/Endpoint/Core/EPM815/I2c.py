@@ -13,7 +13,7 @@ __SCL_ID = 1
 __SDA_ALT = 2
 __SCL_ALT = 3
 
-PinSettings = [struct.pack('llll',Gpio.Pin.PD13,Gpio.Pin.PD12,Gpio.Alternate.AF5, Gpio.Alternate.AF5),
+__PinSettings = [struct.pack('llll',Gpio.Pin.PD13,Gpio.Pin.PD12,Gpio.Alternate.AF5, Gpio.Alternate.AF5),
                struct.pack('llll',Gpio.Pin.PZ5 , Gpio.Pin.PZ4 , Gpio.Alternate.AF4,  Gpio.Alternate.AF4),
                struct.pack('llll', Gpio.Pin.PF15,  Gpio.Pin.PB6 ,  Gpio.Alternate.AF4 ,   Gpio.Alternate.AF6 ),
                struct.pack('llll', Gpio.Pin.PD0, Gpio.Pin.PD1 , Gpio.Alternate.AF2 ,   Gpio.Alternate.AF2 ),
@@ -27,7 +27,7 @@ def Initialize(port: int, frequency_hz: int):
     if (port in __InitializedList):
         return
     
-    pinConfig = struct.unpack('llll', PinSettings[port])
+    pinConfig = struct.unpack('llll', __PinSettings[port])
 
     if Gpio.IsPinReserved(pinConfig[__SCL_ID]):
         Gpio.ThrowExceptionPinInUsed(pinConfig[__SCL_ID])
@@ -61,7 +61,7 @@ def UnInitialize(port: int):
         raise Exception("Invalid I2c port.")
     
     if (port in __InitializedList):
-        pinConfig = struct.unpack('llll', PinSettings[port])
+        pinConfig = struct.unpack('llll', __PinSettings[port])
 
         Gpio.PinRelease(pinConfig[__SCL_ID])
         Gpio.PinRelease(pinConfig[__SDA_ID])
