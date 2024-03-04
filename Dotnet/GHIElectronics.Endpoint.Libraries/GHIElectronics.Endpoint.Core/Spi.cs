@@ -19,8 +19,8 @@ namespace GHIElectronics.Endpoint.Core {
             //private static bool initialized = false;
             private static List<int> initializedList = new List<int>();
 
-            const string CMD_LOCATION = "/sbin";
-            const string DRIVER_LOCATION = "/lib/modules/5.13.0/kernel/drivers/spi/spidev.ko";
+            //const string CMD_LOCATION = "/sbin";
+            //const string DRIVER_LOCATION = "/lib/modules/5.13.0/kernel/drivers/spi/spidev.ko";
             internal class SpiPinSettings {
                 public int MosiPin { get; set; }
                 public int MisoPin { get; set; }
@@ -89,38 +89,28 @@ namespace GHIElectronics.Endpoint.Core {
                 PinReserve(pinConfig.ClockPin);
 
                 // load driver
-                if (Directory.Exists("/sys/class/spidev"))
+                if (Directory.Exists("/sys/class/spidev")) {
+                    initializedList.Add(port);
                     return;
+                }
 
-                var script = new Script("insmod", CMD_LOCATION, DRIVER_LOCATION);
+                var script = new Script("modprobe", "./", "spidev");
                 script.Start();
 
                 while (!Directory.Exists("/sys/class/spidev")) {
                     Thread.Sleep(10);
-                }
-
-                //initialized = true;
-                initializedList.Add(port);
-
+                }                
             }
             public static void UnInitialize(int port) {
 
-                if (port < Spi1 || port > Spi5) {
+                if (port != Spi1 && port != Spi4 && port != Spi5) {
                     throw new ArgumentException("Invalid Spi port.");
                 }
 
                 if (initializedList.Contains(port)) {
                     //port = port - 1;
 
-
-                    var pinConfig = PinSettings[port];
-
-                    // release driver
-                    if (!Directory.Exists("/sys/class/spidev")) // unloaded
-                        return;
-
-                    var script = new Script("rmmod", CMD_LOCATION, DRIVER_LOCATION);
-                    script.Start();
+                    var pinConfig = PinSettings[port];                 
 
                     SetModer(pinConfig.MosiPin, Moder.Input);
                     SetModer(pinConfig.MisoPin, Moder.Input);
@@ -129,6 +119,7 @@ namespace GHIElectronics.Endpoint.Core {
                     PinRelease(pinConfig.MosiPin);
                     PinRelease(pinConfig.MisoPin);
                     PinRelease(pinConfig.ClockPin);
+
                     initializedList.Remove(port);
                 }
             }
