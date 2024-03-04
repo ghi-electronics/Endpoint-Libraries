@@ -56,6 +56,10 @@ namespace GHIElectronics.Endpoint.Devices.Adc
 
             if (adcPin < 255) {
                 pin = GetPinEncodeFromPin(adcPin);
+
+                if (pin == EPM815.Gpio.Pin.NONE) { 
+                     throw new ArgumentException("Adc pin invalid");
+                }
             }
 
             this.controllerId = (pin >> 24) & 0xFF;
@@ -72,11 +76,11 @@ namespace GHIElectronics.Endpoint.Devices.Adc
 
             if (this.fd < 0) {
                 this.Release();
-                throw new Exception("Could not create device");
+                throw new Exception("Could not create Adc device");
             }
         }
 
-        public uint Read() {
+        public uint ReadRaw() {
             uint v = 0;
 
             var buf_read = new byte[8];
@@ -91,6 +95,12 @@ namespace GHIElectronics.Endpoint.Devices.Adc
             v = uint.Parse(UTF8Encoding.UTF8.GetString(buf_read));
 
             return v;
+        }
+
+        public double Read() {
+            var v = this.ReadRaw();
+
+            return v * 3.3 / 65535;
         }
 
         private void Acquire() {
