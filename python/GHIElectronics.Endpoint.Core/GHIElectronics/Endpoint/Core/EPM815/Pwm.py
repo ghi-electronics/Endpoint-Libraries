@@ -2,7 +2,7 @@ import os
 import GHIElectronics.Endpoint.Core.EPM815.Gpio as Gpio
 from enum import IntEnum
 
-_initializedList = []
+InitializedList = []
 
 class Pin(IntEnum):
     # controller1
@@ -60,45 +60,7 @@ class Pin(IntEnum):
     # Controller17
     PB9 = Gpio.Pin.PB9
 
-def _ToActualController(id: int) -> int:
-    match id:
-        case (1):
-            return 0
-        
-        case (2):
-            return 4
-        
-        case (3):
-            return 8
-        
-        case (4):
-            return 12
-        
-        case (11):
-            return 16
-        
-        case (12):
-            return 18
-        
-        case (13):
-            return 19
-        
-        case (0):
-            return 20
-        
-        case (7):
-            return 24
-        
-        case (14):
-            return 28
-        
-        case (15):
-            return 30
-        
-        case (16):
-            return 31  
-
-    raise Exception("Invalid PWM controller")      
+ 
 
 class Controller1:
     PA8 = (0x0000 << 16) | (Gpio.Pin.PA8 << 8) | (int(Gpio.Alternate.AF1 << 0))
@@ -167,135 +129,16 @@ class Controller17:
 
 
 
-def _GetPinEncodeFromPin(pin: int) -> int:
-    match (pin) :
-        # controller1
-        case Gpio.Pin.PA8: return Controller1.PA8
-        case Gpio.Pin.PE11: return Controller1.PE11
-        case Gpio.Pin.PA10: return Controller1.PA10
-        case Gpio.Pin.PA11: return Controller1.PA11
 
-        # controller2
-        case Gpio.Pin.PA15: return Controller2.PA15
-        case Gpio.Pin.PB3: return Controller2.PB3
-        case Gpio.Pin.PA3: return Controller2.PA3
-
-        # controller3
-        case Gpio.Pin.PC6: return Controller3.PC6
-        case Gpio.Pin.PB5: return Controller3.PB5
-        case Gpio.Pin.PB0: return Controller3.PB0
-
-        # controller4
-        case Gpio.Pin.PD12: return Controller4.PD12
-        case Gpio.Pin.PB7: return Controller4.PB7
-        case Gpio.Pin.PD14: return Controller4.PD14
-        case Gpio.Pin.PD15: return Controller4.PD15
-
-        # controller5
-        case Gpio.Pin.PA0: return Controller5.PA0
-        case Gpio.Pin.PH11: return Controller5.PH11
-        case Gpio.Pin.PH12: return Controller5.PH12
-        case Gpio.Pin.PI0: return Controller5.PI0
-
-        # controller8
-        case Gpio.Pin.PI5: return Controller8.PI5
-        case Gpio.Pin.PI6: return Controller8.PI6
-        case Gpio.Pin.PI7: return Controller8.PI7
-        case Gpio.Pin.PI2: return Controller8.PI2
-
-        # controller12
-        case Gpio.Pin.PH6: return Controller12.PH6
-        case Gpio.Pin.PH9: return Controller12.PH9
-
-        # controller13
-        case Gpio.Pin.PA6: return Controller13.PA6
-
-        # controller14
-        case Gpio.Pin.PF9: return Controller14.PF9
-
-        # controller15
-        case Gpio.Pin.PE5: return Controller15.PE5
-        case Gpio.Pin.PE6: return Controller15.PE6
-
-        # Controller16
-        case Gpio.Pin.PB8: return Controller16.PB8
-
-        # Controller17
-        case Gpio.Pin.PB9: return Controller17.PB9
-
-    return Gpio.Pin.NONE
-
-
-
-
-
-def _GetChipId(pin: int) -> int:
-    pwm_pin = _GetPinEncodeFromPin(pin)
-
-    controllerId = (pwm_pin >> 24) & 0xFF
-
-    return _ToActualController(controllerId)
-
-def _GetChannelId(pin: int) -> int:
-    pwm_pin = _GetPinEncodeFromPin(pin)
-
-    channelId = (pwm_pin >> 16) & 0xFF
-
-    return channelId
-
-def _Initialize(pin: int):
-    if (pin in _initializedList):
-        return
-    
-    if Gpio.IsPinReserved(pin):
-        Gpio.ThrowExceptionPinInUsed(pin)
-
-    pwm_pin = _GetPinEncodeFromPin(pin)
-
-    if (pwm_pin == Gpio.Pin.NONE):
-        raise Exception(f"Pin {pin} does not support pwm.")
-    
-    pinId = (pwm_pin >> 8) & 0xFF
-    alternateId = (pwm_pin >> 0) & 0xFF
-
-    Gpio.SetModer(pinId, Gpio.Moder.Alternate)
-    Gpio.SetAlternate(pinId, Gpio.Alternate(alternateId))
-
-    Gpio.PinReserve(pinId)
-
-    _initializedList.append(pin)
-    
-
-
-    
-def _UnInitialize(pin: int):
-    if (pin in _initializedList):
-        pwm_pin = _GetPinEncodeFromPin(pin)
-
-        if (pwm_pin == Gpio.Pin.NONE):
-            raise Exception(f"Pin {pin} does not support pwm.")
-    
-        pinId = (pwm_pin >> 8) & 0xFF
-        alternateId = (pwm_pin >> 0) & 0xFF
-
-        Gpio.SetModer(pinId, Gpio.Moder.Input)
-
-        Gpio.PinRelease(pinId)
-
-        _initializedList.remove(pin)
-
-
-    return
-
-class PWMChannel(object):
+class PwmController(object):
     
     def __init__(self, pin: int): 
-        _Initialize(pin)
+        self.__Initialize(pin)
         self.frequency = 0
         self.dutycycle = 0
         self.pin = pin
-        self._channelId =_GetChannelId(pin)
-        self._chipId =  _GetChipId(pin)
+        self._channelId =self.__GetChannelId(pin)
+        self._chipId =  self.__GetChipId(pin)
         self.base = '/sys/class/pwm/pwmchip{:d}'.format(self._chipId)
         self.path = self.base + '/pwm{:d}'.format(self._channelId)
 
@@ -315,7 +158,7 @@ class PWMChannel(object):
             with open(self.base + '/unexport', 'w') as f:
                 f.write('{:d}'.format(self._channelId))   
 
-        _UnInitialize(self.pin) 
+        self.__UnInitialize(self.pin) 
 
     @property
     def Frequency(self)->int:
@@ -387,4 +230,160 @@ class PWMChannel(object):
                 f.write('inversed')
             else:
                 f.write('normal')
+
+    def __GetChipId(self, pin: int) -> int:
+        pwm_pin = self.__GetPinEncodeFromPin(pin)
+
+        controllerId = (pwm_pin >> 24) & 0xFF
+
+        return self.__ToActualController(controllerId)
+
+    def __GetChannelId(self, pin: int) -> int:
+        pwm_pin = self.__GetPinEncodeFromPin(pin)
+
+        channelId = (pwm_pin >> 16) & 0xFF
+
+        return channelId
+
+    def __Initialize(self, pin: int):
+        if (pin in InitializedList):
+            return
+        
+        if Gpio.IsPinReserved(pin):
+            Gpio.ThrowExceptionPinInUsed(pin)
+
+        pwm_pin = self.__GetPinEncodeFromPin(pin)
+
+        if (pwm_pin == Gpio.Pin.NONE):
+            raise Exception(f"Pin {pin} does not support pwm.")
+        
+        pinId = (pwm_pin >> 8) & 0xFF
+        alternateId = (pwm_pin >> 0) & 0xFF
+
+        Gpio.SetModer(pinId, Gpio.Moder.Alternate)
+        Gpio.SetAlternate(pinId, Gpio.Alternate(alternateId))
+
+        Gpio.PinReserve(pinId)
+
+        InitializedList.append(pin)
+        
+
+
+        
+    def __UnInitialize(self, pin: int):
+        if (pin in InitializedList):
+            pwm_pin = self.__GetPinEncodeFromPin(pin)
+
+            if (pwm_pin == Gpio.Pin.NONE):
+                raise Exception(f"Pin {pin} does not support pwm.")
+        
+            pinId = (pwm_pin >> 8) & 0xFF
+            alternateId = (pwm_pin >> 0) & 0xFF
+
+            Gpio.SetModer(pinId, Gpio.Moder.Input)
+
+            Gpio.PinRelease(pinId)
+
+            InitializedList.remove(pin)
+
+
+        return
+    
+    def __ToActualController(self, id: int) -> int:
+        match id:
+            case (1):
+                return 0
+            
+            case (2):
+                return 4
+            
+            case (3):
+                return 8
+            
+            case (4):
+                return 12
+            
+            case (11):
+                return 16
+            
+            case (12):
+                return 18
+            
+            case (13):
+                return 19
+            
+            case (0):
+                return 20
+            
+            case (7):
+                return 24
+            
+            case (14):
+                return 28
+            
+            case (15):
+                return 30
+            
+            case (16):
+                return 31  
+
+        raise Exception("Invalid PWM controller")     
+
+    def __GetPinEncodeFromPin(self, pin: int) -> int:
+        match (pin) :
+            # controller1
+            case Gpio.Pin.PA8: return Controller1.PA8
+            case Gpio.Pin.PE11: return Controller1.PE11
+            case Gpio.Pin.PA10: return Controller1.PA10
+            case Gpio.Pin.PA11: return Controller1.PA11
+
+            # controller2
+            case Gpio.Pin.PA15: return Controller2.PA15
+            case Gpio.Pin.PB3: return Controller2.PB3
+            case Gpio.Pin.PA3: return Controller2.PA3
+
+            # controller3
+            case Gpio.Pin.PC6: return Controller3.PC6
+            case Gpio.Pin.PB5: return Controller3.PB5
+            case Gpio.Pin.PB0: return Controller3.PB0
+
+            # controller4
+            case Gpio.Pin.PD12: return Controller4.PD12
+            case Gpio.Pin.PB7: return Controller4.PB7
+            case Gpio.Pin.PD14: return Controller4.PD14
+            case Gpio.Pin.PD15: return Controller4.PD15
+
+            # controller5
+            case Gpio.Pin.PA0: return Controller5.PA0
+            case Gpio.Pin.PH11: return Controller5.PH11
+            case Gpio.Pin.PH12: return Controller5.PH12
+            case Gpio.Pin.PI0: return Controller5.PI0
+
+            # controller8
+            case Gpio.Pin.PI5: return Controller8.PI5
+            case Gpio.Pin.PI6: return Controller8.PI6
+            case Gpio.Pin.PI7: return Controller8.PI7
+            case Gpio.Pin.PI2: return Controller8.PI2
+
+            # controller12
+            case Gpio.Pin.PH6: return Controller12.PH6
+            case Gpio.Pin.PH9: return Controller12.PH9
+
+            # controller13
+            case Gpio.Pin.PA6: return Controller13.PA6
+
+            # controller14
+            case Gpio.Pin.PF9: return Controller14.PF9
+
+            # controller15
+            case Gpio.Pin.PE5: return Controller15.PE5
+            case Gpio.Pin.PE6: return Controller15.PE6
+
+            # Controller16
+            case Gpio.Pin.PB8: return Controller16.PB8
+
+            # Controller17
+            case Gpio.Pin.PB9: return Controller17.PB9
+
+        return Gpio.Pin.NONE
 
