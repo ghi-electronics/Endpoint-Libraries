@@ -23,6 +23,7 @@ class Alternate(IntEnum):
     AF13=13
     AF14=14
     AF15=15
+    NONE = -1
 
 class Moder(IntEnum):
     Input = 0
