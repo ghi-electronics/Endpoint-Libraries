@@ -2,7 +2,7 @@ import os
 import GHIElectronics.Endpoint.Core.EPM815.Gpio as Gpio
 from enum import IntEnum
 
-InitializedList = []
+
 
 class Pin(IntEnum):
     # controller1
@@ -131,7 +131,8 @@ class Controller17:
 
 
 class PwmController(object):
-    
+    __InitializedList = []
+
     def __init__(self, pin: int): 
         self.__Initialize(pin)
         self.frequency = 0
@@ -246,7 +247,7 @@ class PwmController(object):
         return channelId
 
     def __Initialize(self, pin: int):
-        if (pin in InitializedList):
+        if (pin in PwmController.__InitializedList):
             return
         
         if Gpio.IsPinReserved(pin):
@@ -265,13 +266,13 @@ class PwmController(object):
 
         Gpio.PinReserve(pinId)
 
-        InitializedList.append(pin)
+        PwmController.__InitializedList.append(pin)
         
 
 
         
     def __UnInitialize(self, pin: int):
-        if (pin in InitializedList):
+        if (pin in PwmController.__InitializedList):
             pwm_pin = self.__GetPinEncodeFromPin(pin)
 
             if (pwm_pin == Gpio.Pin.NONE):
@@ -284,7 +285,7 @@ class PwmController(object):
 
             Gpio.PinRelease(pinId)
 
-            InitializedList.remove(pin)
+            PwmController.__InitializedList.remove(pin)
 
 
         return
