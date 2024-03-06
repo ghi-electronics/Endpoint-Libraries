@@ -48,7 +48,7 @@ namespace GHIElectronics.Endpoint.Core {
 
             //    throw new Exception($"SPI {port} is not supported.");
             //}
-            public static void Initialize(int port) {
+            public static void Initialize(int port, int bufferSize=4096) {
 
                 if (port != Spi1 && port != Spi4 && port != Spi5) {
                     throw new ArgumentException($"Invalid Spi port. The device support only: 0 = SPI1; 1 = SPI4; 2 = SPI5");
@@ -94,8 +94,14 @@ namespace GHIElectronics.Endpoint.Core {
                     return;
                 }
 
-                var script = new Script("modprobe", "./", "spidev");
-                script.Start();
+                if (bufferSize <= 4096) {
+                    var script = new Script("modprobe", "./", "spidev");
+                    script.Start();
+                }
+                else {
+                    var script = new Script("modprobe", "./", $"spidev bufsiz={bufferSize}");
+                    script.Start();
+                }
 
                 while (!Directory.Exists("/sys/class/spidev")) {
                     Thread.Sleep(10);
