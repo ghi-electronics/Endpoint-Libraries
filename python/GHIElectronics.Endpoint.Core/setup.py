@@ -4,7 +4,7 @@ import setuptools
 
 setuptools.setup(
     name = "GHIElectronics.Endpoint.Core",
-    version = "0.1.1",
+    version = "0.1.3",
     author = "GHI Electronics",
     author_email = "support@ghielectronics.com",
     license='MIT', 
