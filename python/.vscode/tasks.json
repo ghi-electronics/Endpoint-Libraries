@@ -1,0 +1,54 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            "label": "AppTemplCreateDir",
+            "type": "shell",   
+            "dependsOn": "AppTemplStop",         
+            "presentation": {
+                "reveal": "always",
+                "panel": "new"
+            },
+            "windows": {
+                "command": "ssh ${config:sshUser}@${config:sshEndpoint} mkdir -p ${config:workingFolder}/${workspaceFolderBasename}"
+            },
+            "problemMatcher": []
+        },
+		{
+            "label": "DeployToDevice",
+            "type": "shell",			
+            "command": "scp -r ${workspaceFolder}/* ${config:sshUser}@${config:sshEndpoint}:${config:workingFolder}/${workspaceFolderBasename}/;ssh ${config:sshUser}@${config:sshEndpoint} 'echo ${config:workingFolder}/${workspaceFolderBasename} > ${config:workingFolder}/startup.eca';ssh ${config:sshUser}@${config:sshEndpoint} 'echo ${config:workingFolder}/${workspaceFolderBasename}/${config:ouputFile} >> ${config:workingFolder}/startup.eca'; ssh ${config:sshUser}@${config:sshEndpoint} sync"
+        },
+        {
+            "label": "SetupDebugOnDevice",
+            "type": "shell",
+            "command": "ssh ${config:sshUser}@${config:sshEndpoint} 'nohup python -m ptvsd --host 0.0.0.0 --port 5678 --wait ${config:workingFolder}/${workspaceFolderBasename}/${config:ouputFile} > /dev/null 2>&1 &'"
+        },
+        {
+            "label": "wait",
+            "type": "shell",
+            "command": "timeout 5"
+        },
+        {
+            "label": "StartDebugOnDevice",
+            "dependsOrder": "sequence",
+            "dependsOn": ["AppTemplCreateDir", "DeployToDevice", "SetupDebugOnDevice", "wait"]
+        },
+        {
+            "label": "StopDebugOnDevice",
+            "type": "shell",
+            "command": "ssh ${config:sshUser}@${config:sshEndpoint} 'stop_application.sh'"
+        }, 
+               
+        {
+            "label": "AppTemplStop",
+            "type":"shell",            
+            "presentation": {
+                "showReuseMessage": true
+            },
+            "command":  "ssh ${config:sshUser}@${config:sshEndpoint} 'stop_application.sh'",          
+            "problemMatcher": []
+    
+        }          
+    ]    
+}

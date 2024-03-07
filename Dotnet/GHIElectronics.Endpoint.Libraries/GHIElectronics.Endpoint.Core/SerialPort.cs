@@ -17,7 +17,7 @@ namespace GHIElectronics.Endpoint.Core {
             public const string Uart3 = "/dev/ttySTM2";
             public const string Uart4 = "/dev/ttySTM3";
             public const string Uart5 = "/dev/ttySTM4";
-            public const string Uart6 = "/dev/ttySTM5";
+            //public const string Uart6 = "/dev/ttySTM5";
             public const string Uart7 = "/dev/ttySTM6";
             public const string Uart8 = "/dev/ttySTM7";
 
@@ -40,7 +40,7 @@ namespace GHIElectronics.Endpoint.Core {
                 /* 2 */ new UartPinSettings { TxPin = Gpio.Pin.PF5 , RxPin = Gpio.Pin.PD6 , RtsPin = Gpio.Pin.PD4 , CtsPin = Gpio.Pin.PD3 , TxAlternate = Alternate.AF7 , RxAlternate = Alternate.AF7 , RtsAlternate = Alternate.AF7 ,  CtsAlternate = Alternate.AF7  },
                 /* 3 */ new UartPinSettings { TxPin = Gpio.Pin.PD8 , RxPin = Gpio.Pin.PD9 , RtsPin = Gpio.Pin.PD12, CtsPin = Gpio.Pin.PD11, TxAlternate = Alternate.AF7 , RxAlternate = Alternate.AF7 , RtsAlternate = Alternate.AF7 ,  CtsAlternate = Alternate.AF7  },
                 /* 4 */ new UartPinSettings { TxPin = Gpio.Pin.PD1 , RxPin = Gpio.Pin.PD0 , RtsPin = Gpio.Pin.NONE, CtsPin = Gpio.Pin.NONE, TxAlternate = Alternate.AF8 , RxAlternate = Alternate.AF8 , RtsAlternate = Alternate.NONE,  CtsAlternate = Alternate.NONE },
-                /* 5 */ new UartPinSettings { TxPin = Gpio.Pin.PB13, RxPin = Gpio.Pin.PB12, RtsPin = Gpio.Pin.NONE, CtsPin = Gpio.Pin.NONE, TxAlternate = Alternate.NONE, RxAlternate = Alternate.NONE, RtsAlternate = Alternate.AF14,  CtsAlternate = Alternate.AF14 },
+                /* 5 */ new UartPinSettings { TxPin = Gpio.Pin.PB13, RxPin = Gpio.Pin.PB12, RtsPin = Gpio.Pin.NONE, CtsPin = Gpio.Pin.NONE, TxAlternate = Alternate.AF14, RxAlternate = Alternate.AF14, RtsAlternate = Alternate.NONE,  CtsAlternate = Alternate.NONE },
                 /* 6 */ new UartPinSettings { TxPin = Gpio.Pin.NONE, RxPin = Gpio.Pin.NONE, RtsPin = Gpio.Pin.NONE, CtsPin = Gpio.Pin.NONE, TxAlternate = Alternate.NONE, RxAlternate = Alternate.NONE, RtsAlternate = Alternate.NONE,  CtsAlternate = Alternate.NONE },
                 /* 7 */ new UartPinSettings { TxPin = Gpio.Pin.PE8 , RxPin = Gpio.Pin.PF6 , RtsPin = Gpio.Pin.PE9 , CtsPin = Gpio.Pin.PE10, TxAlternate = Alternate.AF7 , RxAlternate = Alternate.AF7 , RtsAlternate = Alternate.AF7 ,  CtsAlternate = Alternate.AF7  },
                 /* 8 */ new UartPinSettings { TxPin = Gpio.Pin.PE1 , RxPin = Gpio.Pin.PE0 , RtsPin = Gpio.Pin.NONE, CtsPin = Gpio.Pin.NONE, TxAlternate = Alternate.AF8 , RxAlternate = Alternate.AF8 , RtsAlternate = Alternate.NONE,  CtsAlternate = Alternate.NONE },
