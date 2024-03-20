@@ -40,6 +40,10 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Dev
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Devices.Camera", "GHIElectronics.Endpoint.Devices.Camera\GHIElectronics.Endpoint.Devices.Camera.csproj", "{624E78A0-D5A1-446C-8AAF-5D9C5896293B}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.UI", "GHIElectronics.Endpoint.UI\GHIElectronics.Endpoint.UI.csproj", "{F1E10A42-BF84-4F51-B7A2-0E18818FFC42}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "GHIElectronics.Endpoint.Drawing", "GHIElectronics.Endpoint.Drawing\GHIElectronics.Endpoint.Drawing.csproj", "{6C057CA8-1C7C-47A8-A58F-600EB5ACCF78}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -110,6 +114,14 @@ Global
 		{624E78A0-D5A1-446C-8AAF-5D9C5896293B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{624E78A0-D5A1-446C-8AAF-5D9C5896293B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{624E78A0-D5A1-446C-8AAF-5D9C5896293B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{F1E10A42-BF84-4F51-B7A2-0E18818FFC42}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{F1E10A42-BF84-4F51-B7A2-0E18818FFC42}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{F1E10A42-BF84-4F51-B7A2-0E18818FFC42}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{F1E10A42-BF84-4F51-B7A2-0E18818FFC42}.Release|Any CPU.Build.0 = Release|Any CPU
+		{6C057CA8-1C7C-47A8-A58F-600EB5ACCF78}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{6C057CA8-1C7C-47A8-A58F-600EB5ACCF78}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{6C057CA8-1C7C-47A8-A58F-600EB5ACCF78}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{6C057CA8-1C7C-47A8-A58F-600EB5ACCF78}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
