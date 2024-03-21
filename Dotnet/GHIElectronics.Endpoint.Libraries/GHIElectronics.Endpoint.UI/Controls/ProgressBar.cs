@@ -4,7 +4,7 @@ using GHIElectronics.Endpoint.Drawing;
 using System.Text;
 using System.Threading;
 using GHIElectronics.Endpoint.UI.Media;
-using GHIElectronics.Endpoint.UI.Media.Imaging;
+using GHIElectronics.Endpoint.UI.Media.UIImaging;
 using GHIElectronics.Endpoint.UI.Properties;
 
 namespace GHIElectronics.Endpoint.UI.Controls {
@@ -16,8 +16,8 @@ namespace GHIElectronics.Endpoint.UI.Controls {
     }
 
     public class ProgressBar : Image, IDisposable {
-        private BitmapImage bitmapImageProgressBar;
-        private BitmapImage bitmapImageProgressBarFill;
+        private UIBitmap bitmapImageProgressBar;
+        private UIBitmap bitmapImageProgressBarFill;
 
         public Direction Direction { get; set; } = Direction.Right;
         public int MaxValue { get; set; } = 100;
@@ -27,8 +27,8 @@ namespace GHIElectronics.Endpoint.UI.Controls {
 
 
         private void InitResource() {
-            this.bitmapImageProgressBar = BitmapImage.FromGraphics(Graphics.FromImage(Resources.ProgressBar));
-            this.bitmapImageProgressBarFill = BitmapImage.FromGraphics(Graphics.FromImage(Resources.ProgressBar_Fill));
+            this.bitmapImageProgressBar = UIBitmap.FromData(Resources.ProgressBar);
+            this.bitmapImageProgressBarFill = UIBitmap.FromData(Resources.ProgressBar_Fill);
         }
 
         public ProgressBar() : base() => this.InitResource();

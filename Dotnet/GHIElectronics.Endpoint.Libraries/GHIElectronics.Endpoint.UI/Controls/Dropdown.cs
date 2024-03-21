@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading;
 using GHIElectronics.Endpoint.UI.Input;
 using GHIElectronics.Endpoint.UI.Media;
-using GHIElectronics.Endpoint.UI.Media.Imaging;
+using GHIElectronics.Endpoint.UI.Media.UIImaging;
 using GHIElectronics.Endpoint.UI.Properties;
 
 namespace GHIElectronics.Endpoint.UI.Controls {
@@ -13,10 +13,10 @@ namespace GHIElectronics.Endpoint.UI.Controls {
         private bool isOpened;
         private int originalHeight;
 
-        private BitmapImage dropdownTextUp;
-        private BitmapImage dropdownTextDown;
-        private BitmapImage dropdownButtonUp;
-        private BitmapImage dropdownButtonDown;
+        private UIBitmap dropdownTextUp;
+        private UIBitmap dropdownTextDown;
+        private UIBitmap dropdownButtonUp;
+        private UIBitmap dropdownButtonDown;
 
         public ushort Alpha { get; set; } = 0xC8;
         public int RadiusBorder { get; set; } = 5;
@@ -24,10 +24,10 @@ namespace GHIElectronics.Endpoint.UI.Controls {
         private int Margin { get; set; } = 2;
 
         private void InitResource() {
-            this.dropdownTextUp = BitmapImage.FromGraphics(Graphics.FromImage(Resources.DropdownText_Up));
-            this.dropdownTextDown = BitmapImage.FromGraphics(Graphics.FromImage(Resources.DropdownText_Down));
-            this.dropdownButtonUp = BitmapImage.FromGraphics(Graphics.FromImage(Resources.DropdownButton_Up));
-            this.dropdownButtonDown = BitmapImage.FromGraphics(Graphics.FromImage(Resources.DropdownButton_Down));
+            this.dropdownTextUp = UIBitmap.FromData(Resources.DropdownText_Up);
+            this.dropdownTextDown = UIBitmap.FromData(Resources.DropdownText_Down);
+            this.dropdownButtonUp = UIBitmap.FromData(Resources.DropdownButton_Up);
+            this.dropdownButtonDown = UIBitmap.FromData(Resources.DropdownButton_Down);
         }
 
         public Dropdown() : base() {

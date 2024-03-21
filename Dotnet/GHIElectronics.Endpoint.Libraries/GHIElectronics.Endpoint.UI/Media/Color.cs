@@ -1,4 +1,4 @@
-﻿namespace GHIElectronics.Endpoint.UI.Media {
+namespace GHIElectronics.Endpoint.UI.Media {
     public struct Color {
         public byte A { get; set; }
         public byte R { get; set; }
@@ -15,7 +15,7 @@
         public static Color FromArgb(byte a, byte r, byte g, byte b) => new Color(a, r, g, b);
         public static Color FromRgb(byte r, byte g, byte b) => new Color(255, r, g, b);
 
-        internal uint ToNativeColor() => (uint)(this.R << 16 | this.G << 8 | this.B << 0);
+        internal uint ToNativeColor() => (uint)(this.A << 24 | this.R << 16 | this.G << 8 | this.B << 0);
         internal ushort ToNativeAlpha() => this.A;
     }
 

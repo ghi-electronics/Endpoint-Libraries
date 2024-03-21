@@ -13,7 +13,7 @@ using GHIElectronics.Endpoint.UI;
 using GHIElectronics.Endpoint.UI.Controls;
 using GHIElectronics.Endpoint.UI.Input;
 using GHIElectronics.Endpoint.UI.Media;
-using GHIElectronics.Endpoint.UI.Media.Imaging;
+using GHIElectronics.Endpoint.UI.Media.UIImaging;
 using GHIElectronics.Endpoint.UI.Properties;
 
 namespace GHIElectronics.Endpoint.UI.Controls {
@@ -64,8 +64,8 @@ namespace GHIElectronics.Endpoint.UI.Controls {
         private ArrayList columns_ = new ArrayList();
         private ArrayList rows_ = new ArrayList();
 
-        private BitmapImage headers;
-        private BitmapImage items;
+        private UIBitmap headers;
+        private UIBitmap items;
 
         //this.dropdownTextUp = BitmapImage.FromGraphics(Graphics.FromImage(Resources.GetBitmap(Resources.BitmapResources.DropdownText_Up)));
         private GHIElectronics.Endpoint.Drawing.Bitmap dataGridIcon_Asc;// = BitmapImage.FromGraphics(Graphics.FromImage(Resources.DataGridIcon_Asc));
@@ -114,7 +114,7 @@ namespace GHIElectronics.Endpoint.UI.Controls {
             // When the headers are shown the row count is decreased by one.
             this.ShowHeaders = true;
 
-            this.headers = BitmapImage.FromGraphics(new Graphics(this.Width, this.RowHeight));
+            this.headers = UIBitmap.FromGraphics(new Graphics(this.Width, this.RowHeight));
             this.Font = font;
 
             this.dataGridIcon_Asc = new Drawing.Bitmap(Resources.DataGridIcon_Asc, 10, 5);
@@ -263,12 +263,11 @@ namespace GHIElectronics.Endpoint.UI.Controls {
 
                 // Only recreate the items Bitmap if necessary
                 if (this.items == null || this.items.Height != this.rows_.Count * this.RowHeight) {
-                    if (this.items != null)
-                        this.items.graphics.Dispose();
+                    this.items?.graphics.Dispose();
 
                     if (this.rows_.Count < this.rowCount) {
 
-                        this.items = BitmapImage.FromGraphics(new Graphics(this.Width, this.rowCount * this.RowHeight));
+                        this.items = UIBitmap.FromGraphics(new Graphics(this.Width, this.rowCount * this.RowHeight));
 
                         //TODO
                         using (var itemsBackColorBrush = new GHIElectronics.Endpoint.Drawing.SolidBrush(GHIElectronics.Endpoint.Drawing.Color.FromArgb(this.ItemsBackColor.R, this.ItemsBackColor.G, this.ItemsBackColor.B))) {
@@ -280,7 +279,7 @@ namespace GHIElectronics.Endpoint.UI.Controls {
                     }
                     else {
                         //this.items = new Bitmap(this.Width, this.rows_.Count * this.RowHeight);
-                        this.items = BitmapImage.FromGraphics(new Graphics(this.Width, this.rows_.Count * this.RowHeight));
+                        this.items = UIBitmap.FromGraphics(new Graphics(this.Width, this.rows_.Count * this.RowHeight));
 
                         //TODO
                         using (var itemsBackColorBrush = new GHIElectronics.Endpoint.Drawing.SolidBrush(GHIElectronics.Endpoint.Drawing.Color.FromArgb(this.ItemsBackColor.R, this.ItemsBackColor.G, this.ItemsBackColor.B))) {

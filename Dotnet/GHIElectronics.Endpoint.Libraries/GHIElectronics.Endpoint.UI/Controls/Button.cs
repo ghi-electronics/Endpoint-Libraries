@@ -2,7 +2,7 @@ using System;
 using GHIElectronics.Endpoint.Drawing;
 using GHIElectronics.Endpoint.UI.Input;
 using GHIElectronics.Endpoint.UI.Media;
-using GHIElectronics.Endpoint.UI.Media.Imaging;
+using GHIElectronics.Endpoint.UI.Media.UIImaging;
 using GHIElectronics.Endpoint.UI.Properties;
 
 namespace GHIElectronics.Endpoint.UI.Controls {
@@ -19,15 +19,15 @@ namespace GHIElectronics.Endpoint.UI.Controls {
 
         public event RoutedEventHandler Click;
 
-        private BitmapImage bitmapImageButtonDown;
-        private BitmapImage bitmapImageButtonUp;
+        private UIBitmap bitmapImageButtonDown;
+        private UIBitmap bitmapImageButtonUp;
         private bool isPressed;
 
         public bool IsPressed => this.isPressed;
 
         private void InitResource() {
-            this.bitmapImageButtonDown = BitmapImage.FromGraphics(Graphics.FromImage(Resources.Button_Down));
-            this.bitmapImageButtonUp = BitmapImage.FromGraphics(Graphics.FromImage(Resources.Button_Up));
+            this.bitmapImageButtonDown = UIBitmap.FromData(Resources.Button_Down);
+            this.bitmapImageButtonUp = UIBitmap.FromData(Resources.Button_Up);
         }
 
         private void OnParentTouchUp(object sender, TouchEventArgs e) {

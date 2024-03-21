@@ -4,7 +4,7 @@ using GHIElectronics.Endpoint.Drawing;
 using System.Text;
 using System.Threading;
 using GHIElectronics.Endpoint.UI.Media;
-using GHIElectronics.Endpoint.UI.Media.Imaging;
+using GHIElectronics.Endpoint.UI.Media.UIImaging;
 using Color = GHIElectronics.Endpoint.UI.Media.Color;
 
 namespace GHIElectronics.Endpoint.UI.Controls {
@@ -793,7 +793,7 @@ namespace GHIElectronics.Endpoint.UI.Controls {
             var x = 0;
             var y = 0;
 
-            var uiBmp = BitmapImage.FromGraphics(Graphics.FromImage(this.GetGauge()));
+            var uiBmp = UIBitmap.FromGraphics(Graphics.FromImage(this.GetGauge()));
 
             dc.DrawImage(uiBmp, x, y);
         }

@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading;
 using GHIElectronics.Endpoint.UI.Input;
 using GHIElectronics.Endpoint.UI.Media;
-using GHIElectronics.Endpoint.UI.Media.Imaging;
+using GHIElectronics.Endpoint.UI.Media.UIImaging;
 using GHIElectronics.Endpoint.UI.Properties;
 
 namespace GHIElectronics.Endpoint.UI.Controls {
@@ -68,7 +68,7 @@ namespace GHIElectronics.Endpoint.UI.Controls {
 
     public class RadioButton : ContentControl, IDisposable {
         public event RoutedEventHandler Click;
-        private BitmapImage bitmapImageRadioButton;
+        private UIBitmap bitmapImageRadioButton;
 
         private bool isChecked = false;
         private string value = string.Empty;
@@ -77,7 +77,7 @@ namespace GHIElectronics.Endpoint.UI.Controls {
         public ushort Alpha { get; set; } = 0xC8;
         public int RadiusBorder { get; set; } = 5;
 
-        private void InitResource() => this.bitmapImageRadioButton = BitmapImage.FromGraphics(Graphics.FromImage(Resources.RadioButton));
+        private void InitResource() => this.bitmapImageRadioButton = UIBitmap.FromData(Resources.RadioButton);
 
         public RadioButton() : this(string.Empty) {
 

@@ -1,6 +1,9 @@
+using System.Drawing;
+using System.Net.NetworkInformation;
 using System.Runtime.CompilerServices;
 using SkiaSharp;
 using static System.Net.Mime.MediaTypeNames;
+using static GHIElectronics.Endpoint.Drawing.Graphics;
 
 [assembly: InternalsVisibleTo("GHIElectronics.Endpoint.UI")]
 
@@ -26,12 +29,34 @@ namespace GHIElectronics.Endpoint.Drawing {
         private const int DefaultKerning = 1024;
 
         SKFont skFont;
+        SKPaint skPaint;
 
         public SKFont SkFont => this.skFont;
+        public SKPaint SkPaint => this.skPaint;
+
+        private SKRect textBounds;
 
 
-        public float Size { get => this.skFont.Size; set => this.skFont.Size = value; }
-        private Font() { }
+        //public float Size { get => this.skFont.Size; set => this.skFont.Size = value; }
+        public Font() : this(22) {
+
+        }
+
+        public Font(int size) {
+            this.skFont = new SKFont {
+                Size = size,
+
+            };
+
+            this.skPaint = new SKPaint {
+                TextAlign = SKTextAlign.Center,
+                TextSize = this.skFont.Size,
+            };
+
+            this.textBounds = new SKRect();
+
+            this.skPaint.MeasureText("a", ref this.textBounds);
+        }
 
         public Font(byte[] data) => new Font(data, 0, data.Length);
 
@@ -47,6 +72,15 @@ namespace GHIElectronics.Endpoint.Drawing {
             this.skFont = new SKFont {
                 Typeface = tf
             };
+
+            this.skPaint = new SKPaint {
+                TextAlign = SKTextAlign.Center,
+                TextSize = this.skFont.Size,
+            };
+
+            //this.textBounds = new SKRect();
+
+            //this.skPaint.MeasureText("B", ref this.textBounds);
         }
 
         //public Font(string familyName, float emSize) {
@@ -70,16 +104,27 @@ namespace GHIElectronics.Endpoint.Drawing {
 
         public int Height {
             get {
-                return (int)this.skFont.Metrics.XHeight; ; ;
+                //var textBounds = new SKRect();
+
+                //paint.MeasureText(text, ref textBounds);
+                //return (int)16; ;// (int)Math.Ceiling(Math.Abs(this.skFont.Metrics.Top)); ;// (int)Math.Ceiling(this.skFont.Metrics.XHeight); ; ;
+
+                return (int)Math.Ceiling(this.skFont.Metrics.CapHeight); ;
 
             }
 
         }
 
-        //internal extern int AverageWidth { [MethodImpl(MethodImplOptions.InternalCall)] get; }
+        internal int AverageWidth {
+            get {
+                return (int)Math.Ceiling(this.skFont.Metrics.AverageCharacterWidth); ;
+
+            }
+
+        }
         internal int MaxWidth {
             get {
-                return (int)this.skFont.Metrics.MaxCharacterWidth; ; ;
+                return (int)Math.Ceiling(this.skFont.Metrics.MaxCharacterWidth); ; ;
 
             }
 
@@ -87,14 +132,14 @@ namespace GHIElectronics.Endpoint.Drawing {
 
         internal int Ascent {
             get {
-                return (int)this.skFont.Metrics.Ascent; ; ;
+                return (int)Math.Ceiling(this.skFont.Metrics.Ascent); ; ;
 
             }
 
         }
         internal int Descent {
             get {
-                return (int)this.skFont.Metrics.Descent; ; ;
+                return (int)Math.Ceiling(this.skFont.Metrics.Descent); ; ;
 
             }
 
@@ -102,14 +147,14 @@ namespace GHIElectronics.Endpoint.Drawing {
 
         internal int InternalLeading {
             get {
-                return (int)this.skFont.Metrics.Leading; ; ;
+                return (int)Math.Ceiling(this.skFont.Metrics.Leading); ; ;
 
             }
 
         }
         internal int ExternalLeading {
             get {
-                return (int)this.skFont.Metrics.Leading; ; ;
+                return (int)Math.Ceiling(this.skFont.Metrics.Leading); ; ;
 
             }
 
@@ -141,16 +186,194 @@ namespace GHIElectronics.Endpoint.Drawing {
 
         }
 
+        public void CountCharactersInWidth(string text, int maxChars, int width, ref int totWidth, bool fWordWrap, ref string strNext, ref int numChars) {
+            //var i = 0;
+            var breakPoint = string.Empty;
+            var lastChar = '\0';
+            var breakWidth = 0;
+            var str = text;
+            var num = 0;
+            var breakIndex = 0;
+
+            while (maxChars != 0) {
+                if (str == null || str == string.Empty || str.Length == 0)
+                    break;
+                var c = str[0];
+                var fNewLine = (c == '\n');
+                var chrWidth = this.AverageWidth;
+
+                if (fNewLine || chrWidth > width) {
+                    if (fWordWrap) {
+                        if (c == ' ') {
+                            break;
+                        }
+
+                        if (breakPoint != string.Empty) {
+                            if ((fNewLine && lastChar == ' ') ||
+                                (!fNewLine && c != ' ')) {
+                                totWidth = breakWidth;
+                                str = breakPoint;
+                                num = breakIndex;
+                            }
+                        }
+                    }
+
+                    break;
+                }
+
+                if (c == ' ') {
+                    if (lastChar != c) {
+                        // Break to the left of a space, since the string wouldn't
+                        // be properly centered with an extra space at the end of a line
+                        //
+                        breakIndex = num;
+                        breakPoint = str;
+                        breakWidth = totWidth;
+                    }
+                }
+
+                width -= chrWidth;
+                totWidth += chrWidth;
+
+                str = str.Substring(1);
+
+                maxChars--;
+                num++;
+
+                if (c == '-') {
+                    if (lastChar != ' ') // e.g., "...foo -1000"
+                    {
+                        // Break to the right for a hyphen so that it stays part
+                        // of the current line
+                        //
+                        breakIndex = num;
+                        breakPoint = str;
+                        breakWidth = totWidth;
+                    }
+                }
+
+                lastChar = c;
+
+
+            }
+
+            strNext = str;
+            numChars = num;
+        }
+
         //[MethodImplAttribute(MethodImplOptions.InternalCall)]
         internal void ComputeTextInRect(string text, out int renderWidth, out int renderHeight, int xRelStart, int yRelStart, int availableWidth, int availableHeight, uint dtFlags) {
-            using (var p = new SKPaint {
-                Typeface = this.skFont.Typeface
-            }) {
 
-                renderWidth = (int)p.MeasureText(text.ToString()) + xRelStart;
 
-                renderHeight = this.Height - yRelStart;
+            //for (var i = 0;i < text.Length; i++) {
+            //    var w = this.skFont.MeasureText(text, this.skPaint);
+
+            //}
+            var paint = new SKPaint {
+                TextSize = this.SkFont.Size,
+                TextAlign = SKTextAlign.Center,
+                
+            };
+
+            var textBounds = new SKRect();
+
+            paint.MeasureText(text, ref textBounds);
+
+
+            renderWidth = (int)Math.Ceiling(textBounds.Width) + xRelStart;
+
+            if (renderWidth > availableWidth) {
+                renderWidth = availableWidth;
             }
+
+
+            renderHeight = (int)Math.Ceiling(textBounds.Height) - yRelStart;
+
+            if (renderHeight > availableHeight) {
+                renderHeight = availableHeight;
+            }
+
+
+            //var height = availableHeight;
+            //var width = availableWidth;
+            //var fFirstLine = true;
+            //var totWidth = 0;
+            //var szTextNext = string.Empty;
+            //var szEllipsis = "...";
+            //var num = 0;
+            //var ellipsisWidth = 0;
+            ////var fDrawEllipsis = false;
+
+            //var alignment = dtFlags & (uint)DrawTextAlignment.AlignmentMask;
+            //var trimming = dtFlags & (uint)DrawTextAlignment.TrimmingMask;
+
+
+            //var nHeight = this.Height;
+            //var nSkip = this.ExternalLeading;
+
+            //var dHeight = height - yRelStart;
+            //var dHeightLine = nHeight + nSkip;
+            //var cLineAvailable = dHeight + nSkip + (((dtFlags & (uint)DrawTextAlignment.TruncateAtBottom) != 0) ? dHeightLine - 1 : 0) / dHeightLine;
+
+            //renderWidth = 0;
+            //renderHeight = yRelStart;
+
+            //var fWordWrap = ((uint)(dtFlags & (uint)GHIElectronics.Endpoint.Drawing.Graphics.DrawTextAlignment.WordWrap) != 0);
+
+            //var szText = text;
+
+
+
+            //while (((dtFlags & (uint)DrawTextAlignment.IgnoreHeight) != 0) || --cLineAvailable >= 0) {
+            //    var szTextLast = szText;
+
+            //    if (!fFirstLine) {
+            //        xRelStart = 0;
+            //        yRelStart += dHeightLine;
+            //    }
+
+            //    this.CountCharactersInWidth(szText, -1, width - xRelStart, ref totWidth, fWordWrap, ref szTextNext, ref num);
+
+            //    if ((xRelStart + totWidth) > renderWidth) renderWidth = xRelStart + totWidth;
+            //    renderHeight += dHeightLine;
+
+            //    if ((trimming != (uint)DrawTextAlignment.TrimmingNone) && (cLineAvailable == 0) && szTextNext[0] != 0) {
+
+            //        this.CountCharactersInWidth(szEllipsis, -1, 65536, ref ellipsisWidth, fWordWrap, ref szTextNext, ref num);
+            //        this.CountCharactersInWidth(szText, -1, width - xRelStart - ellipsisWidth, ref totWidth, (trimming == (uint)DrawTextAlignment.TrimmingWordEllipsis), ref szTextNext, ref num);
+
+            //        totWidth += ellipsisWidth;
+            //        //fDrawEllipsis = true;
+            //    }
+
+            //    if (alignment == (uint)DrawTextAlignment.AlignmentCenter) {
+            //        xRelStart = (width - totWidth + xRelStart) / 2;
+            //    }
+            //    else if (alignment == (uint)DrawTextAlignment.AlignmentRight) {
+            //        xRelStart = width - totWidth;
+            //    }
+
+
+            //    szText = szTextNext;
+
+            //    if (szText == null || szText.Length == 0)
+            //        break;
+
+            //    if (fWordWrap && szText[0] == ' ')
+            //        szText = szText.Substring(1);
+
+            //    if (szText == null || szText.Length == 0)
+            //        break;
+
+            //    if (szText[0] == '\n')
+            //        szText = szText.Substring(1); // Eat just one new line.
+
+            //    if (szText == null || szText.Length == 0 || szTextLast.CompareTo(szText) == 0 ) break; // No progress made or finished, bail out...
+
+            //    fFirstLine = false;
+
+            //}
+
         }
 
         public void ComputeExtent(string text, out int width, out int height) => this.ComputeExtent(text, out width, out height, DefaultKerning);

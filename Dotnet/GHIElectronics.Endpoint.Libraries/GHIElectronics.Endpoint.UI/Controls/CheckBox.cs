@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading;
 using GHIElectronics.Endpoint.UI.Input;
 using GHIElectronics.Endpoint.UI.Media;
-using GHIElectronics.Endpoint.UI.Media.Imaging;
+using GHIElectronics.Endpoint.UI.Media.UIImaging;
 using GHIElectronics.Endpoint.UI.Properties;
 
 namespace GHIElectronics.Endpoint.UI.Controls {
@@ -14,8 +14,8 @@ namespace GHIElectronics.Endpoint.UI.Controls {
         public event RoutedEventHandler Checked;
         public event RoutedEventHandler Unchecked;
 
-        private BitmapImage bitmapImageCheckboxOn;
-        private BitmapImage bitmapImageCheckboxOff;
+        private UIBitmap bitmapImageCheckboxOn;
+        private UIBitmap bitmapImageCheckboxOff;
 
         private bool isChecked = false;
 
@@ -25,8 +25,8 @@ namespace GHIElectronics.Endpoint.UI.Controls {
 
 
         private void InitResource() {
-            this.bitmapImageCheckboxOn = BitmapImage.FromGraphics(Graphics.FromImage(Resources.CheckBox_On));
-            this.bitmapImageCheckboxOff = BitmapImage.FromGraphics(Graphics.FromImage(Resources.CheckBox_Off));
+            this.bitmapImageCheckboxOn = UIBitmap.FromData(Resources.CheckBox_On);
+            this.bitmapImageCheckboxOff = UIBitmap.FromData(Resources.CheckBox_Off);
         }
 
         public CheckBox() : base() {

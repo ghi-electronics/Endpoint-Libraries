@@ -6,6 +6,9 @@ using SkiaSharp;
 using System.Resources;
 using static System.Net.Mime.MediaTypeNames;
 using System.Drawing;
+using static System.Runtime.InteropServices.JavaScript.JSType;
+using static GHIElectronics.Endpoint.Drawing.Graphics;
+using System.Xml.Linq;
 
 namespace GHIElectronics.Endpoint.Drawing {
     internal interface IGraphics : IDisposable {
@@ -19,6 +22,8 @@ namespace GHIElectronics.Endpoint.Drawing {
         uint GetPixel(int x, int y);
         void SetPixel(int x, int y, uint color);
         byte[] GetBitmap();
+
+        byte[] GetBitmapRgb565();
         byte[] GetBitmap(int x, int y, int width, int height);
 
         void DrawLine(uint color, int thickness, int x0, int y0, int x1, int y1);
@@ -60,13 +65,12 @@ namespace GHIElectronics.Endpoint.Drawing {
             return new Internal.Bitmap(buffer, width, height);
         }
 
-        //private static IGraphics CreateSurface(byte[] buffer, BitmapImageType type)
-        //{
-        //    if (buffer == null)
-        //        throw new ArgumentNullException();
+        private static IGraphics CreateSurface(byte[] buffer) {
+            if (buffer == null)
+                throw new ArgumentNullException();
 
-        //    return new Internal.Bitmap(buffer, type);
-        //}
+            return new Internal.Bitmap(buffer);
+        }
 
         //private static IGraphics CreateSurface(byte[] buffer, int offset, int count, BitmapImageType type)
         //{
@@ -93,6 +97,11 @@ namespace GHIElectronics.Endpoint.Drawing {
 
         internal Graphics(IGraphics bmp) {
             this.surface = bmp; ;
+
+        }
+
+        internal Graphics(byte[] buffer) : this(Graphics.CreateSurface(buffer)) {
+
 
         }
 
@@ -171,40 +180,41 @@ namespace GHIElectronics.Endpoint.Drawing {
         //}
 
         public static Graphics FromImage(Image image) {
-            image.data.callFromImage = true;
+            image.imgGfx.callFromImage = true;
 
-            return image.data;
+            return image.imgGfx;
         }
 
-        public static Graphics FromImage(byte[] data) {
+        public static Graphics FromData(byte[] data) {
             // Endpoint TODO
-            return null; ;
+
+            return new Graphics(data); ;
         }
 
         public delegate void OnFlushHandler(Graphics sender, byte[] data, int x, int y, int width, int height, int originalWidth);
 
         static public event OnFlushHandler OnFlushEvent;
 
-        public void Flush() {
-            //if (this.hdc != IntPtr.Zero)
-            //{
-            //    this.surface.Flush(this.hdc, 0, 0, this.surface.Width, this.surface.Height);
-            //}
+        //public void Flush() {
+        //    //if (this.hdc != IntPtr.Zero)
+        //    //{
+        //    //    this.surface.Flush(this.hdc, 0, 0, this.surface.Width, this.surface.Height);
+        //    //}
 
-            OnFlushEvent?.Invoke(this, this.surface.GetBitmap(), 0, 0, this.surface.Width, this.surface.Height, this.surface.Width); ;
-        }
+        //    OnFlushEvent?.Invoke(this, this.surface.GetBitmapRgb565(), 0, 0, this.surface.Width, this.surface.Height, this.surface.Width); ;
+        //}
 
         //Draws a portion of an image at a specified location.
-        public void DrawImage(Image image, int x, int y, Rectangle srcRect, GraphicsUnit srcUnit) => this.surface.StretchImage(x, y, srcRect.Width, srcRect.Height, image.data.surface, srcRect.X, srcRect.Y, srcRect.Width, srcRect.Height, 0xFF);
+        public void DrawImage(Image image, int x, int y, Rectangle srcRect, GraphicsUnit srcUnit) => this.surface.StretchImage(x, y, srcRect.Width, srcRect.Height, image.imgGfx.surface, srcRect.X, srcRect.Y, srcRect.Width, srcRect.Height, 0xFF);
 
         //Draws the specified Image at the specified location and with the specified size.
-        public void DrawImage(Image image, int x, int y, int width, int height) => this.surface.StretchImage(x, y, width, height, image.data.surface, 0, 0, image.Width, image.Height, 0xFF);
+        public void DrawImage(Image image, int x, int y, int width, int height) => this.surface.StretchImage(x, y, width, height, image.imgGfx.surface, 0, 0, image.Width, image.Height, 0xFF);
 
         //Draws the specified image, using its original physical size, at the location specified by a coordinate pair.
-        public void DrawImage(Image image, int x, int y) => this.surface.StretchImage(x, y, image.Width, image.Height, image.data.surface, 0, 0, image.Width, image.Height, 0xFF);
+        public void DrawImage(Image image, int x, int y) => this.surface.StretchImage(x, y, image.Width, image.Height, image.imgGfx.surface, 0, 0, image.Width, image.Height, 0xFF);
 
         //Draws the specified portion of the specified Image at the specified location and with the specified size.
-        public void DrawImage(Image image, Rectangle destRect, Rectangle srcRect, GraphicsUnit srcUnit) => this.surface.StretchImage(destRect.X, destRect.Y, destRect.Width, destRect.Height, image.data.surface, srcRect.X, srcRect.Y, srcRect.Width, srcRect.Height, 0xFF);
+        public void DrawImage(Image image, Rectangle destRect, Rectangle srcRect, GraphicsUnit srcUnit) => this.surface.StretchImage(destRect.X, destRect.Y, destRect.Width, destRect.Height, image.imgGfx.surface, srcRect.X, srcRect.Y, srcRect.Width, srcRect.Height, 0xFF);
 
         public void DrawLine(Pen pen, int x1, int y1, int x2, int y2) {
             if (pen.Color.A != 0xFF) throw new NotSupportedException("Alpha not supported.");
@@ -289,7 +299,7 @@ namespace GHIElectronics.Endpoint.Drawing {
             }
         }
 
-        public void DrawImage(int xDst, int yDst, Image image, int xSrc, int ySrc, int width, int height, ushort opacity) => this.surface.DrawImage(xDst, yDst, image.data.surface, xSrc, ySrc, width, height, opacity);
+        public void DrawImage(int xDst, int yDst, Image image, int xSrc, int ySrc, int width, int height, ushort opacity) => this.surface.DrawImage(xDst, yDst, image.imgGfx.surface, xSrc, ySrc, width, height, opacity);
 
         public void Flush(int x, int y, int width, int height) {
             //if (this.hdc != IntPtr.Zero)
@@ -300,7 +310,7 @@ namespace GHIElectronics.Endpoint.Drawing {
             // Note:
             // Proper way is this.surface.GetBitmap(x,y, width, height) but it will create a new buffer.
             // Keep same buffer for now.
-            OnFlushEvent?.Invoke(this, this.surface.GetBitmap(), x, y, width, height, this.surface.Width); ;
+            OnFlushEvent?.Invoke(this, this.surface.GetBitmapRgb565(), x, y, width, height, this.surface.Width); ;
         }
 
         public void SetClippingRectangle(int x, int y, int width, int height) => this.surface.SetClippingRectangle(x, y, width, height);
@@ -312,12 +322,12 @@ namespace GHIElectronics.Endpoint.Drawing {
             if ((xSrc + width > image.Width) || (ySrc + height > image.Height))
                 throw new ArgumentOutOfRangeException();
 
-            this.surface.RotateImage(angle, xDst, yDst, image.data.surface, xSrc, ySrc, width, height, opacity);
+            this.surface.RotateImage(angle, xDst, yDst, image.imgGfx.surface, xSrc, ySrc, width, height, opacity);
         }
         public void MakeTransparent(Color color) => this.surface.MakeTransparent((uint)color.ToArgb());
-        public void StretchImage(int xDst, int yDst, int widthDst, int heightDst, Image image, int xSrc, int ySrc, int widthSrc, int heightSrc, ushort opacity) => this.surface.StretchImage(xDst, yDst, widthDst, heightDst, image.data.surface, xSrc, ySrc, widthSrc, heightSrc, opacity);
-        public void TileImage(int xDst, int yDst, Image image, int width, int height, ushort opacity) => this.surface.TileImage(xDst, yDst, image.data.surface, width, height, opacity);
-        public void Scale9Image(int xDst, int yDst, int widthDst, int heightDst, Image image, int leftBorder, int topBorder, int rightBorder, int bottomBorder, ushort opacity) => this.surface.Scale9Image(xDst, yDst, widthDst, heightDst, image.data.surface, leftBorder, topBorder, rightBorder, bottomBorder, opacity);
+        public void StretchImage(int xDst, int yDst, int widthDst, int heightDst, Image image, int xSrc, int ySrc, int widthSrc, int heightSrc, ushort opacity) => this.surface.StretchImage(xDst, yDst, widthDst, heightDst, image.imgGfx.surface, xSrc, ySrc, widthSrc, heightSrc, opacity);
+        public void TileImage(int xDst, int yDst, Image image, int width, int height, ushort opacity) => this.surface.TileImage(xDst, yDst, image.imgGfx.surface, width, height, opacity);
+        public void Scale9Image(int xDst, int yDst, int widthDst, int heightDst, Image image, int leftBorder, int topBorder, int rightBorder, int bottomBorder, ushort opacity) => this.surface.Scale9Image(xDst, yDst, widthDst, heightDst, image.imgGfx.surface, leftBorder, topBorder, rightBorder, bottomBorder, opacity);
 
         //
         // These have to be kept in sync with the CLR_GFX_Bitmap::c_DrawText_ flags.
@@ -378,6 +388,15 @@ namespace GHIElectronics.Endpoint.Drawing {
             //[MethodImpl(MethodImplOptions.InternalCall)]
             //public extern Bitmap(byte[] imageData, BitmapImageType type);
 
+            public Bitmap(byte[] data) {
+                this.skBitmap = SKBitmap.Decode(data);
+                this.skCanvas = new SKCanvas(this.skBitmap);
+
+                this.Width = this.skBitmap.Width;
+                this.Height = this.skBitmap.Height;
+
+            }
+
             //[MethodImpl(MethodImplOptions.InternalCall)]
             //public extern Bitmap(byte[] imageData, int offset, int count, BitmapImageType type);
 
@@ -387,6 +406,9 @@ namespace GHIElectronics.Endpoint.Drawing {
                 this.skBitmap = new SKBitmap(width, height); ;// SKImageInfo.PlatformColorType, SKAlphaType.Premul); ;
 
                 this.skCanvas = new SKCanvas(this.skBitmap);
+
+                this.Width = this.skBitmap.Width;
+                this.Height = this.skBitmap.Height;
             }
 
             //[MethodImpl(MethodImplOptions.InternalCall)]
@@ -397,6 +419,9 @@ namespace GHIElectronics.Endpoint.Drawing {
                 this.skBitmap = SKBitmap.Decode(data, this.skInfo);
 
                 this.skCanvas = new SKCanvas(this.skBitmap);
+
+                this.Width = this.skBitmap.Width;
+                this.Height = this.skBitmap.Height;
             }
 
             //[MethodImpl(MethodImplOptions.InternalCall)]
@@ -464,13 +489,30 @@ namespace GHIElectronics.Endpoint.Drawing {
             //[MethodImpl(MethodImplOptions.InternalCall)]
             public void DrawRectangle(uint colorOutline, int thicknessOutline, int x, int y, int width, int height, int xCornerRadius, int yCornerRadius, uint colorGradientStart, int xGradientStart, int yGradientStart, uint colorGradientEnd, int xGradientEnd, int yGradientEnd, ushort opacity) {
 
-                using (var p = new SKPaint()) {
-                    p.Color = colorOutline;
-                    p.Style = SKPaintStyle.Stroke;
-                    p.StrokeWidth = thicknessOutline;
+                var rect = SKRect.Create(x, y, width, height);
 
-                    this.skCanvas.DrawLine(x, y, width, height, p);
+                var paint = new SKPaint();
+
+
+
+
+                if (colorGradientStart == colorGradientEnd) {
+                    //paint.Style = SKPaintStyle.Fill;
+                    //paint.Color = colorGradientStart;
+
+                    paint.Shader = SKShader.CreateLinearGradient(
+                                new SKPoint(0, 0),
+                                new SKPoint(width, height),
+                                new SKColor[] { new SKColor(colorGradientStart),
+                                                new SKColor(colorGradientEnd) },
+                                null,
+                                SKShaderTileMode.Clamp);
                 }
+
+                this.skCanvas.DrawRect(rect, paint);
+
+
+
             }
 
             public void DrawTextInRect(string text, int x, int y, int width, int height, uint dtFlags, Color color, Font font) {
@@ -495,20 +537,189 @@ namespace GHIElectronics.Endpoint.Drawing {
             }
 
             //[MethodImpl(MethodImplOptions.InternalCall)]
-            public bool DrawTextInRect(ref string text, ref int xRelStart, ref int yRelStart, int x, int y, int width, int height, uint dtFlags, uint color, Font font) {
-                using (var p = new SKPaint()) {
-                    p.Color = color;
-                    p.Style = SKPaintStyle.Stroke;
 
-                    var textBlob = SKTextBlob.Create(text, font.SkFont);
+            private void CountCharactersInWidth(string text, int maxChars, int width, ref int totWidth, bool fWordWrap, ref string strNext, ref int numChars, Font font) {
+                //var i = 0;
+                var breakPoint = string.Empty;
+                var lastChar = '\0';
+                var breakWidth = 0;
+                var str = text;
+                var num = 0;
+                var breakIndex = 0;
 
-                    xRelStart = (int)textBlob.Bounds.Left;
-                    yRelStart = (int)textBlob.Bounds.Top;
+                while (maxChars != 0) {
 
-                    this.skCanvas.DrawText(textBlob, x, y, p);
+                    var c = str[0];
+                    var fNewLine = (c == '\n');
+                    var chrWidth = font.AverageWidth;
+
+                    if (fNewLine || chrWidth > width) {
+                        if (fWordWrap) {
+                            if (c == ' ') {
+                                break;
+                            }
+
+                            if (breakPoint != string.Empty) {
+                                if ((fNewLine && lastChar == ' ') ||
+                                    (!fNewLine && c != ' ')) {
+                                    totWidth = breakWidth;
+                                    str = breakPoint;
+                                    num = breakIndex;
+                                }
+                            }
+                        }
+
+                        break;
+                    }
+
+                    if (c == ' ') {
+                        if (lastChar != c) {
+                            // Break to the left of a space, since the string wouldn't
+                            // be properly centered with an extra space at the end of a line
+                            //
+                            breakIndex = num;
+                            breakPoint = str;
+                            breakWidth = totWidth;
+                        }
+                    }
+
+                    width -= chrWidth;
+                    totWidth += chrWidth;
+
+                    str = str.Substring(1);
+
+                    maxChars--;
+                    num++;
+
+                    if (c == '-') {
+                        if (lastChar != ' ') // e.g., "...foo -1000"
+                        {
+                            // Break to the right for a hyphen so that it stays part
+                            // of the current line
+                            //
+                            breakIndex = num;
+                            breakPoint = str;
+                            breakWidth = totWidth;
+                        }
+                    }
+
+                    lastChar = c;
 
 
                 }
+
+                strNext = str;
+                numChars = num;
+            }
+            public bool DrawTextInRect(ref string text, ref int xRelStart, ref int yRelStart, int x, int y, int width, int height, uint dtFlags, uint color, Font font) {
+
+                var textBlob = SKTextBlob.Create(text, font.SkFont);
+                font.SkPaint.Color = color;
+
+                //xRelStart = (int)textBlob.Bounds.Left;
+                //yRelStart = (int)textBlob.Bounds.Top;
+
+
+                //font.SkFont.GetFontMetrics(out var skFontMetric);
+                //var alignment = (DrawTextAlignment)(dtFlags & (uint)DrawTextAlignment.AlignmentMask);
+
+                //switch (alignment) {
+                //    case DrawTextAlignment.AlignmentLeft:
+                //        x -= width / 2;
+                //        break;
+
+                //    case DrawTextAlignment.AlignmentRight:
+                //        x += width / 2;
+                //        break;
+
+                //    case DrawTextAlignment.AlignmentCenter:
+                //        break;
+
+                //}
+
+               
+                this.skCanvas.DrawText(textBlob, x, y + font.Height, font.SkPaint);
+
+                //var fFirstLine = true;
+                //var totWidth = 0;
+                //var szTextNext = string.Empty;
+                //var szEllipsis = "...";
+                //var num = 0;
+                //var ellipsisWidth = 0;
+                //var fDrawEllipsis = false;
+
+                //var alignment = dtFlags & (uint)DrawTextAlignment.AlignmentMask;
+                //var trimming = dtFlags & (uint)DrawTextAlignment.TrimmingMask;
+
+
+                //var nHeight = font.Height;
+                //var nSkip = font.ExternalLeading;
+
+                //var dHeight = height - yRelStart;
+                //var dHeightLine = nHeight + nSkip;
+                //var cLineAvailable = dHeight + nSkip + (((dtFlags & (uint)DrawTextAlignment.TruncateAtBottom) != 0) ? dHeightLine - 1 : 0) / dHeightLine;
+
+                //var renderWidth = 0;
+                //var renderHeight = yRelStart;
+
+                //var fWordWrap = ((uint)(dtFlags & (uint)GHIElectronics.Endpoint.Drawing.Graphics.DrawTextAlignment.WordWrap) != 0);
+
+                //var szText = text;
+
+
+
+                //while (((dtFlags & (uint)DrawTextAlignment.IgnoreHeight) != 0) || --cLineAvailable >= 0) {
+                //    var szTextLast = szText;
+
+                //    if (!fFirstLine) {
+                //        xRelStart = 0;
+                //        yRelStart += dHeightLine;
+                //    }
+
+                //    font.CountCharactersInWidth(szText, -1, width - xRelStart, ref totWidth, fWordWrap, ref szTextNext, ref num);
+
+                //    if ((xRelStart + totWidth) > renderWidth) renderWidth = xRelStart + totWidth;
+                //    renderHeight += dHeightLine;
+
+                //    if ((trimming != (uint)DrawTextAlignment.TrimmingNone) && (cLineAvailable == 0) && szTextNext[0] != 0) {
+
+                //        font.CountCharactersInWidth(szEllipsis, -1, 65536, ref ellipsisWidth, fWordWrap, ref szTextNext, ref num);
+                //        font.CountCharactersInWidth(szText, -1, width - xRelStart - ellipsisWidth, ref totWidth, (trimming == (uint)DrawTextAlignment.TrimmingWordEllipsis), ref szTextNext, ref num);
+
+                //        totWidth += ellipsisWidth;
+                //        fDrawEllipsis = true;
+                //    }
+
+                //    if (alignment == (uint)DrawTextAlignment.AlignmentCenter) {
+                //        xRelStart = (width - totWidth + xRelStart) / 2;
+                //    }
+                //    else if (alignment == (uint)DrawTextAlignment.AlignmentRight) {
+                //        xRelStart = width - totWidth;
+                //    }
+
+                //    if (true) {
+                //        this.skCanvas.DrawText(textBlob, x + xRelStart, y + yRelStart, font.SkPaint);
+                //    }
+
+                //    szText = szTextNext;
+
+                //    if (szText == null || szText.Length == 0)
+                //        break;
+
+                //    if (fWordWrap && szText[0] == ' ')
+                //        szText = szText.Substring(1);
+
+                //    if (szText == null || szText.Length == 0)
+                //        break;
+
+                //    if (szText[0] == '\n')
+                //        szText = szText.Substring(1); // Eat just one new line.
+
+                //    if (szTextLast.CompareTo(szText) == 0 || szText == null || szText.Length == 0) break; // No progress made or finished, bail out...
+
+                //    fFirstLine = false;
+
+                //}
 
                 return true;
             }
@@ -553,7 +764,7 @@ namespace GHIElectronics.Endpoint.Drawing {
 
             //[MethodImpl(MethodImplOptions.InternalCall)]
             public void SetPixel(int xPos, int yPos, uint color) {
-                this.skBitmap.SetPixel(xPos, yPos, color); ; 
+                this.skBitmap.SetPixel(xPos, yPos, color); ;
             }
 
             //[MethodImpl(MethodImplOptions.InternalCall)]
@@ -569,15 +780,18 @@ namespace GHIElectronics.Endpoint.Drawing {
                 return this.skBitmap.Copy(SKColorType.Rgba8888).Bytes; ;
             }
 
+            public byte[] GetBitmapRgb565() {
+                return this.skBitmap.Copy(SKColorType.Rgb565).Bytes; ;
+            }
             //[MethodImpl(MethodImplOptions.InternalCall)]
             private byte[] NativeGetBitmap(int x, int y, int width, int height, int originalWidth) {
                 var buf = this.GetBitmap();
 
                 var ret = new byte[width * height * 4];
-                var idx = 0;    
+                var idx = 0;
 
-                for (var y1 = y; y1 < y+ height; y1++) {
-                    for (var x1 = y; x1 < x + width; x1+=4) {
+                for (var y1 = y; y1 < y + height; y1++) {
+                    for (var x1 = y; x1 < x + width; x1 += 4) {
                         ret[idx + 0] = buf[(y1 * originalWidth + x1) * 4 + 0];
                         ret[idx + 1] = buf[(y1 * originalWidth + x1) * 4 + 1];
                         ret[idx + 2] = buf[(y1 * originalWidth + x1) * 4 + 2];
@@ -601,7 +815,7 @@ namespace GHIElectronics.Endpoint.Drawing {
             //[MethodImpl(MethodImplOptions.InternalCall)]
             public void TileImage(int xDst, int yDst, Bitmap bitmap, int width, int height, ushort opacity) {
 
-                
+
 
                 this.StretchImage(xDst, yDst, bitmap, width, height, opacity); ;
             }

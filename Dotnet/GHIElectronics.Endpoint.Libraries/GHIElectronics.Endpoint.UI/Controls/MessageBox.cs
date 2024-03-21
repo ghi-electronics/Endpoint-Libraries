@@ -4,7 +4,7 @@ using GHIElectronics.Endpoint.Drawing;
 using System.Text;
 using System.Threading;
 using GHIElectronics.Endpoint.UI.Media;
-using GHIElectronics.Endpoint.UI.Media.Imaging;
+using GHIElectronics.Endpoint.UI.Media.UIImaging;
 
 namespace GHIElectronics.Endpoint.UI.Controls {
 

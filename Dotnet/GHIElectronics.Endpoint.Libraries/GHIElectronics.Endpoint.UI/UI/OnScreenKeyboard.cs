@@ -4,7 +4,7 @@ using GHIElectronics.Endpoint.Drawing;
 using GHIElectronics.Endpoint.UI.Controls;
 using GHIElectronics.Endpoint.UI.Input;
 using GHIElectronics.Endpoint.UI.Media;
-using GHIElectronics.Endpoint.UI.Media.Imaging;
+using GHIElectronics.Endpoint.UI.Media.UIImaging;
 using GHIElectronics.Endpoint.UI.Properties;
 
 namespace GHIElectronics.Endpoint.UI {
@@ -217,7 +217,7 @@ namespace GHIElectronics.Endpoint.UI {
                     break;
             }
 
-            view.Image = BitmapImage.FromGraphics(Graphics.FromImage(image));
+            view.Image = UIBitmap.FromData(image.GetBitmap());
 
             this.views.Add(id, view);
         }
@@ -230,7 +230,7 @@ namespace GHIElectronics.Endpoint.UI {
         }
 
         private class KeyboardView {
-            public BitmapImage Image { get; set; }
+            public UIBitmap Image { get; set; }
             public int RowHeight { get; set; }
             public int[] RowColumnOffset { get; set; }
             public int[][] ColumnWidth { get; set; }

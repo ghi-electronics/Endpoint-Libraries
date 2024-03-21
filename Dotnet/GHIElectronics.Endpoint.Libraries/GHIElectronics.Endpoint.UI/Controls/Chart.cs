@@ -4,7 +4,7 @@ using GHIElectronics.Endpoint.Drawing;
 using System.Text;
 using System.Threading;
 using GHIElectronics.Endpoint.UI.Media;
-using GHIElectronics.Endpoint.UI.Media.Imaging;
+using GHIElectronics.Endpoint.UI.Media.UIImaging;
 
 namespace GHIElectronics.Endpoint.UI.Controls {
     public class Chart : Image, IDisposable {
@@ -309,7 +309,7 @@ namespace GHIElectronics.Endpoint.UI.Controls {
             if (this.Font == null)
                 throw new ArgumentNullException("Font null!");                
 
-            var uiBmp = BitmapImage.FromGraphics(Graphics.FromImage(this.GetChart()));
+            var uiBmp = UIBitmap.FromGraphics(Graphics.FromImage(this.GetChart()));
 
             dc.DrawImage(uiBmp, 0, 0);
         }

@@ -5,7 +5,7 @@ using System.Text;
 using System.Threading;
 using GHIElectronics.Endpoint.UI.Input;
 using GHIElectronics.Endpoint.UI.Media;
-using GHIElectronics.Endpoint.UI.Media.Imaging;
+using GHIElectronics.Endpoint.UI.Media.UIImaging;
 using GHIElectronics.Endpoint.UI.Properties;
 
 namespace GHIElectronics.Endpoint.UI.Controls {
@@ -31,8 +31,8 @@ namespace GHIElectronics.Endpoint.UI.Controls {
             public ValueChangedEventArgs(double newIndex) => this.Value = newIndex;
         }
 
-        private BitmapImage bitmapImageButtonUp;
-        private BitmapImage bitmapImageButtonDown;
+        private UIBitmap bitmapImageButtonUp;
+        private UIBitmap bitmapImageButtonDown;
 
         private bool dragging = false;
         private Orientation direction = Orientation.Horizontal;
@@ -77,8 +77,8 @@ namespace GHIElectronics.Endpoint.UI.Controls {
             this.Maximum = 100;
             this.value = 0;
 
-            this.bitmapImageButtonUp = BitmapImage.FromGraphics(Graphics.FromImage(Resources.Button_Up));
-            this.bitmapImageButtonDown = BitmapImage.FromGraphics(Graphics.FromImage(Resources.Button_Down));
+            this.bitmapImageButtonUp = UIBitmap.FromData(Resources.Button_Up);
+            this.bitmapImageButtonDown = UIBitmap.FromData(Resources.Button_Down);
 
             this.Init();
         }
