@@ -9,6 +9,7 @@ using System.Drawing;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 using static GHIElectronics.Endpoint.Drawing.Graphics;
 using System.Xml.Linq;
+using System.IO;
 
 namespace GHIElectronics.Endpoint.Drawing {
     internal interface IGraphics : IDisposable {
@@ -190,6 +191,24 @@ namespace GHIElectronics.Endpoint.Drawing {
 
             return new Graphics(data); ;
         }
+
+        //public static Graphics FromFile(string file) {
+        //    // Endpoint TODO
+
+        //    byte[] data;
+        //    using (var fs = File.OpenRead(file)) {
+        //       data = new byte[fs.Length];
+
+        //        fs.Read(data, 0, data.Length);
+        //    }
+
+        //    if (data != null) {
+        //        return new Graphics(data); ;
+        //    }
+
+        //    return null;
+               
+        //}
 
         public delegate void OnFlushHandler(Graphics sender, byte[] data, int x, int y, int width, int height, int originalWidth);
 
@@ -451,14 +470,37 @@ namespace GHIElectronics.Endpoint.Drawing {
 
             //[MethodImpl(MethodImplOptions.InternalCall)]
             public void DrawImage(int xDst, int yDst, Bitmap bitmap, int xSrc, int ySrc, int width, int height, ushort opacity) {
+                if (bitmap == null )
+                    throw new ArgumentException("bitmap is null");
 
-                var img = bitmap.GetBitmap(xSrc, ySrc, width, height);
+                if (width > bitmap.Width || height > bitmap.Height || xSrc < 0 || ySrc < 0)
+                    throw new ArgumentException("invalid argument");
+                    
 
-                var info = new SKImageInfo(width, height); // width and height of rect
+                if (xSrc != 0 || ySrc != 0 || bitmap.Width != width || bitmap.Height != height) {
+                    var sk_img = new SKBitmap(width, height);
 
-                var sk_img = SKBitmap.Decode(img, info);
+                    // EP TODO optimize
+                    for (var y = ySrc; y < ySrc + height; y++) {
+                        for (var x = xSrc; x < xSrc + width; x++) {
+                            var c = bitmap.GetPixel(x, y);
 
-                this.skCanvas.DrawBitmap(sk_img, xDst, yDst);
+                            var a = (byte)(c >> 24);
+                            var r = (byte)(c >> 16);
+                            var g = (byte)(c >> 8);
+                            var b = (byte)(c >> 0);
+
+                            var sk_color = new SKColor(r, g, b, a);
+                            sk_img.SetPixel(x, y, sk_color);
+                        }
+                    }
+
+                    this.skCanvas.DrawBitmap(sk_img, xDst, yDst);
+                }
+                else {
+
+                    this.skCanvas.DrawBitmap(bitmap.SkBitmap, xDst, yDst); ;
+                }
             }
 
             //[MethodImpl(MethodImplOptions.InternalCall)]
@@ -493,21 +535,30 @@ namespace GHIElectronics.Endpoint.Drawing {
 
                 var paint = new SKPaint();
 
+                var c_s_a = (byte)(colorGradientStart >> 24);
+                var c_s_r = (byte)(colorGradientStart >> 16);
+                var c_s_g = (byte)(colorGradientStart >> 8);
+                var c_s_b = (byte)(colorGradientStart >> 0);
+
+                var c_e_a = (byte)(colorGradientEnd >> 24);
+                var c_e_r = (byte)(colorGradientEnd >> 16);
+                var c_e_g = (byte)(colorGradientEnd >> 8);
+                var c_e_b = (byte)(colorGradientEnd >> 0);
 
 
+                var colors = new SKColor[] {
+                    new SKColor(c_s_r, c_s_g, c_s_b, c_s_a),
+                    new SKColor(c_e_r, c_e_g, c_e_b, c_e_a)
+                };
 
-                if (colorGradientStart == colorGradientEnd) {
-                    //paint.Style = SKPaintStyle.Fill;
-                    //paint.Color = colorGradientStart;
 
-                    paint.Shader = SKShader.CreateLinearGradient(
-                                new SKPoint(0, 0),
-                                new SKPoint(width, height),
-                                new SKColor[] { new SKColor(colorGradientStart),
-                                                new SKColor(colorGradientEnd) },
-                                null,
-                                SKShaderTileMode.Clamp);
-                }
+                paint.Shader = SKShader.CreateLinearGradient(
+                                 new SKPoint(rect.Left, rect.Top),
+                                 new SKPoint(rect.Right, rect.Bottom),
+                                 colors,
+                                 new float[] { 0, 0.5f },
+
+                                 SKShaderTileMode.Clamp);
 
                 this.skCanvas.DrawRect(rect, paint);
 
@@ -534,192 +585,34 @@ namespace GHIElectronics.Endpoint.Drawing {
             //[MethodImpl(MethodImplOptions.InternalCall)]
             public void SetClippingRectangle(int x, int y, int width, int height) {
                 // EP TODO
+                //this.skCanvas.Save();
+                //var rect = new SKRect(x, y, width, height);
+                //this.skCanvas.ClipRect(rect);
+
+                //if (this.skCanvas.DeviceClipBounds.Width != 480) {
+                //    while (true) {
+                //        Thread.Sleep(1000);
+                //    }
+                //}
+
+                
+
             }
 
             //[MethodImpl(MethodImplOptions.InternalCall)]
 
-            private void CountCharactersInWidth(string text, int maxChars, int width, ref int totWidth, bool fWordWrap, ref string strNext, ref int numChars, Font font) {
-                //var i = 0;
-                var breakPoint = string.Empty;
-                var lastChar = '\0';
-                var breakWidth = 0;
-                var str = text;
-                var num = 0;
-                var breakIndex = 0;
-
-                while (maxChars != 0) {
-
-                    var c = str[0];
-                    var fNewLine = (c == '\n');
-                    var chrWidth = font.AverageWidth;
-
-                    if (fNewLine || chrWidth > width) {
-                        if (fWordWrap) {
-                            if (c == ' ') {
-                                break;
-                            }
-
-                            if (breakPoint != string.Empty) {
-                                if ((fNewLine && lastChar == ' ') ||
-                                    (!fNewLine && c != ' ')) {
-                                    totWidth = breakWidth;
-                                    str = breakPoint;
-                                    num = breakIndex;
-                                }
-                            }
-                        }
-
-                        break;
-                    }
-
-                    if (c == ' ') {
-                        if (lastChar != c) {
-                            // Break to the left of a space, since the string wouldn't
-                            // be properly centered with an extra space at the end of a line
-                            //
-                            breakIndex = num;
-                            breakPoint = str;
-                            breakWidth = totWidth;
-                        }
-                    }
-
-                    width -= chrWidth;
-                    totWidth += chrWidth;
-
-                    str = str.Substring(1);
-
-                    maxChars--;
-                    num++;
-
-                    if (c == '-') {
-                        if (lastChar != ' ') // e.g., "...foo -1000"
-                        {
-                            // Break to the right for a hyphen so that it stays part
-                            // of the current line
-                            //
-                            breakIndex = num;
-                            breakPoint = str;
-                            breakWidth = totWidth;
-                        }
-                    }
-
-                    lastChar = c;
-
-
-                }
-
-                strNext = str;
-                numChars = num;
-            }
+            
             public bool DrawTextInRect(ref string text, ref int xRelStart, ref int yRelStart, int x, int y, int width, int height, uint dtFlags, uint color, Font font) {
 
                 var textBlob = SKTextBlob.Create(text, font.SkFont);
                 font.SkPaint.Color = color;
 
-                //xRelStart = (int)textBlob.Bounds.Left;
-                //yRelStart = (int)textBlob.Bounds.Top;
-
-
-                //font.SkFont.GetFontMetrics(out var skFontMetric);
-                //var alignment = (DrawTextAlignment)(dtFlags & (uint)DrawTextAlignment.AlignmentMask);
-
-                //switch (alignment) {
-                //    case DrawTextAlignment.AlignmentLeft:
-                //        x -= width / 2;
-                //        break;
-
-                //    case DrawTextAlignment.AlignmentRight:
-                //        x += width / 2;
-                //        break;
-
-                //    case DrawTextAlignment.AlignmentCenter:
-                //        break;
-
-                //}
+                
 
                
                 this.skCanvas.DrawText(textBlob, x, y + font.Height, font.SkPaint);
 
-                //var fFirstLine = true;
-                //var totWidth = 0;
-                //var szTextNext = string.Empty;
-                //var szEllipsis = "...";
-                //var num = 0;
-                //var ellipsisWidth = 0;
-                //var fDrawEllipsis = false;
-
-                //var alignment = dtFlags & (uint)DrawTextAlignment.AlignmentMask;
-                //var trimming = dtFlags & (uint)DrawTextAlignment.TrimmingMask;
-
-
-                //var nHeight = font.Height;
-                //var nSkip = font.ExternalLeading;
-
-                //var dHeight = height - yRelStart;
-                //var dHeightLine = nHeight + nSkip;
-                //var cLineAvailable = dHeight + nSkip + (((dtFlags & (uint)DrawTextAlignment.TruncateAtBottom) != 0) ? dHeightLine - 1 : 0) / dHeightLine;
-
-                //var renderWidth = 0;
-                //var renderHeight = yRelStart;
-
-                //var fWordWrap = ((uint)(dtFlags & (uint)GHIElectronics.Endpoint.Drawing.Graphics.DrawTextAlignment.WordWrap) != 0);
-
-                //var szText = text;
-
-
-
-                //while (((dtFlags & (uint)DrawTextAlignment.IgnoreHeight) != 0) || --cLineAvailable >= 0) {
-                //    var szTextLast = szText;
-
-                //    if (!fFirstLine) {
-                //        xRelStart = 0;
-                //        yRelStart += dHeightLine;
-                //    }
-
-                //    font.CountCharactersInWidth(szText, -1, width - xRelStart, ref totWidth, fWordWrap, ref szTextNext, ref num);
-
-                //    if ((xRelStart + totWidth) > renderWidth) renderWidth = xRelStart + totWidth;
-                //    renderHeight += dHeightLine;
-
-                //    if ((trimming != (uint)DrawTextAlignment.TrimmingNone) && (cLineAvailable == 0) && szTextNext[0] != 0) {
-
-                //        font.CountCharactersInWidth(szEllipsis, -1, 65536, ref ellipsisWidth, fWordWrap, ref szTextNext, ref num);
-                //        font.CountCharactersInWidth(szText, -1, width - xRelStart - ellipsisWidth, ref totWidth, (trimming == (uint)DrawTextAlignment.TrimmingWordEllipsis), ref szTextNext, ref num);
-
-                //        totWidth += ellipsisWidth;
-                //        fDrawEllipsis = true;
-                //    }
-
-                //    if (alignment == (uint)DrawTextAlignment.AlignmentCenter) {
-                //        xRelStart = (width - totWidth + xRelStart) / 2;
-                //    }
-                //    else if (alignment == (uint)DrawTextAlignment.AlignmentRight) {
-                //        xRelStart = width - totWidth;
-                //    }
-
-                //    if (true) {
-                //        this.skCanvas.DrawText(textBlob, x + xRelStart, y + yRelStart, font.SkPaint);
-                //    }
-
-                //    szText = szTextNext;
-
-                //    if (szText == null || szText.Length == 0)
-                //        break;
-
-                //    if (fWordWrap && szText[0] == ' ')
-                //        szText = szText.Substring(1);
-
-                //    if (szText == null || szText.Length == 0)
-                //        break;
-
-                //    if (szText[0] == '\n')
-                //        szText = szText.Substring(1); // Eat just one new line.
-
-                //    if (szTextLast.CompareTo(szText) == 0 || szText == null || szText.Length == 0) break; // No progress made or finished, bail out...
-
-                //    fFirstLine = false;
-
-                //}
+                
 
                 return true;
             }
@@ -771,7 +664,7 @@ namespace GHIElectronics.Endpoint.Drawing {
             public uint GetPixel(int xPos, int yPos) {
                 var c = this.skBitmap.GetPixel(xPos, yPos);
 
-                return (uint)((c.Red << 24) | (c.Green << 16) | (c.Blue << 8) | (c.Alpha << 0)); ;
+                return (uint)((c.Alpha << 24) | (c.Red << 16) | (c.Green << 8) | (c.Blue << 0)); ;
 
             }
 
@@ -787,11 +680,18 @@ namespace GHIElectronics.Endpoint.Drawing {
             private byte[] NativeGetBitmap(int x, int y, int width, int height, int originalWidth) {
                 var buf = this.GetBitmap();
 
+                
+                while (buf != null) {
+                    Console.WriteLine("NativeGetBitmap need to be implement");
+
+                    Thread.Sleep(1000);
+                }
+
                 var ret = new byte[width * height * 4];
                 var idx = 0;
 
                 for (var y1 = y; y1 < y + height; y1++) {
-                    for (var x1 = y; x1 < x + width; x1 += 4) {
+                    for (var x1 = x; x1 < x + width; x1 += 4) {
                         ret[idx + 0] = buf[(y1 * originalWidth + x1) * 4 + 0];
                         ret[idx + 1] = buf[(y1 * originalWidth + x1) * 4 + 1];
                         ret[idx + 2] = buf[(y1 * originalWidth + x1) * 4 + 2];

@@ -58,12 +58,10 @@ namespace GHIElectronics.Endpoint.UI.Controls {
 
         protected override void ArrangeOverride(int arrangeWidth, int arrangeHeight) {
             var child = this.Child;
-            if (child != null) {
-                child.Arrange(this._borderLeft,
+            child?.Arrange(this._borderLeft,
                               this._borderTop,
                               arrangeWidth - this._borderLeft - this._borderRight,
                               arrangeHeight - this._borderTop - this._borderBottom);
-            }
         }
 
         protected override void MeasureOverride(int availableWidth, int availableHeight, out int desiredWidth, out int desiredHeight) {

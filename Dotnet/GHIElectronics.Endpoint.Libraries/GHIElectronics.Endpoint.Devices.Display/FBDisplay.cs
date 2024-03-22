@@ -48,36 +48,37 @@ namespace GHIElectronics.Endpoint.Devices.Display {
             this.Acquire();
         }
 
-        public void Flush(byte[] data, int offset, int length, int width, int height) {
+        public void Flush(byte[] data, int offset, int length, int x, int y, int width, int height, int orginalWidth) {
             unsafe {
                 var mptr = (byte*)fbPtr;
 
-                
                 var widthDest2 = fbWidth << 1;
                 var widthSrc2 = width << 1;
+                var originalWidth2 = orginalWidth << 1;
 
-                var y_min = Math.Min(height, this.Height);
+                var h = Math.Min(height, this.Height);
 
-                var x_min = Math.Min(widthDest2, widthSrc2);
+                var w = Math.Min(this.Width, Math.Min(orginalWidth, Math.Min(fbWidth, width))); // which one is smallest
 
-                x_min = Math.Min(x_min, this.Width << 1);
+                w <<= 1;
+                x <<= 1;
 
-                for (var y = 0; y < y_min; y++) {
-                    for (var x = 0; x < x_min; x++) {
+                h += y;
+                w += x;
 
-                        var posDest = (y * widthDest2) + x;
-                        var posSrc = (y * widthSrc2) + x;
+                for (var idx_y = y; idx_y < h; idx_y++) {
+                    for (var id_x = x; id_x < w; id_x++) {
+
+                        var posDest = (idx_y * widthDest2) + id_x;
+                        var posSrc = (idx_y * (originalWidth2)) + id_x;
 
                         mptr[posDest] = data[posSrc + offset];
-
-
-
                     }
                 }
             }
 
         }
-        public void Flush(byte[] data, int offset, int length) => this.Flush(data, offset, length, this.Width, this.Height);
+        public void Flush(byte[] data, int offset, int length) => this.Flush(data, offset, length, 0, 0, this.Width, this.Height, this.Width);
 
         private void Acquire() {
             if (initializeCount == 0) {
@@ -102,12 +103,12 @@ namespace GHIElectronics.Endpoint.Devices.Display {
             setting += $"{this.configuration.Width},{this.configuration.Hsync_start},{this.configuration.Hsync_end},{this.configuration.Htotal},";
             setting += $"{this.configuration.Height},{this.configuration.Vsync_start},{this.configuration.Vsync_end},{this.configuration.Vtotal},";
             setting += $"{this.configuration.Num_modes},{this.configuration.Dpi_width},{this.configuration.Dpi_height},{this.configuration.Bus_flags},{this.configuration.Bus_format},{this.configuration.Connector_type},{this.configuration.Bpc}";
-                       
+
 
             var script_insmod = new Script("modprobe", CMD_LOCATION, $"panel-simple ltdc_generic_setting={setting}");
             script_insmod.Start();
 
-           
+
             while (!File.Exists(FB_PATH)) {
                 Thread.Sleep(10);
             }
@@ -186,8 +187,8 @@ namespace GHIElectronics.Endpoint.Devices.Display {
         }
 
         private bool disposed = false;
-		
-		/// <exclude />
+
+        /// <exclude />
         ~FBDisplay() {
             this.Dispose(disposing: false);
         }
@@ -196,8 +197,8 @@ namespace GHIElectronics.Endpoint.Devices.Display {
             this.Dispose(disposing: true);
             GC.SuppressFinalize(this);
         }
-		
-		/// <exclude />
+
+        /// <exclude />
         protected void Dispose(bool disposing) {
             if (this.disposed)
                 return;
