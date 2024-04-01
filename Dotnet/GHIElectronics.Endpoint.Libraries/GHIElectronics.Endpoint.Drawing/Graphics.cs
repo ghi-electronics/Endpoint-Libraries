@@ -742,6 +742,9 @@ namespace GHIElectronics.Endpoint.Drawing {
             //[MethodImpl(MethodImplOptions.InternalCall)]
             public void StretchImage(int xDst, int yDst, Bitmap bitmap, int width, int height, ushort opacity) {
 
+                if (width == 0 || height == 0)
+                    return;
+
                 var info = new SKImageInfo(width, height);
 
                 var skbitmap = bitmap.SkBitmap.Resize(info, SKFilterQuality.Low);
@@ -802,6 +805,9 @@ namespace GHIElectronics.Endpoint.Drawing {
             }
             //[MethodImpl(MethodImplOptions.InternalCall)]
             private byte[] NativeGetBitmap(int x, int y, int width, int height, int originalWidth) {
+                if (width == 0 || height == 0)
+                    return null;
+
                 var buf = this.GetBitmap();
 
 
