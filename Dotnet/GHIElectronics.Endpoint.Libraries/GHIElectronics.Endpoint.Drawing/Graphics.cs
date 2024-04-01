@@ -868,7 +868,7 @@ namespace GHIElectronics.Endpoint.Drawing {
                 //this.StretchImage(xDst, yDst, bitmap, widthDst, heightDst, opacity); ;
                
 
-
+                // middle
                 var color_mid = new SKColor[(bitmap.Height - (bottomBorder + topBorder)) * (bitmap.Width - (leftBorder + rightBorder))];
                 var idx = 0;
 
@@ -885,8 +885,8 @@ namespace GHIElectronics.Endpoint.Drawing {
 
                 var info_mid = new SKImageInfo(widthDst - (leftBorder + rightBorder), heightDst - (topBorder + bottomBorder));
 
-                var skbitmap_mid_rezie = skbitmap_mid.Resize(info_mid, SKFilterQuality.High);
-                this.skCanvas.DrawBitmap(skbitmap_mid_rezie, xDst + leftBorder, yDst + topBorder);
+                var skbitmap_mid_resize = skbitmap_mid.Resize(info_mid, SKFilterQuality.High);
+                this.skCanvas.DrawBitmap(skbitmap_mid_resize, xDst + leftBorder, yDst + topBorder);
 
 
                 // left
@@ -906,9 +906,9 @@ namespace GHIElectronics.Endpoint.Drawing {
 
                 var info_left = new SKImageInfo(leftBorder, heightDst);
 
-                var skbitmap_left_rezie = skbitmap_left.Resize(info_left, SKFilterQuality.High);
+                var skbitmap_left_resize = skbitmap_left.Resize(info_left, SKFilterQuality.High);
 
-                this.skCanvas.DrawBitmap(skbitmap_left_rezie, xDst, yDst);
+                this.skCanvas.DrawBitmap(skbitmap_left_resize, xDst, yDst);
 
                 // Right
                 var color_right = new SKColor[rightBorder * bitmap.Height];
@@ -926,9 +926,9 @@ namespace GHIElectronics.Endpoint.Drawing {
 
                 var info_right = new SKImageInfo(rightBorder, heightDst);
 
-                var skbitmap_right_rezie = skbitmap_right.Resize(info_right, SKFilterQuality.High);
+                var skbitmap_right_resize = skbitmap_right.Resize(info_right, SKFilterQuality.High);
 
-                this.skCanvas.DrawBitmap(skbitmap_right_rezie, xDst + widthDst - rightBorder, yDst);
+                this.skCanvas.DrawBitmap(skbitmap_right_resize, xDst + widthDst - rightBorder, yDst);
 
                 // Top
    
@@ -947,9 +947,9 @@ namespace GHIElectronics.Endpoint.Drawing {
 
                 var info_top = new SKImageInfo(widthDst - (leftBorder + rightBorder), topBorder);
 
-                var skbitmap_top_rezie = skbitmap_top.Resize(info_top, SKFilterQuality.High);
+                var skbitmap_top_resize = skbitmap_top.Resize(info_top, SKFilterQuality.High);
 
-                this.skCanvas.DrawBitmap(skbitmap_top_rezie, xDst + leftBorder, yDst);
+                this.skCanvas.DrawBitmap(skbitmap_top_resize, xDst + leftBorder, yDst);
 
                 // bottom
                 var color_bottom = new SKColor[bottomBorder * (bitmap.Width - (leftBorder + rightBorder))];
@@ -967,9 +967,9 @@ namespace GHIElectronics.Endpoint.Drawing {
 
                 var info_bottom = new SKImageInfo(widthDst - (leftBorder + rightBorder), bottomBorder);
 
-                var skbitmap_bottom_rezie = skbitmap_bottom.Resize(info_bottom, SKFilterQuality.High);
+                var skbitmap_bottom_resize = skbitmap_bottom.Resize(info_bottom, SKFilterQuality.High);
 
-                this.skCanvas.DrawBitmap(skbitmap_bottom_rezie, xDst + leftBorder , yDst + heightDst - bottomBorder);
+                this.skCanvas.DrawBitmap(skbitmap_bottom_resize, xDst + leftBorder , yDst + heightDst - bottomBorder);
 
 
 
