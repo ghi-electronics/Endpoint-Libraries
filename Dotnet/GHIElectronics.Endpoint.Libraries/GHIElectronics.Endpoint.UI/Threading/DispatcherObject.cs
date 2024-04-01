@@ -58,9 +58,7 @@ namespace GHIElectronics.Endpoint.UI.Threading {
         public void VerifyAccess() {
             // Note: a DispatcherObject that is not associated with a
             // dispatcher is considered to be free-threaded.
-            if (this.Dispatcher != null) {
-                this.Dispatcher.VerifyAccess();
-            }
+            this.Dispatcher?.VerifyAccess();
         }
 
         /// <summary>

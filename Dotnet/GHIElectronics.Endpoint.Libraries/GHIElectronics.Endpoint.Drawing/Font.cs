@@ -34,9 +34,6 @@ namespace GHIElectronics.Endpoint.Drawing {
         public SKFont SkFont => this.skFont;
         public SKPaint SkPaint => this.skPaint;
 
-        private SKRect textBounds;
-
-
         //public float Size { get => this.skFont.Size; set => this.skFont.Size = value; }
         public Font() : this(22) {
 
@@ -53,9 +50,7 @@ namespace GHIElectronics.Endpoint.Drawing {
                 TextSize = this.skFont.Size,
             };
 
-            this.textBounds = new SKRect();
-
-            this.skPaint.MeasureText("a", ref this.textBounds);
+           
         }
 
         public Font(byte[] data) => new Font(data, 0, data.Length);
@@ -265,14 +260,13 @@ namespace GHIElectronics.Endpoint.Drawing {
         internal void ComputeTextInRect(string text, out int renderWidth, out int renderHeight, int xRelStart, int yRelStart, int availableWidth, int availableHeight, uint dtFlags) {
 
 
-            //for (var i = 0;i < text.Length; i++) {
-            //    var w = this.skFont.MeasureText(text, this.skPaint);
+            //renderWidth = availableWidth;
+            //renderHeight = availableHeight;
 
-            //}
             var paint = new SKPaint {
                 TextSize = this.SkFont.Size,
                 TextAlign = SKTextAlign.Center,
-                
+
             };
 
             var textBounds = new SKRect();
@@ -287,92 +281,14 @@ namespace GHIElectronics.Endpoint.Drawing {
             }
 
 
-            renderHeight = (int)Math.Ceiling(textBounds.Height) - yRelStart;
+            renderHeight = (int)Math.Ceiling(textBounds.Height) + yRelStart;
 
             if (renderHeight > availableHeight) {
                 renderHeight = availableHeight;
             }
 
 
-            //var height = availableHeight;
-            //var width = availableWidth;
-            //var fFirstLine = true;
-            //var totWidth = 0;
-            //var szTextNext = string.Empty;
-            //var szEllipsis = "...";
-            //var num = 0;
-            //var ellipsisWidth = 0;
-            ////var fDrawEllipsis = false;
 
-            //var alignment = dtFlags & (uint)DrawTextAlignment.AlignmentMask;
-            //var trimming = dtFlags & (uint)DrawTextAlignment.TrimmingMask;
-
-
-            //var nHeight = this.Height;
-            //var nSkip = this.ExternalLeading;
-
-            //var dHeight = height - yRelStart;
-            //var dHeightLine = nHeight + nSkip;
-            //var cLineAvailable = dHeight + nSkip + (((dtFlags & (uint)DrawTextAlignment.TruncateAtBottom) != 0) ? dHeightLine - 1 : 0) / dHeightLine;
-
-            //renderWidth = 0;
-            //renderHeight = yRelStart;
-
-            //var fWordWrap = ((uint)(dtFlags & (uint)GHIElectronics.Endpoint.Drawing.Graphics.DrawTextAlignment.WordWrap) != 0);
-
-            //var szText = text;
-
-
-
-            //while (((dtFlags & (uint)DrawTextAlignment.IgnoreHeight) != 0) || --cLineAvailable >= 0) {
-            //    var szTextLast = szText;
-
-            //    if (!fFirstLine) {
-            //        xRelStart = 0;
-            //        yRelStart += dHeightLine;
-            //    }
-
-            //    this.CountCharactersInWidth(szText, -1, width - xRelStart, ref totWidth, fWordWrap, ref szTextNext, ref num);
-
-            //    if ((xRelStart + totWidth) > renderWidth) renderWidth = xRelStart + totWidth;
-            //    renderHeight += dHeightLine;
-
-            //    if ((trimming != (uint)DrawTextAlignment.TrimmingNone) && (cLineAvailable == 0) && szTextNext[0] != 0) {
-
-            //        this.CountCharactersInWidth(szEllipsis, -1, 65536, ref ellipsisWidth, fWordWrap, ref szTextNext, ref num);
-            //        this.CountCharactersInWidth(szText, -1, width - xRelStart - ellipsisWidth, ref totWidth, (trimming == (uint)DrawTextAlignment.TrimmingWordEllipsis), ref szTextNext, ref num);
-
-            //        totWidth += ellipsisWidth;
-            //        //fDrawEllipsis = true;
-            //    }
-
-            //    if (alignment == (uint)DrawTextAlignment.AlignmentCenter) {
-            //        xRelStart = (width - totWidth + xRelStart) / 2;
-            //    }
-            //    else if (alignment == (uint)DrawTextAlignment.AlignmentRight) {
-            //        xRelStart = width - totWidth;
-            //    }
-
-
-            //    szText = szTextNext;
-
-            //    if (szText == null || szText.Length == 0)
-            //        break;
-
-            //    if (fWordWrap && szText[0] == ' ')
-            //        szText = szText.Substring(1);
-
-            //    if (szText == null || szText.Length == 0)
-            //        break;
-
-            //    if (szText[0] == '\n')
-            //        szText = szText.Substring(1); // Eat just one new line.
-
-            //    if (szText == null || szText.Length == 0 || szTextLast.CompareTo(szText) == 0 ) break; // No progress made or finished, bail out...
-
-            //    fFirstLine = false;
-
-            //}
 
         }
 

@@ -207,9 +207,7 @@ namespace GHIElectronics.Endpoint.UI.Threading {
                 while (this._queue.Count > 0) {
                     var operation = (DispatcherOperation)this._queue.Dequeue();
 
-                    if (operation != null) {
-                        operation.Abort();
-                    }
+                    operation?.Abort();
                 }
             }
         }

@@ -10,6 +10,7 @@ using static System.Runtime.InteropServices.JavaScript.JSType;
 using static GHIElectronics.Endpoint.Drawing.Graphics;
 using System.Xml.Linq;
 using System.IO;
+using System.Net.NetworkInformation;
 
 namespace GHIElectronics.Endpoint.Drawing {
     internal interface IGraphics : IDisposable {
@@ -192,6 +193,12 @@ namespace GHIElectronics.Endpoint.Drawing {
             return new Graphics(data); ;
         }
 
+        public static Graphics FromData(byte[] data, int width, int height) {
+            // Endpoint TODO
+
+            return new Graphics(data, width, height); ;
+        }
+
         //public static Graphics FromFile(string file) {
         //    // Endpoint TODO
 
@@ -207,7 +214,7 @@ namespace GHIElectronics.Endpoint.Drawing {
         //    }
 
         //    return null;
-               
+
         //}
 
         public delegate void OnFlushHandler(Graphics sender, byte[] data, int x, int y, int width, int height, int originalWidth);
@@ -604,15 +611,39 @@ namespace GHIElectronics.Endpoint.Drawing {
             
             public bool DrawTextInRect(ref string text, ref int xRelStart, ref int yRelStart, int x, int y, int width, int height, uint dtFlags, uint color, Font font) {
 
-                var textBlob = SKTextBlob.Create(text, font.SkFont);
+                
                 font.SkPaint.Color = color;
+                var textBounds = new SKRect();
 
-                
+                var paint = new SKPaint {
+                    TextSize = font.SkFont.Size,
+                    TextAlign = SKTextAlign.Center,
 
-               
-                this.skCanvas.DrawText(textBlob, x, y + font.Height, font.SkPaint);
+                };
 
-                
+                width += (int)paint.MeasureText(".", ref textBounds);
+
+                var s = string.Empty;
+                for (var i = 0; i < text.Length; i++) {
+                    s += text[i];
+
+
+                    var w = paint.MeasureText(s, ref textBounds);
+                    if (w > width) {
+                        var len = s.Length;
+
+                        if (len > 3) {
+                           s = s.Substring(0, len - 3);
+                            s += "...";
+                        }
+
+                        break;
+                    }
+
+                }
+
+                var textBlob = SKTextBlob.Create(s, font.SkFont);
+                this.skCanvas.DrawText(textBlob, x + xRelStart, y + yRelStart + font.Height, font.SkPaint);
 
                 return true;
             }
@@ -709,7 +740,8 @@ namespace GHIElectronics.Endpoint.Drawing {
 
             public void StretchImage(int xDst, int yDst, int widthDst, int heightDst, IGraphics bitmap, int xSrc, int ySrc, int widthSrc, int heightSrc, ushort opacity) {
                 if (bitmap is Bitmap b)
-                    this.StretchImage(xDst, yDst, widthDst, heightDst, b, xSrc, ySrc, widthSrc, heightSrc, opacity);
+                    //this.StretchImage(xDst, yDst, widthDst, heightDst, b, xSrc, ySrc, widthSrc, heightSrc, opacity);
+                    this.StretchImage(xDst, yDst, b, widthDst, heightDst, opacity); 
             }
 
             //[MethodImpl(MethodImplOptions.InternalCall)]

@@ -116,12 +116,14 @@ namespace GHIElectronics.Endpoint.UI {
             var sz = 80;
             var szh = 120;
             var full = new[] { sz, sz, sz, sz, sz, sz, sz, sz, sz, sz };
-            var image = default(GHIElectronics.Endpoint.Drawing.Bitmap);
+            var image = default(UIBitmap);
             var view = new KeyboardView { RowHeight = sz };
 
             switch (id) {
                 case KeyboardViewId.Lowercase:
-                    image = new Drawing.Bitmap(Resources.Keyboard_Lowercase, 800, 320 );
+                    image = UIBitmap.FromData(Resources.Keyboard_Lowercase);
+                    
+
                     view.RowColumnOffset = new[] { 0, hf, 0, 0 };
                     view.ColumnWidth = new[] {
                         full,
@@ -145,7 +147,7 @@ namespace GHIElectronics.Endpoint.UI {
                     break;
 
                 case KeyboardViewId.Uppercase:
-                    image = new Drawing.Bitmap(Resources.Keyboard_Uppercase, 800, 320);
+                    image = UIBitmap.FromData(Resources.Keyboard_Uppercase);
                     view.RowColumnOffset = new[] { 0, hf, 0, 0 };
                     view.ColumnWidth = new[] {
                         full,
@@ -169,7 +171,7 @@ namespace GHIElectronics.Endpoint.UI {
                     break;
 
                 case KeyboardViewId.Numbers:
-                    image = new Drawing.Bitmap(Resources.Keyboard_Numbers, 800, 320);
+                    image = UIBitmap.FromData(Resources.Keyboard_Numbers);
                     view.RowColumnOffset = new[] { 0, 0, 0, 0 };
                     view.ColumnWidth = new[] {
                         full,
@@ -193,7 +195,7 @@ namespace GHIElectronics.Endpoint.UI {
                     break;
 
                 case KeyboardViewId.Symbols:
-                    image = new Drawing.Bitmap(Resources.Keyboard_Symbols, 800, 320);
+                    image = UIBitmap.FromData(Resources.Keyboard_Symbols);
                     view.RowColumnOffset = new[] { 0, 0, 0, 0 };
                     view.ColumnWidth = new[] {
                         full,
@@ -217,7 +219,7 @@ namespace GHIElectronics.Endpoint.UI {
                     break;
             }
 
-            view.Image = UIBitmap.FromData(image.GetBitmap());
+            view.Image = image;
 
             this.views.Add(id, view);
         }

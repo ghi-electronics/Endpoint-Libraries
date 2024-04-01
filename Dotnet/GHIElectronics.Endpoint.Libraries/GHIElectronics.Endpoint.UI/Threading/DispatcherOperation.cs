@@ -163,9 +163,7 @@ namespace GHIElectronics.Endpoint.UI.Threading {
             private void Exit() {
                 this.Continue = false;
 
-                if (this._waitTimer != null) {
-                    this._waitTimer.Dispose();
-                }
+                this._waitTimer?.Dispose();
 
                 this._operation.Aborted -= new EventHandler(this.OnCompletedOrAborted);
                 this._operation.Completed -= new EventHandler(this.OnCompletedOrAborted);

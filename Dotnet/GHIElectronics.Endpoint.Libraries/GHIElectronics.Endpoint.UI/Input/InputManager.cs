@@ -33,10 +33,7 @@ namespace GHIElectronics.Endpoint.UI.Input {
         /// </remarks>
         public static InputManager CurrentInputManager {
             get {
-                var dispatcher = Dispatcher.CurrentDispatcher;
-
-                if (dispatcher == null) throw new InvalidOperationException("no dispatcher");
-
+                var dispatcher = Dispatcher.CurrentDispatcher ?? throw new InvalidOperationException("no dispatcher");
                 if (dispatcher._inputManager == null) {
                     lock (typeof(GlobalLock)) {
                         dispatcher._inputManager ??= new InputManager();
@@ -221,9 +218,7 @@ namespace GHIElectronics.Endpoint.UI.Input {
                                 eventSource = input._inputDevice.Target;
                             }
 
-                            if (eventSource != null) {
-                                eventSource.RaiseEvent(input);
-                            }
+                            eventSource?.RaiseEvent(input);
 
                             // Post-Notify the input.
                             //

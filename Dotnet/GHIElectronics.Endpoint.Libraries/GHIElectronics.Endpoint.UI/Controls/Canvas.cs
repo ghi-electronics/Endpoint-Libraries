@@ -46,9 +46,7 @@ namespace GHIElectronics.Endpoint.UI.Controls {
 
             anchorInfo._status |= edge;
 
-            if (e.Parent != null) {
-                e.Parent.InvalidateArrange();
-            }
+            e.Parent?.InvalidateArrange();
         }
 
         public static int GetBottom(UIElement e) => GetAnchorValue(e, Edge_Bottom);

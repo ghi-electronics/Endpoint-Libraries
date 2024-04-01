@@ -54,16 +54,12 @@ namespace GHIElectronics.Endpoint.UI.Controls {
                     }
 
                     var previousItem = this.SelectedItem;
-                    if (previousItem != null) {
-                        previousItem.OnIsSelectedChanged(false);
-                    }
+                    previousItem?.OnIsSelectedChanged(false);
 
                     var args = new SelectionChangedEventArgs(this._selectedIndex, value);
                     this._selectedIndex = value;
 
-                    if (item != null) {
-                        item.OnIsSelectedChanged(true);
-                    }
+                    item?.OnIsSelectedChanged(true);
 
                     this._selectionChanged?.Invoke(this, args);
                 }
