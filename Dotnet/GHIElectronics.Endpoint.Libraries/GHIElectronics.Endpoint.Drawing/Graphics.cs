@@ -11,8 +11,19 @@ using static GHIElectronics.Endpoint.Drawing.Graphics;
 using System.Xml.Linq;
 using System.IO;
 using System.Net.NetworkInformation;
+using System.Security.Cryptography;
 
 namespace GHIElectronics.Endpoint.Drawing {
+
+    internal class GFX_Rect {
+        public int left;
+        public int top;
+        public int right;
+        public int bottom;
+
+        public int Width() => this.right - this.left + 1;
+        public int Height() => this.bottom - this.top + 1;
+    };
     internal interface IGraphics : IDisposable {
         int Width { get; }
         int Height { get; }
@@ -712,7 +723,7 @@ namespace GHIElectronics.Endpoint.Drawing {
                     // Red
                     var r_trans = (byte)(color << 16);
 
-                    var p_r = 1 - (r_trans  / 255.0);
+                    var p_r = 1 - (r_trans / 255.0);
 
                     var r = (byte)(255 - p_r * (255 - c.Red));
 
@@ -736,7 +747,7 @@ namespace GHIElectronics.Endpoint.Drawing {
                 }
                 this.skBitmap.Pixels = colors;
 
-               
+
             }
 
             //[MethodImpl(MethodImplOptions.InternalCall)]
@@ -747,7 +758,7 @@ namespace GHIElectronics.Endpoint.Drawing {
 
                 var info = new SKImageInfo(width, height);
 
-                var skbitmap = bitmap.SkBitmap.Resize(info, SKFilterQuality.Low);
+                var skbitmap = bitmap.SkBitmap.Resize(info, SKFilterQuality.High);
 
                 //opacity = (ushort)(opacity & 0xFF);
 
@@ -854,7 +865,117 @@ namespace GHIElectronics.Endpoint.Drawing {
             //[MethodImpl(MethodImplOptions.InternalCall)]
             public void Scale9Image(int xDst, int yDst, int widthDst, int heightDst, Bitmap bitmap, int leftBorder, int topBorder, int rightBorder, int bottomBorder, ushort opacity) {
 
-                this.StretchImage(xDst, yDst, bitmap, widthDst, heightDst, opacity); ;
+                //this.StretchImage(xDst, yDst, bitmap, widthDst, heightDst, opacity); ;
+               
+
+
+                var color_mid = new SKColor[(bitmap.Height - (bottomBorder + topBorder)) * (bitmap.Width - (leftBorder + rightBorder))];
+                var idx = 0;
+
+                for (var y = topBorder; y < bitmap.Height - bottomBorder; y++) {
+                    for (var x = leftBorder; x < bitmap.Width - rightBorder; x++) {
+                        color_mid[idx++] = bitmap.GetPixel(x, y);   
+                    }
+                }
+
+                var skbitmap_mid = new SKBitmap(bitmap.Width - (leftBorder + rightBorder),
+                                            bitmap.Height - (bottomBorder + topBorder)) {
+                    Pixels = color_mid
+                };
+
+                var info_mid = new SKImageInfo(widthDst - (leftBorder + rightBorder), heightDst - (topBorder + bottomBorder));
+
+                var skbitmap_mid_rezie = skbitmap_mid.Resize(info_mid, SKFilterQuality.High);
+                this.skCanvas.DrawBitmap(skbitmap_mid_rezie, xDst + leftBorder, yDst + topBorder);
+
+
+                // left
+
+                var color_left = new SKColor[leftBorder * bitmap.Height];
+                idx = 0;
+
+                for (var y = 0; y < bitmap.Height; y++) {
+                    for (var x = 0; x < leftBorder; x++) {
+                        color_left[idx++] = bitmap.GetPixel(x, y);
+                    }
+                }
+
+                var skbitmap_left = new SKBitmap(leftBorder, bitmap.Height) {
+                    Pixels = color_left
+                };
+
+                var info_left = new SKImageInfo(leftBorder, heightDst);
+
+                var skbitmap_left_rezie = skbitmap_left.Resize(info_left, SKFilterQuality.High);
+
+                this.skCanvas.DrawBitmap(skbitmap_left_rezie, xDst, yDst);
+
+                // Right
+                var color_right = new SKColor[rightBorder * bitmap.Height];
+                idx = 0;
+
+                for (var y = 0; y < bitmap.Height; y++) {
+                    for (var x = bitmap.Width - rightBorder; x < bitmap.Width; x++) {
+                        color_right[idx++] = bitmap.GetPixel(x, y);
+                    }
+                }
+
+                var skbitmap_right = new SKBitmap(rightBorder, bitmap.Height) {
+                    Pixels = color_right
+                };
+
+                var info_right = new SKImageInfo(rightBorder, heightDst);
+
+                var skbitmap_right_rezie = skbitmap_right.Resize(info_right, SKFilterQuality.High);
+
+                this.skCanvas.DrawBitmap(skbitmap_right_rezie, xDst + widthDst - rightBorder, yDst);
+
+                // Top
+   
+                var color_top = new SKColor[topBorder * (bitmap.Width - (leftBorder + rightBorder))];
+                idx = 0;
+
+                for (var y = 0; y < topBorder; y++) {
+                    for (var x = leftBorder; x < (bitmap.Width - (rightBorder)); x++) {
+                        color_top[idx++] = bitmap.GetPixel(x, y);
+                    }
+                }
+
+                var skbitmap_top = new SKBitmap(bitmap.Width - (leftBorder + rightBorder), topBorder) {
+                    Pixels = color_top
+                };
+
+                var info_top = new SKImageInfo(widthDst - (leftBorder + rightBorder), topBorder);
+
+                var skbitmap_top_rezie = skbitmap_top.Resize(info_top, SKFilterQuality.High);
+
+                this.skCanvas.DrawBitmap(skbitmap_top_rezie, xDst + leftBorder, yDst);
+
+                // bottom
+                var color_bottom = new SKColor[bottomBorder * (bitmap.Width - (leftBorder + rightBorder))];
+                idx = 0;
+
+                for (var y = bitmap.Height - bottomBorder; y < bitmap.Height; y++) {
+                    for (var x = leftBorder; x < (bitmap.Width - (rightBorder)); x++) {
+                        color_bottom[idx++] = bitmap.GetPixel(x, y);
+                    }
+                }
+
+                var skbitmap_bottom = new SKBitmap(bitmap.Width - (leftBorder + rightBorder), bottomBorder) {
+                    Pixels = color_bottom
+                };
+
+                var info_bottom = new SKImageInfo(widthDst - (leftBorder + rightBorder), bottomBorder);
+
+                var skbitmap_bottom_rezie = skbitmap_bottom.Resize(info_bottom, SKFilterQuality.High);
+
+                this.skCanvas.DrawBitmap(skbitmap_bottom_rezie, xDst + leftBorder , yDst + heightDst - bottomBorder);
+
+
+
+
+
+
             }
 
             public void DrawImage(int xDst, int yDst, IGraphics bitmap, int xSrc, int ySrc, int width, int height, ushort opacity) {
