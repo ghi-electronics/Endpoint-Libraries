@@ -29,10 +29,10 @@ namespace GHIElectronics.Endpoint.Drawing {
         private const int DefaultKerning = 1024;
 
         SKFont skFont;
-        SKPaint skPaint;
+        //SKPaint skPaint;
 
         public SKFont SkFont => this.skFont;
-        public SKPaint SkPaint => this.skPaint;
+        //public SKPaint SkPaint => this.skPaint;
 
         //public float Size { get => this.skFont.Size; set => this.skFont.Size = value; }
         public Font() : this(22) {
@@ -43,12 +43,12 @@ namespace GHIElectronics.Endpoint.Drawing {
             this.skFont = new SKFont {
                 Size = size,
 
-            };
+            }; ;
 
-            this.skPaint = new SKPaint {
-                TextAlign = SKTextAlign.Center,
-                TextSize = this.skFont.Size,
-            };
+            //this.skPaint = new SKPaint {
+            //    TextAlign = SKTextAlign.Center,
+            //    TextSize = this.skFont.Size,
+            //};
 
            
         }
@@ -68,10 +68,10 @@ namespace GHIElectronics.Endpoint.Drawing {
                 Typeface = tf
             };
 
-            this.skPaint = new SKPaint {
-                TextAlign = SKTextAlign.Center,
-                TextSize = this.skFont.Size,
-            };
+            //this.skPaint = new SKPaint {
+            //    TextAlign = SKTextAlign.Center,
+            //    TextSize = this.skFont.Size,
+            //};
 
             //this.textBounds = new SKRect();
 

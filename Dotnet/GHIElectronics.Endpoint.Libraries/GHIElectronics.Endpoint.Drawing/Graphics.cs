@@ -245,14 +245,14 @@ namespace GHIElectronics.Endpoint.Drawing {
         public void DrawLine(Pen pen, int x1, int y1, int x2, int y2) {
             if (pen.Color.A != 0xFF) throw new NotSupportedException("Alpha not supported.");
 
-            this.surface.DrawLine((uint)(pen.Color.value & 0x00FFFFFF), (int)pen.Width, x1, y1, x2, y2);
+            this.surface.DrawLine((uint)(pen.Color.Value & 0x00FFFFFF), (int)pen.Width, x1, y1, x2, y2);
         }
 
         public void DrawString(string s, Font font, Brush brush, float x, float y) {
             if (brush is SolidBrush b) {
                 if (b.Color.A != 0xFF) throw new NotSupportedException("Alpha not supported.");
 
-                this.surface.DrawText(s, font, (uint)(b.Color.value & 0x00FFFFFF), (int)x, (int)y);
+                this.surface.DrawText(s, font, (uint)(b.Color.Value & 0x00FFFFFF), (int)x, (int)y);
             }
             else {
                 throw new NotSupportedException();
@@ -286,7 +286,7 @@ namespace GHIElectronics.Endpoint.Drawing {
             x += width;
             y += height;
 
-            this.surface.DrawEllipse(rgb, (int)pen.Width, x, y, width, height, (uint)Color.Transparent.value, x, y, (uint)Color.Transparent.value, x + width * 2, y + height * 2, 0x00);
+            this.surface.DrawEllipse(rgb, (int)pen.Width, x, y, width, height, (uint)Color.Transparent.Value, x, y, (uint)Color.Transparent.Value, x + width * 2, y + height * 2, 0x00);
         }
 
         public void DrawRectangle(Pen pen, int x, int y, int width, int height) {
@@ -294,7 +294,7 @@ namespace GHIElectronics.Endpoint.Drawing {
 
             var rgb = (uint)(pen.Color.ToArgb() & 0x00FFFFFF);
 
-            this.surface.DrawRectangle(rgb, (int)pen.Width, x, y, width, height, 0, 0, (uint)Color.Transparent.value, x, y, (uint)Color.Transparent.value, x + width, y + height, 0x00);
+            this.surface.DrawRectangle(rgb, (int)pen.Width, x, y, width, height, 0, 0, (uint)Color.Transparent.Value, x, y, (uint)Color.Transparent.Value, x + width, y + height, 0x00);
         }
 
         public void FillEllipse(Brush brush, int x, int y, int width, int height) {
@@ -457,12 +457,16 @@ namespace GHIElectronics.Endpoint.Drawing {
 
             //[MethodImpl(MethodImplOptions.InternalCall)]
             public void Dispose(bool disposing) {
-                // TODO
+                if (this.skCanvas != null) { this.skCanvas.Dispose(); this.skCanvas = null; }
+
+                if (this.skBitmap != null) { this.skBitmap.Dispose(); this.skBitmap = null; }
+
             }
 
             //[MethodImpl(MethodImplOptions.InternalCall)]
             public void Flush() {
                 // TODO
+                this.Flush(0, 0, this.Width, this.Height); ;
             }
 
             //[MethodImpl(MethodImplOptions.InternalCall)]
@@ -477,12 +481,12 @@ namespace GHIElectronics.Endpoint.Drawing {
 
             //[MethodImpl(MethodImplOptions.InternalCall)]
             public void DrawImage(int xDst, int yDst, Bitmap bitmap, int xSrc, int ySrc, int width, int height, ushort opacity) {
-                if (bitmap == null )
+                if (bitmap == null)
                     throw new ArgumentException("bitmap is null");
 
                 if (width > bitmap.Width || height > bitmap.Height || xSrc < 0 || ySrc < 0)
                     throw new ArgumentException("invalid argument");
-                    
+
 
                 if (xSrc != 0 || ySrc != 0 || bitmap.Width != width || bitmap.Height != height) {
                     var sk_img = new SKBitmap(width, height);
@@ -492,7 +496,7 @@ namespace GHIElectronics.Endpoint.Drawing {
                         for (var x = xSrc; x < xSrc + width; x++) {
                             var c = bitmap.GetPixel(x, y);
 
-                            var a = (byte)(c >> 24);
+                            var a = opacity < 255 ? (byte)(opacity) : (byte)(c >> 24);
                             var r = (byte)(c >> 16);
                             var g = (byte)(c >> 8);
                             var b = (byte)(c >> 0);
@@ -577,7 +581,7 @@ namespace GHIElectronics.Endpoint.Drawing {
                 var xRelStart = 0;
                 var yRelStart = 0;
 
-                this.DrawTextInRect(ref text, ref xRelStart, ref yRelStart, x, y, width, height, dtFlags, (uint)(color.value & 0x00FFFFFF), font);
+                this.DrawTextInRect(ref text, ref xRelStart, ref yRelStart, x, y, width, height, dtFlags, (uint)color.Value, font);
             }
 
             //public void DrawEllipse(Color colorOutline, int x, int y, int xRadius, int yRadius) => DrawEllipse(colorOutline, 1, x, y, xRadius, yRadius, Color.Black, 0, 0, Color.Black, 0, 0, OpacityOpaque);
@@ -602,48 +606,52 @@ namespace GHIElectronics.Endpoint.Drawing {
                 //    }
                 //}
 
-                
+
 
             }
 
             //[MethodImpl(MethodImplOptions.InternalCall)]
 
-            
-            public bool DrawTextInRect(ref string text, ref int xRelStart, ref int yRelStart, int x, int y, int width, int height, uint dtFlags, uint color, Font font) {
 
-                
-                font.SkPaint.Color = color;
-                var textBounds = new SKRect();
+            public bool DrawTextInRect(ref string text, ref int xRelStart, ref int yRelStart, int x, int y, int width, int height, uint dtFlags, uint color, Font skFont) {
 
-                var paint = new SKPaint {
-                    TextSize = font.SkFont.Size,
+
+                //font.SkPaint.Color = color;
+                //var textBounds = new SKRect();
+
+                using (var skPaint = new SKPaint {
+                    TextSize = skFont.SkFont.Size,
                     TextAlign = SKTextAlign.Center,
+                    Color = color,
 
-                };
+                }) {
 
-                width += (int)paint.MeasureText(".", ref textBounds);
+                    var textBounds = new SKRect();
 
-                var s = string.Empty;
-                for (var i = 0; i < text.Length; i++) {
-                    s += text[i];
+                    width += (int)skPaint.MeasureText(".", ref textBounds);
+
+                    var s = string.Empty;
+                    for (var i = 0; i < text.Length; i++) {
+                        s += text[i];
 
 
-                    var w = paint.MeasureText(s, ref textBounds);
-                    if (w > width) {
-                        var len = s.Length;
+                        var w = skPaint.MeasureText(s, ref textBounds);
+                        if (w > width) {
+                            var len = s.Length;
 
-                        if (len > 3) {
-                           s = s.Substring(0, len - 3);
-                            s += "...";
+                            if (len > 3) {
+                                s = s.Substring(0, len - 3);
+                                s += "...";
+                            }
+
+                            break;
                         }
 
-                        break;
                     }
 
+                    var textBlob = SKTextBlob.Create(s, skFont.SkFont);
+                    this.skCanvas.DrawText(textBlob, x + xRelStart, y + yRelStart + skFont.Height, skPaint);
                 }
-
-                var textBlob = SKTextBlob.Create(s, font.SkFont);
-                this.skCanvas.DrawText(textBlob, x + xRelStart, y + yRelStart + font.Height, font.SkPaint);
 
                 return true;
             }
@@ -664,6 +672,24 @@ namespace GHIElectronics.Endpoint.Drawing {
             }
             ///[MethodImpl(MethodImplOptions.InternalCall)]
             public void RotateImage(int angle, int xDst, int yDst, Bitmap bitmap, int xSrc, int ySrc, int width, int height, ushort opacity) {
+
+                var new_bitmap = new Bitmap(width, height);
+
+                for (var y = ySrc; y < ySrc + height; y++) {
+                    for (var x = xSrc; x < xSrc + width; x++) {
+                        var p = bitmap.GetPixel(x, y);
+
+                        if (opacity < 255) {
+                            p &= ~0xFF000000;
+                            p |= (uint)((byte)(opacity) << 24);
+                        }
+
+
+                        new_bitmap.SetPixel(x - xSrc, y - ySrc, p);
+                    }
+                }
+
+
                 var rotated = Rotate(bitmap.SkBitmap, angle);
 
                 this.skCanvas.DrawBitmap(rotated, xDst, yDst);
@@ -673,16 +699,83 @@ namespace GHIElectronics.Endpoint.Drawing {
 
             //[MethodImpl(MethodImplOptions.InternalCall)]
             public void MakeTransparent(uint color) {
-                this.skCanvas.Clear(color); ;
 
-                //TODO
+
+                var pixelCount = this.skBitmap.Width * this.skBitmap.Height;
+                var colors = new SKColor[pixelCount];
+
+
+                var original_pixel = this.skBitmap.Pixels;
+
+                for (var n = 0; n < pixelCount; n++) {
+                    var c = original_pixel[n];
+                    // Red
+                    var r_trans = (byte)(color << 16);
+
+                    var p_r = 1 - (r_trans  / 255.0);
+
+                    var r = (byte)(255 - p_r * (255 - c.Red));
+
+                    // Green
+                    var g_trans = (byte)(color << 8);
+
+                    var p_g = 1 - (g_trans / 255.0);
+
+                    var g = (byte)(255 - p_g * (255 - c.Green));
+
+                    // Blue
+                    var b_trans = (byte)(color << 0);
+
+                    var p_b = 1 - (b_trans / 255.0);
+
+                    var b = (byte)(255 - p_b * (255 - c.Blue));
+
+                    var c_new = new SKColor(r, g, b, 255);
+
+                    colors[n] = c_new;
+                }
+                this.skBitmap.Pixels = colors;
+
+               
             }
 
             //[MethodImpl(MethodImplOptions.InternalCall)]
             public void StretchImage(int xDst, int yDst, Bitmap bitmap, int width, int height, ushort opacity) {
 
                 var info = new SKImageInfo(width, height);
-                this.skCanvas.DrawBitmap(bitmap.SkBitmap.Resize(info, SKFilterQuality.Low), xDst, yDst);
+
+                var skbitmap = bitmap.SkBitmap.Resize(info, SKFilterQuality.Low);
+
+                //opacity = (ushort)(opacity & 0xFF);
+
+
+
+
+                //if (opacity < 255) {
+
+                //    var p = 1 - (opacity / 255.0);
+
+                //    var pixelCount = width * height;
+                //    var colors = new SKColor[pixelCount];
+
+
+                //    var original_pixel = skbitmap.Pixels;
+
+                //    for (var n = 0; n < pixelCount; n++) {
+                //        var c = original_pixel[n];
+
+                //        var r = (byte)(255 - p * (255 - c.Red));
+                //        var g = (byte)(255 - p * (255 - c.Green));
+                //        var b = (byte)(255 - p * (255 - c.Blue));
+
+                //        var c1 = new SKColor(r, g, b, 255);
+
+                //        colors[n] = c1;
+                //    }
+                //    skbitmap.Pixels = colors;
+                //}
+
+                this.skCanvas.DrawBitmap(skbitmap, xDst, yDst);
             }
 
 
@@ -711,12 +804,12 @@ namespace GHIElectronics.Endpoint.Drawing {
             private byte[] NativeGetBitmap(int x, int y, int width, int height, int originalWidth) {
                 var buf = this.GetBitmap();
 
-                
-                while (buf != null) {
-                    Console.WriteLine("NativeGetBitmap need to be implement");
 
-                    Thread.Sleep(1000);
-                }
+                //while (buf != null) {
+                //    Console.WriteLine("NativeGetBitmap need to be implement");
+
+                //    Thread.Sleep(1000);
+                //}
 
                 var ret = new byte[width * height * 4];
                 var idx = 0;
@@ -741,7 +834,7 @@ namespace GHIElectronics.Endpoint.Drawing {
             public void StretchImage(int xDst, int yDst, int widthDst, int heightDst, IGraphics bitmap, int xSrc, int ySrc, int widthSrc, int heightSrc, ushort opacity) {
                 if (bitmap is Bitmap b)
                     //this.StretchImage(xDst, yDst, widthDst, heightDst, b, xSrc, ySrc, widthSrc, heightSrc, opacity);
-                    this.StretchImage(xDst, yDst, b, widthDst, heightDst, opacity); 
+                    this.StretchImage(xDst, yDst, b, widthDst, heightDst, opacity);
             }
 
             //[MethodImpl(MethodImplOptions.InternalCall)]

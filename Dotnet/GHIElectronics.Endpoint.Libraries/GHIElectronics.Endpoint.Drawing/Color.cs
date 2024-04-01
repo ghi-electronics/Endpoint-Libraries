@@ -23,20 +23,20 @@ namespace GHIElectronics.Endpoint.Drawing {
         private const int ARGBGreenShift = 8;
         private const int ARGBBlueShift = 0;
 
-        internal readonly long value;
+        internal readonly long Value;
 
-        internal Color(long value) => this.value = value;
+        internal Color(long value) => this.Value = value;
 
-        public byte R => (byte)((this.value >> ARGBRedShift) & 0xFF);
-        public byte G => (byte)((this.value >> ARGBGreenShift) & 0xFF);
-        public byte B => (byte)((this.value >> ARGBBlueShift) & 0xFF);
-        public byte A => (byte)((this.value >> ARGBAlphaShift) & 0xFF);
+        public byte R => (byte)((this.Value >> ARGBRedShift) & 0xFF);
+        public byte G => (byte)((this.Value >> ARGBGreenShift) & 0xFF);
+        public byte B => (byte)((this.Value >> ARGBBlueShift) & 0xFF);
+        public byte A => (byte)((this.Value >> ARGBAlphaShift) & 0xFF);
 
         public bool IsEmpty => false;
 
         private string NameAndARGBValue => $"ARGB=({this.A}, {this.R}, {this.G}, {this.B})";
 
-        public string Name => this.value.ToString("x");
+        public string Name => this.Value.ToString("x");
 
         private static long MakeArgb(byte alpha, byte red, byte green, byte blue) => (long)(unchecked((uint)(red << ARGBRedShift | green << ARGBGreenShift | blue << ARGBBlueShift | alpha << ARGBAlphaShift))) & 0xffffffff;
 
@@ -147,12 +147,12 @@ namespace GHIElectronics.Endpoint.Drawing {
             return s;
         }
 
-        public int ToArgb() => unchecked((int)this.value);
-        internal int ToRgb() => unchecked((int)this.value) & 0x00FFFFFF;
+        public int ToArgb() => unchecked((int)this.Value);
+        internal int ToRgb() => unchecked((int)this.Value) & 0x00FFFFFF;
 
         public override string ToString() {
             var sb = new StringBuilder(32);
-            sb.Append(GetType().Name);
+            sb.Append(this.GetType().Name);
             sb.Append(" [");
 
             sb.Append("A=");
@@ -169,15 +169,15 @@ namespace GHIElectronics.Endpoint.Drawing {
             return sb.ToString();
         }
 
-        public static bool operator ==(Color left, Color right) => left.value == right.value;
+        public static bool operator ==(Color left, Color right) => left.Value == right.Value;
         public static bool operator !=(Color left, Color right) => !(left == right);
 
-        public override int GetHashCode() => this.value.GetHashCode();
+        public override int GetHashCode() => this.Value.GetHashCode();
 
         //C# compiler crashes when using pattern matching
         public override bool Equals(object obj) {
-            if (obj is Color)
-                return this.value == ((Color)obj).value;
+            if (obj is Color color)
+                return this.Value == color.Value;
 
             return false;
         }
