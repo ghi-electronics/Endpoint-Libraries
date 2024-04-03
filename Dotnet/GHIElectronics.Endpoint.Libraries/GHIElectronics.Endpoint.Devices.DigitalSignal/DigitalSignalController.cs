@@ -93,7 +93,13 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
         internal static bool InitLibCount = false;
         public DigitalSignalController(int pin) {
 
+            if (pin < 0)
+                throw new ArgumentException("Pin invalid.");
 
+            if (IsPinReserved(pin))
+                throw new ArgumentException("Pin reserved.");
+
+           
 
             if (!File.Exists("/dev/rpmsg_ctrl0")) { // load remoteproc.sh
                 var script = new Script("sremoteproc.sh", "./", "start");
@@ -120,6 +126,8 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
             NativeRpmsgHelper.DataReceived += this.NativeRpmsgHelper_DataReceived;
 
             NativeRpmsgHelper.TaskReceive();
+
+            PinReserve(pin);
 
         }
 
@@ -262,6 +270,7 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
 
 
             NativeRpmsgHelper.DataReceived -= this.NativeRpmsgHelper_DataReceived;
+            PinRelease(this.pin);
 
 
             this.disposed = true;
@@ -436,6 +445,16 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
 
         public PulseFeedbackController(int pulsePin, int echoPin, PulseFeedbackMode mode) {
 
+
+            if (pulsePin < 0)
+                throw new ArgumentException("Pin invalid.");
+
+            if (IsPinReserved(pulsePin))
+                throw new ArgumentException("Pin reserved.");
+
+            if (echoPin >= 0 && IsPinReserved(echoPin))
+                throw new ArgumentException("Pin reserved.");
+
             this.DisableInterrupts = false;
             this.Timeout = TimeSpan.FromMilliseconds(100);
             this.PulseLength = TimeSpan.FromMilliseconds(20);
@@ -487,6 +506,12 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
             NativeRpmsgHelper.DataReceived += this.NativeRpmsgHelper_PulseFeedbackDataReceived;
 
             NativeRpmsgHelper.TaskReceive();
+
+            PinReserve(this.pulsePin);
+
+            if (this.echoPin >= 0) {
+                PinReserve(this.echoPin);
+            }
 
         }
 
@@ -589,7 +614,11 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
 
             NativeRpmsgHelper.DataReceived -= this.NativeRpmsgHelper_PulseFeedbackDataReceived;
 
+            PinRelease(this.pulsePin);
 
+            if (this.echoPin >= 0) {
+                PinRelease(this.echoPin);
+            }
             this.disposed = true;
         }
 
