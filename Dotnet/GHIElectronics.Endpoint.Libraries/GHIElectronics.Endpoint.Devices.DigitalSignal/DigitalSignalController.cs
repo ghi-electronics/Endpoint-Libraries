@@ -1,3 +1,4 @@
+using System.Device.Gpio;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
@@ -6,40 +7,42 @@ using static GHIElectronics.Endpoint.Core.EPM815.Gpio;
 
 
 namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
+    public enum DigitalSignalMode {
+        GeneratePulse = 0,
+        ReadPulse = 1,
+        CapturePulse = 2,
+    }
+
+    public enum DigitalSignalError {
+        None = 0,
+        OutOfMemory = 1,
+        Timeout = 2,
+    }
+
     public class DigitalSignalController {
 
-        private const int CMD_RAW_DATA_START_OFFSET = 64;
+        internal const int CMD_RAW_DATA_START_OFFSET = 64;
 
-        private const int CMD_GENERATE_PULSE = 0x10;
+        internal const int CMD_GENERATE_PULSE = 0x10;
 
-        private const int CMD_RESPONSE_DONE = 0x30;
-        private const int CMD_ABORT = 0x31;
-        private const int CMD_CHECK_BUSY = 0x32;
+        internal const int CMD_RESPONSE_DONE = 0x30;
+        internal const int CMD_ABORT = 0x31;
+        internal const int CMD_CHECK_BUSY = 0x32;
 
-        private const int MODE_GENERATE_PULSE = 0;
-        private const int MODE_READ_PULSE = 1;
-        private const int MODE_CAPTURE_PULSE = 2;
+        internal const int MODE_GENERATE_PULSE = 0;
+        internal const int MODE_READ_PULSE = 1;
+        internal const int MODE_CAPTURE_PULSE = 2;
 
-        private const int TIMER_CLOCK = 205626176;
+        internal const int TIMER_CLOCK = 205626176;
 
-        public enum Mode {
-            GeneratePulse = 0,
-            ReadPulse = 1,
-            CapturePulse = 2,
-        }
 
-        public enum Error {
-            None = 0,
-            OutOfMemory = 1,
-            Timeout = 2,
-        }
 
 
         public delegate void PulseGenerateEventHandler(DigitalSignalController sender, uint endState, bool aborted);
         public delegate void PulseReadEventHandler(DigitalSignalController sender, TimeSpan duration, uint count, uint pinState, bool aborted);
         public delegate void PulseCaptureEventHandler(DigitalSignalController sender, double[] buffer, uint count, uint pinState, bool aborted);
 
-        public delegate void ErrorEventHandler(DigitalSignalController sender, Mode mode, Error error);
+        public delegate void ErrorEventHandler(DigitalSignalController sender, DigitalSignalMode mode, DigitalSignalError error);
 
         private PulseReadEventHandler pulseReadCallback;
         private PulseGenerateEventHandler pulseGenerateCallback;
@@ -87,7 +90,7 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
 
         private int pin;
 
-        static bool initLibCount = false;
+        internal static bool InitLibCount = false;
         public DigitalSignalController(int pin) {
 
 
@@ -100,7 +103,7 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
                 while (!File.Exists("/dev/rpmsg_ctrl0")) ;
             }
 
-            if (!initLibCount) {
+            if (!InitLibCount) {
 
                 if (File.Exists("/dev/rpmsg0")) { // reset rpmsg0
                     NativeRpmsgHelper.Release();
@@ -110,7 +113,7 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
 
                 NativeRpmsgHelper.Acquire(); // load rpmsg0
 
-                initLibCount = true;
+                InitLibCount = true;
             }
 
             this.pin = pin;
@@ -142,12 +145,12 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
                 if (mode == MODE_GENERATE_PULSE) {
                     var edge = data[CMD_RAW_DATA_START_OFFSET / 2];
                     var aborted = data[CMD_RAW_DATA_START_OFFSET / 2 + 1] == 0 ? false : true;
-                    var error = (Error)data[CMD_RAW_DATA_START_OFFSET / 2 + 2];
+                    var error = (DigitalSignalError)data[CMD_RAW_DATA_START_OFFSET / 2 + 2];
 
 
-                    if (error != Error.None) {
+                    if (error != DigitalSignalError.None) {
                         if (this.errorCallback != null) {
-                            this.errorCallback?.Invoke(this, Mode.GeneratePulse, error);
+                            this.errorCallback?.Invoke(this, DigitalSignalMode.GeneratePulse, error);
 
 
                         }
@@ -169,12 +172,12 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
                     var pinState = data[CMD_RAW_DATA_START_OFFSET / 2 + 2]; ;
                     var aborted = data[CMD_RAW_DATA_START_OFFSET / 2 + 3] == 0 ? false : true;
                     var durationTime = TimeSpan.FromTicks(durationTick);
-                    var error = (Error)data[CMD_RAW_DATA_START_OFFSET / 2 + 4];
+                    var error = (DigitalSignalError)data[CMD_RAW_DATA_START_OFFSET / 2 + 4];
 
 
-                    if (error != Error.None) {
+                    if (error != DigitalSignalError.None) {
                         if (this.errorCallback != null) {
-                            this.errorCallback?.Invoke(this, Mode.GeneratePulse, error);
+                            this.errorCallback?.Invoke(this, DigitalSignalMode.GeneratePulse, error);
 
 
                         }
@@ -198,13 +201,13 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
 
                     var waitForEdge = data[CMD_RAW_DATA_START_OFFSET / 2 + 2] != 0 ? true : false;
                     var aborted = data[CMD_RAW_DATA_START_OFFSET / 2 + 3] == 0 ? false : true;
-                    var error = (Error)data[CMD_RAW_DATA_START_OFFSET / 2 + 4];
+                    var error = (DigitalSignalError)data[CMD_RAW_DATA_START_OFFSET / 2 + 4];
                     var startCopy = CMD_RAW_DATA_START_OFFSET;
 
 
 
 
-                    if (error == Error.None) {
+                    if (error == DigitalSignalError.None) {
                         var buffer = new uint[capturedPulseCount];
 
 
@@ -219,37 +222,49 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
                             var scale = 4.863; // 1000000000/205.6MHz
 
                             if (capturedPulseCount > 0) {
-                        
+
 
                                 for (var i = 1; i < buffer.Length; i++) {
-                                    d[i-1] = (buffer[i] - buffer[i - 1]) * scale;
+                                    d[i - 1] = (buffer[i] - buffer[i - 1]) * scale;
                                 }
 
 
                             }
-                            
+
                             this.pulseCaptureCallback?.Invoke(this, d, capturedPulseCount, pinState, aborted);
 
 
                         }
                     }
                     else {
-                        this.errorCallback?.Invoke(this, Mode.CapturePulse, error);
+                        this.errorCallback?.Invoke(this, DigitalSignalMode.CapturePulse, error);
                     }
 
                     this.CanCapture = true;
                 }
-
-
-
-
             }
         }
 
+        private bool disposed = false;
         /// <exclude />
         ~DigitalSignalController() {
-            if (File.Exists("/dev/rpmsg0"))
-                NativeRpmsgHelper.Release();
+            this.Dispose(disposing: false);
+        }
+
+        public void Dispose() {
+            this.Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        /// <exclude />
+        protected void Dispose(bool disposing) {
+            if (this.disposed)
+                return;
+
+
+            NativeRpmsgHelper.DataReceived -= this.NativeRpmsgHelper_DataReceived;
+
+
+            this.disposed = true;
         }
 
         public void Generate(uint[] data) {
@@ -308,7 +323,7 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
             NativeRpmsgHelper.Send(buffer, 0, buffer.Length);
         }
 
-        public void ReadPulse(uint pulseNum, Edge edge, bool waitForEdge=false) {
+        public void ReadPulse(uint pulseNum, Edge edge, bool waitForEdge = false) {
             if (!this.CanReadPulse) {
                 throw new Exception("ReadPulse mode is busy");
             }
@@ -390,6 +405,195 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
             NativeRpmsgHelper.Send(buffer, 0, buffer.Length);
 
         }
+
+        
+    }
+
+    public enum PulseFeedbackMode {
+        DrainDuration = 0,
+        EchoDuration = 1,
+        DurationUntilEcho = 2
+    }
+    public class PulseFeedbackController : IDisposable {
+
+        private readonly PulseFeedbackMode mode;
+
+        private readonly int pulsePin;
+        private readonly int echoPin;
+
+
+        public bool DisableInterrupts { get; set; }
+        public TimeSpan Timeout { get; set; }
+        public TimeSpan PulseLength { get; set; }
+        public bool PulseValue { get; set; }
+        public bool EchoValue { get; set; }
+
+        internal const int MODE_PULSEFEEDBACK = 3;
+
+        public PulseFeedbackController(int pin, PulseFeedbackMode mode)
+            : this(pin, -1, mode) {
+        }
+
+        public PulseFeedbackController(int pulsePin, int echoPin, PulseFeedbackMode mode) {
+
+            this.DisableInterrupts = false;
+            this.Timeout = TimeSpan.FromMilliseconds(100);
+            this.PulseLength = TimeSpan.FromMilliseconds(20);
+            this.PulseValue = true;
+            this.EchoValue = true;
+
+            this.mode = mode;
+
+            this.pulsePin = pulsePin;
+            this.echoPin = echoPin;
+
+            if (mode == PulseFeedbackMode.DrainDuration) {
+                if (this.echoPin != -1 || this.pulsePin == -1)
+                    throw new ArgumentException();
+            }
+            else {
+                if (this.echoPin == -1 || this.pulsePin == -1) {
+                    throw new ArgumentException();
+                }
+            }
+
+            // Resvered pins then set input
+
+            //this.pulsePin.SetDriveMode(GpioPinDriveMode.Input);
+            //this.echoPin?.SetDriveMode(GpioPinDriveMode.Input);
+
+            if (!File.Exists("/dev/rpmsg_ctrl0")) { // load remoteproc.sh
+                var script = new Script("sremoteproc.sh", "./", "start");
+
+                script.Start();
+
+                while (!File.Exists("/dev/rpmsg_ctrl0")) ;
+            }
+
+            if (!DigitalSignalController.InitLibCount) {
+
+                if (File.Exists("/dev/rpmsg0")) { // reset rpmsg0
+                    NativeRpmsgHelper.Release();
+
+                    while (File.Exists("/dev/rpmsg0")) ;
+                }
+
+                NativeRpmsgHelper.Acquire(); // load rpmsg0
+
+                DigitalSignalController.InitLibCount = true;
+            }
+
+
+            NativeRpmsgHelper.DataReceived += this.NativeRpmsgHelper_PulseFeedbackDataReceived;
+
+            NativeRpmsgHelper.TaskReceive();
+
+        }
+
+        
+
+        private void NativeRpmsgHelper_PulseFeedbackDataReceived(uint[] data) {
+
+            if (data == null || data.Length < DigitalSignalController.CMD_RAW_DATA_START_OFFSET)
+                throw new Exception("Bad data found!");
+
+            var size = data[0] / 4;
+
+
+
+            var cmd = data[1];
+
+
+            var pin = data[2];
+
+
+            var mode = data[3];
+
+
+            if (cmd == DigitalSignalController.CMD_RESPONSE_DONE ) {
+
+                this.value = ((long)(data[DigitalSignalController.CMD_RAW_DATA_START_OFFSET / 2]) << 32) | data[DigitalSignalController.CMD_RAW_DATA_START_OFFSET / 2 + 1];
+
+                this.valueReady = true;
+            }
+
+        }
+
+        private bool valueReady = false;
+        private long value = 0;
+        public TimeSpan Trigger() {
+            var buffer = new uint[DigitalSignalController.CMD_RAW_DATA_START_OFFSET];
+
+            // length
+            buffer[0] = (uint)buffer.Length * 4; // length in byte
+
+            //param1
+            buffer[1] = MODE_PULSEFEEDBACK;
+
+            // param 2 - pulse feedback mode
+            buffer[2] = (uint)this.mode;
+
+            // param 3
+            buffer[3] = (uint)this.pulsePin; // count in uint
+
+            // param 4
+            buffer[4] = (uint)this.echoPin;
+
+            // param 5
+            buffer[5] = (this.DisableInterrupts == true) ? 1U : 0;
+
+            // param 6
+            buffer[6] = (this.PulseValue == true) ? 1U : 0;
+
+            // param 7
+            buffer[7] = (this.EchoValue == true) ? 1U : 0;
+
+            // param 8
+            buffer[8] = (uint)((this.Timeout.Ticks >> 0) & 0xFFFFFFFF);
+
+            // param 9
+            buffer[9] = (uint)((this.Timeout.Ticks >> 32) & 0xFFFFFFFF);
+
+            // param 10
+            buffer[10] = (uint)((this.PulseLength.Ticks >> 0) & 0xFFFFFFFF);
+
+            // param 11
+            buffer[11] = (uint)((this.PulseLength.Ticks >> 32) & 0xFFFFFFFF);
+
+            this.valueReady = false;
+
+            NativeRpmsgHelper.Send(buffer, 0, buffer.Length);
+
+            while (!this.valueReady) {
+                Thread.Sleep(10);
+            }
+
+            return new TimeSpan(this.value);
+        }
+
+        private bool disposed = false;
+        /// <exclude />
+        ~PulseFeedbackController() {
+            this.Dispose(disposing: false);
+        }
+
+        public void Dispose() {
+            this.Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+        /// <exclude />
+        protected void Dispose(bool disposing) {
+            if (this.disposed)
+                return;
+
+
+            NativeRpmsgHelper.DataReceived -= this.NativeRpmsgHelper_PulseFeedbackDataReceived;
+
+
+            this.disposed = true;
+        }
+
+
     }
 
 }
