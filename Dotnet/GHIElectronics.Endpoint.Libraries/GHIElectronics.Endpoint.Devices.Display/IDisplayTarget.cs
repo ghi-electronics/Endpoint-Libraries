@@ -12,6 +12,8 @@ namespace GHIElectronics.Endpoint.Devices.Display {
         public void Flush(byte[] data) => this.Flush(data, 0, data.Length);
         public abstract void Flush(byte[] data, int offset, int length);
 
-        public abstract void Flush(byte[] data, int offset, int length, int width, int height);
+        public abstract void Flush(byte[] data, int offset, int length, int x, int y, int width, int height, int originalWidth);
+
+
     }
 }
