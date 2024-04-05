@@ -6,39 +6,16 @@ using System;
 using System.Collections;
 
 namespace GHIElectronics.Endpoint.UI {
-    /// <summary>
-    ///     Container for the route to be followed
-    ///     by a RoutedEvent when raised
-    /// </summary>
-    /// <remarks>
-    ///     EventRoute constitues <para/>
-    ///     a non-null <see cref="RoutedEvent"/>
-    ///     and <para/>
-    ///     an ordered list of (target object, handler list)
-    ///     pairs <para/>
-    ///     <para/>
-    ///
-    ///     It facilitates adding new entries to this list
-    ///     and also allows for the handlers in the list
-    ///     to be invoked
-    /// </remarks>
-    public sealed class EventRoute {
-        #region Construction
 
-        /// <summary>
-        ///     Constructor for <see cref="EventRoute"/> given
-        ///     the associated <see cref="RoutedEvent"/>
-        /// </summary>
-        /// <param name="routedEvent">
-        ///     Non-null <see cref="RoutedEvent"/> to be associated with
-        ///     this <see cref="EventRoute"/>
-        /// </param>
+    public sealed class EventRoute {
+       
+
         public EventRoute(RoutedEvent routedEvent) {
             this.RoutedEvent = routedEvent ?? throw new ArgumentNullException("routedEvent");
             this._routeItemList = new ArrayList();
         }
 
-        #endregion Construction
+       
 
         #region External API
 

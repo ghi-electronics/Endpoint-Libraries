@@ -897,19 +897,6 @@ namespace GHIElectronics.Endpoint.UI {
         /// being valid.
         /// </remarks>
         public bool IsArrangeValid => (this._flags & Flags.InvalidArrange) == 0;
-
-        /// <summary>
-        /// Given x, y co-ordinates of the parent UIElement,
-        /// find the child control that is directly underneath that point.
-        /// If there are multiple such controls, the one that was created/inserted
-        /// into the list last wins. This is because we don't have explicit z-ordering
-        /// right now.
-        ///
-
-        /// </summary>
-        /// <param name="x"></param>
-        /// <param name="y"></param>
-        /// <returns></returns>
         public UIElement ChildElementFromPoint(int x, int y) {
             UIElement targetElement = null;
 
@@ -1332,27 +1319,6 @@ namespace GHIElectronics.Endpoint.UI {
         }
 
         #region Eventing
-
-        /// <summary>
-        ///     Raise the events specified by
-        ///     <see cref="RoutedEventArgs.RoutedEvent"/>
-        /// </summary>
-        /// <remarks>
-        ///     This method is a shorthand for
-        ///     This method walks up the visual tree, calling
-        ///     <see cref="UIElement.BuildRouteCore"/>
-        ///     on every <see cref="UIElement"/> <para/>
-        ///     <para/>
-        ///
-        ///     NOTE: The RoutedEvent in RoutedEventArgs
-        ///     and EventRoute must be matched
-        ///
-        ///     Once the route is built, it calls InvokeHandlers()
-        /// </remarks>
-        /// <param name="args">
-        ///     <see cref="RoutedEventArgs"/> for the event to
-        ///     be raised
-        /// </param>
         public void RaiseEvent(RoutedEventArgs args) {
             // Verify Context Access
             this.VerifyAccess();

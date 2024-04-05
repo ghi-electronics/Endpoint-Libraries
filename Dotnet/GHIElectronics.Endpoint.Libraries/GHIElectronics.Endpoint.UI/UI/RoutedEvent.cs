@@ -1,21 +1,7 @@
 using System;
 
 namespace GHIElectronics.Endpoint.UI {
-    /// <summary>
-    ///     RoutedEvent is a unique identifier for
-    ///     any registered RoutedEvent
-    /// </summary>
-    /// <remarks>
-    ///     RoutedEvent constitutes the <para/>
-    ///     <see cref="RoutedEvent.Name"/>, <para/>
-    ///     <see cref="RoutedEvent.RoutingStrategy"/>, <para/>
-    ///     <see cref="RoutedEvent.HandlerType"/> and <para/>
-    ///     <see cref="RoutedEvent.OwnerType"/> <para/>
-    ///     <para/>
-    ///
-    ///     NOTE: None of the members can be null
-    /// </remarks>
-    /// <ExternalAPI/>
+   
     public sealed class RoutedEvent {
         #region External API
 
