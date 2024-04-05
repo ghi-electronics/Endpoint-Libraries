@@ -47,7 +47,7 @@ namespace GHIElectronics.Endpoint.Devices.Dac {
             script.Start();
         }
 
-        private void Powerdown(bool enable) {
+        public void Powerdown(bool enable) {
             var v = enable ? 1 : 0;
             var script = new Script("write_dac.sh", "./", string.Format("{0} {1}/out_voltage{2}_powerdown", v, this.channelPath, this.channelNum));
             script.Start();
