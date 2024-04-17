@@ -307,13 +307,13 @@ namespace GHIElectronics.Endpoint.Devices.Network {
 
                     script.Start();
 
-                    if (!script.Output.Contains("Successfully initialized wpa_supplicant") || script.Error.Contains("No such device") || script.Error.Contains("Timeout")) {
+                    if (!script.Output.Contains("Successfully initialized wpa_supplicant") || script.Error.Contains("No such device")) {
 
                         script = new Script("rmmod", "/sbin/", "8188eu");
 
                         script.Start();
 
-                        throw new Exception("Timeout. Could not start WiFi.");
+                        throw new Exception("Error. Could not start WiFi: " + script.Output);
                     }
                 }
             }
