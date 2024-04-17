@@ -7,13 +7,13 @@ namespace GHIElectronics.Endpoint.Devices.Network {
 
 
 
-    
+
     public delegate void NetworkLinkConnectedChangedEventHandler(NetworkController sender, NetworkLinkConnectedChangedEventArgs e);
 
-   
+
     public delegate void NetworkAddressChangedEventHandler(NetworkController sender, NetworkAddressChangedEventArgs e);
 
-    
+
     public class NetworkLinkConnectedChangedEventArgs : EventArgs {
         public bool Connected { get; }
         public DateTime Timestamp { get; }
@@ -24,31 +24,44 @@ namespace GHIElectronics.Endpoint.Devices.Network {
         }
     }
 
-    
+
     public class NetworkAddressChangedEventArgs : EventArgs {
         public DateTime Timestamp { get; }
 
         public IPAddress Address { get; }
-        public IPAddress Gateway { get; }
+        public IPAddress[] Gateway { get; }
         public IPAddress[] Dns { get; }
 
         public string MACAddress { get; }
-        internal NetworkAddressChangedEventArgs(IPAddress address, IPAddress gateway, IPAddress[] dns, string mac, DateTime timestamp) {
+        internal NetworkAddressChangedEventArgs(IPAddress address, string gateways, string dns, string mac, DateTime timestamp) {
             this.Timestamp = timestamp;
-            this.Gateway = gateway;
             this.Address = address;
-            this.Dns = dns;
             this.MACAddress = mac;
+
+
+            var gw = gateways.Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
+            this.Gateway = new IPAddress[gw.Length];
+            for (var i = 0; i < gw.Length; i++) {
+                this.Gateway[i] = IPAddress.Parse(gw[i]);
+            }
+
+            var dn = dns.Split(new string[] { Environment.NewLine }, StringSplitOptions.None);
+
+            this.Dns = new IPAddress[dn.Length];
+            for (var i = 0; i < dn.Length; i++) {
+                this.Dns[i] = IPAddress.Parse(dn[i]);
+            }
+
         }
     }
-   
+
     public enum NetworkInterfaceType {
         Ethernet = 0,
         WiFi = 1,
-        UsbEthernet=2,
+        UsbEthernet = 2,
     }
 
-    
+
     public class NetworkInterfaceSettings {
         public IPAddress Address { get; set; }
         public IPAddress SubnetMask { get; set; }
@@ -136,7 +149,8 @@ namespace GHIElectronics.Endpoint.Devices.Network {
 
 
     public class NetworkController : IDisposable {
-        static int initializeCount;
+        static int[] initializeCount = new int[3];
+        static int[] taskEventThreadCount = new int[3];
 
         private NetworkLinkConnectedChangedEventHandler networkLinkConnectedChangedCallbacks = null!;
         private NetworkAddressChangedEventHandler networkAddressChangedCallbacks = null!;
@@ -176,7 +190,7 @@ namespace GHIElectronics.Endpoint.Devices.Network {
 
         }
         private void Acquire() {
-            if (initializeCount == 0) {
+            if (initializeCount[(int)this.InterfaceType] == 0) {
 
                 //Core.Events.SystemEventChanged += this.NetworkEventChanged;
                 //Core.Events.StartSystemEventDetectionTask();
@@ -184,13 +198,13 @@ namespace GHIElectronics.Endpoint.Devices.Network {
                 this.LoadResources();
             }
 
-            initializeCount++;
+            initializeCount[(int)this.InterfaceType]++;
         }
 
         private void Release() {
-            initializeCount--;
+            initializeCount[(int)this.InterfaceType]--;
 
-            if (initializeCount == 0) {
+            if (initializeCount[(int)this.InterfaceType] == 0) {
 
                 //Core.Events.SystemEventChanged -= this.NetworkEventChanged;
                 //Core.Events.StopSystemEventDetectionTask();
@@ -212,6 +226,10 @@ namespace GHIElectronics.Endpoint.Devices.Network {
 
 
             Script script;
+
+            if (this.InterfaceType == NetworkInterfaceType.UsbEthernet) {
+                Thread.Sleep(2000);// USBEthernet need delay about two seconds before enable or it doesn't work
+            }
 
 
             if (this.ActiveInterfaceSettings.DhcpEnable) {
@@ -243,10 +261,12 @@ namespace GHIElectronics.Endpoint.Devices.Network {
 
             this.enabled = true;
 
-            this.TaskEvents();
+            taskEventThreadCount[(int)this.InterfaceType]++;
 
+            if (taskEventThreadCount[(int)this.InterfaceType] == 1) {
 
-
+                this.TaskEvents();
+            }
         }
 
         public void Disable() {
@@ -263,6 +283,9 @@ namespace GHIElectronics.Endpoint.Devices.Network {
             var script = new Script("ifconfig", "/sbin/", name + " down");
 
             script.Start();
+
+            if (taskEventThreadCount[(int)this.InterfaceType] > 0)
+                taskEventThreadCount[(int)this.InterfaceType]--;
 
         }
 
@@ -315,7 +338,7 @@ namespace GHIElectronics.Endpoint.Devices.Network {
                 }
             }
             else if (this.InterfaceType == NetworkInterfaceType.UsbEthernet) {
-               // Do we need to unload???
+                // Do we need to unload???
             }
 
         }
@@ -336,90 +359,14 @@ namespace GHIElectronics.Endpoint.Devices.Network {
             }
         }
 
-//        private void NetworkEventChanged(string eventlog) {
-//            var connected = false;
 
 
-//            if (eventlog.Contains(string.Format("{0}{1}: Link is Up", this.interfaceName, this.controllerId.ToString()))) {
-//                connected = true;
-
-//            }
-//            else if (eventlog.Contains(string.Format("{0}{1}: Link is Down", this.interfaceName, this.controllerId.ToString()))) {
-//                connected = false;
-//            }
-
-//            this.networkLinkConnectedChangedCallbacks?.Invoke(this, new NetworkLinkConnectedChangedEventArgs(connected, DateTime.Now));
-
-//            Task.Run(() => {
-//                // get MAC address
-//                var argument = string.Format("{0}{1}", this.interfaceName, this.controllerId.ToString());
-
-//                var script = new Script("getmacadd.sh", "/sbin/", argument);
-
-//                script.Start();
-
-//                var macaddress = script.Output.Substring(0, script.Output.Length - 1); // remove '\n'
-
-//                var try_ipv4_cnt = 10;
-
-//                if (connected) {
-//// Get IP
-//try_get_ipv4:
-//                    Thread.Sleep(1000);
-//                    argument = string.Format("{0}{1}", this.interfaceName, this.controllerId.ToString());
-//                    script = new Script("getadd_ip4.sh", "/sbin/", argument);
-
-//                    script.Start();
-
-//                    var ip_out = script.Output;
-
-//                    if (ip_out.Length == 0) { // no ipv4 found yet
-//                        if (try_ipv4_cnt > 0) {
-//                            goto try_get_ipv4;
-//                        }
-//                        else {
-//                            ip_out = "0.0.0.0\n";
-//                        }
-//                    }
-
-//                    var ip = ip_out.Substring(0, script.Output.Length - 1); // remove '\n'
-
-
-
-//                    // Get gateway
-//                    argument = "";
-
-//                    script = new Script("getgateway.sh", "/sbin/", argument);
-
-//                    script.Start();
-
-//                    var getway = script.Output.Substring(0, script.Output.Length - 1); // remove '\n'
-
-//                    // Get DNS
-//                    argument = "";
-
-//                    script = new Script("getdns.sh", "/sbin/", argument);
-
-//                    script.Start();
-
-//                    var dns = script.Output.Substring(0, script.Output.Length - 1); // remove '\n'
-
-//                    this.networkAddressChangedCallbacks?.Invoke(this, new NetworkAddressChangedEventArgs(IPAddress.Parse(ip), IPAddress.Parse(getway), new IPAddress[] { IPAddress.Parse(dns) }, macaddress, DateTime.Now));
-//                }
-//                else {
-//                    // assuming default "0.0.0.0"
-//                    var ipdefault = "0.0.0.0";
-//                    this.networkAddressChangedCallbacks?.Invoke(this, new NetworkAddressChangedEventArgs(IPAddress.Parse(ipdefault), IPAddress.Parse(ipdefault), new IPAddress[] { IPAddress.Parse(ipdefault) }, macaddress, DateTime.Now));
-//                }
-
-//            });
-//        }
-
-        private bool CheckNetworkConnection(string networktype)
-        {
+        private bool CheckNetworkConnection(string networktype) {
             var script = new Script("ifconfig", "./", networktype);
 
-            script.Start();
+            lock (objlock) {
+                script.Start();
+            }
 
             if (script.Output.Contains(networktype) && script.Output.Contains("inet addr"))
                 return true;
@@ -427,28 +374,28 @@ namespace GHIElectronics.Endpoint.Devices.Network {
             return false;
 
         }
-        private Task TaskEvents()
-        {
 
-            return Task.Run(() =>
-            {
+        static object objlock = new object();
+        private Task TaskEvents() {
+
+            return Task.Run(() => {
                 var lastEvent = string.Empty;
 
-              
+
 
                 var networklist = new string[] { "eth0", "wlan0", "eth1" };
                 var detect_connection_changed = new bool[] { false, false, false };
                 var connect = new bool[] { false, false, false };
                 var lastconnect = new bool[] { false, false, false };
 
-                var index = 0;
-                while (this.enabled && !this.disposed)
-                {
+                var index = (int)this.InterfaceType;
+
+                while (this.enabled && !this.disposed) {
+                    Thread.Sleep(2000);
 
                     connect[index] = this.CheckNetworkConnection(networklist[index]);
-                    
-                    if (connect[index] != lastconnect[index])
-                    {
+
+                    if (connect[index] != lastconnect[index]) {
                         this.networkLinkConnectedChangedCallbacks?.Invoke(this, new NetworkLinkConnectedChangedEventArgs(connect[index], DateTime.Now));
 
 
@@ -463,10 +410,9 @@ namespace GHIElectronics.Endpoint.Devices.Network {
 
                         var try_ipv4_cnt = 10;
 
-                        if (connect[index])
-                        {
-                        // Get IP
-                        try_get_ipv4:
+                        if (connect[index]) {
+// Get IP
+try_get_ipv4:
                             Thread.Sleep(1000);
                             argument = string.Format("{0}{1}", this.interfaceName, this.controllerId.ToString());
                             script = new Script("getadd_ip4.sh", "/sbin/", argument);
@@ -475,19 +421,16 @@ namespace GHIElectronics.Endpoint.Devices.Network {
 
                             var ip_out = script.Output;
 
-                            if (ip_out.Length == 0)
-                            { // no ipv4 found yet
-                                if (try_ipv4_cnt > 0)
-                                {
+                            if (ip_out.Length == 0) { // no ipv4 found yet
+                                if (try_ipv4_cnt > 0) {
                                     goto try_get_ipv4;
                                 }
-                                else
-                                {
+                                else {
                                     ip_out = "0.0.0.0\n";
                                 }
                             }
 
-                            var ip = ip_out.Substring(0, script.Output.Length - 1); // remove '\n'
+                            var ip = ip_out.TrimEnd('\r', '\n'); // remove '\n'
 
 
 
@@ -509,13 +452,12 @@ namespace GHIElectronics.Endpoint.Devices.Network {
 
                             var dns = script.Output.Substring(0, script.Output.Length - 1); // remove '\n'
 
-                            this.networkAddressChangedCallbacks?.Invoke(this, new NetworkAddressChangedEventArgs(IPAddress.Parse(ip), IPAddress.Parse(getway), new IPAddress[] { IPAddress.Parse(dns) }, macaddress, DateTime.Now));
+                            this.networkAddressChangedCallbacks?.Invoke(this, new NetworkAddressChangedEventArgs(IPAddress.Parse(ip), getway, dns, macaddress, DateTime.Now));
                         }
-                        else
-                        {
+                        else {
                             // assuming default "0.0.0.0"
                             var ipdefault = "0.0.0.0";
-                            this.networkAddressChangedCallbacks?.Invoke(this, new NetworkAddressChangedEventArgs(IPAddress.Parse(ipdefault), IPAddress.Parse(ipdefault), new IPAddress[] { IPAddress.Parse(ipdefault) }, macaddress, DateTime.Now));
+                            this.networkAddressChangedCallbacks?.Invoke(this, new NetworkAddressChangedEventArgs(IPAddress.Parse(ipdefault), ipdefault, ipdefault, macaddress, DateTime.Now));
                         }
 
                         lastconnect[index] = connect[index];
@@ -523,11 +465,11 @@ namespace GHIElectronics.Endpoint.Devices.Network {
 
                     }
 
-                    index = (index + 1) % connect.Length;
+                    //index = (index + 1) % connect.Length;
 
 
 
-                    Thread.Sleep(2000);
+
 
                 }
             }
