@@ -2,7 +2,7 @@
 <package xmlns="http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd">
   <metadata>
     <id>GHIElectronics.Endpoint.Devices.Display</id>
-    <version>0.1.4-beta</version>
+    <version>0.1.6-beta</version>
     <title>Endpoint</title>	
     <owners>GHI Electronics, LLC</owners>    
     <authors>GHI Electronics, LLC</authors>
@@ -16,7 +16,7 @@
     <dependencies>
       <group targetFramework="net8.0">
         <dependency id="SkiaSharp.NativeAssets.Linux" version="2.88.5" exclude="Build,Analyzers" />        
-        <dependency id="GHIElectronics.Endpoint.Core" version="0.1.4-beta" exclude="Build,Analyzers" />        
+        <dependency id="GHIElectronics.Endpoint.Core" version="0.1.6-beta" exclude="Build,Analyzers" />        
       </group>
     </dependencies>
   </metadata>
