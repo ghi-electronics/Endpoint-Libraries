@@ -1,25 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <Import Project="..\Endpoint.Libraries.props" />
+
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <PackageId>GHIElectronics.Endpoint.Update</PackageId>
+    <Description>The update driver for Endpoint.</Description>
     <Nullable>disable</Nullable>
-	
-    
   </PropertyGroup>
-  
+
   <ItemGroup>
-    <None Include="..\images\icon.png">
-      <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-    </None>
+    <ProjectReference Include="..\GHIElectronics.Endpoint.Core\GHIElectronics.Endpoint.Core.csproj" />
+    <ProjectReference Include="..\GHIElectronics.Endpoint.Native\GHIElectronics.Endpoint.Native.csproj" />
   </ItemGroup>
-  
-  <ItemGroup>
-	<PackageReference Include="GHIElectronics.Endpoint.Core" Version="0.1.7-beta" />
-	<PackageReference Include="GHIElectronics.Endpoint.Native" Version="0.1.7-beta" />
-  </ItemGroup>
-  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="call ..\dopacknuget.bat $(MSBuildProjectName)" />
-  </Target>    
 </Project>

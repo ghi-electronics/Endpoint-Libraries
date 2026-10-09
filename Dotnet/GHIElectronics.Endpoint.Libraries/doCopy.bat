@@ -1,15 +1,5 @@
 @echo off
-echo Cleaning....
-
-
-for /f "tokens=*" %%a in ('dir /b /s /a:d ".\"') do (
-	if /i "%%~nxa"=="bin" (
-		echo Copying folder...  %%a
-		copy %%a\Release\*.nupkg "D:\Local Nuget"	
-        copy %%a\Release\*.nupkg .\output\
-	)	
-)
-
-
-
-
+rem Copies the packages of a Release build (made in output\, see
+rem Endpoint.Libraries.props) to the local NuGet folder
+echo Copying packages to D:\Local Nuget...
+copy /y output\*.nupkg "D:\Local Nuget"

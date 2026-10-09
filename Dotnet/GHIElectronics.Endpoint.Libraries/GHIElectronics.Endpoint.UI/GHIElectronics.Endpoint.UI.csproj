@@ -1,11 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="..\Endpoint.Libraries.props" />
+
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <PackageId>GHIElectronics.Endpoint.UI</PackageId>
+    <Description>The UI library for Endpoint.</Description>
     <Nullable>disable</Nullable>
-	
-	 <NoWarn>CS8618,CS0169,CS0219, IDE1006</NoWarn>
+    <NoWarn>$(NoWarn);CS8618;CS0169;CS0219;IDE1006</NoWarn>
   </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GHIElectronics.Endpoint.Drawing\GHIElectronics.Endpoint.Drawing.csproj" />
+  </ItemGroup>
+
   <ItemGroup>
     <None Include="Resources\Keyboard_Lowercase.gif" />
   </ItemGroup>
@@ -60,18 +67,7 @@
   <ItemGroup>
     <None Include="Resources\DataGridIcon_Asc.gif" />
   </ItemGroup>
-  
-  <ItemGroup>	
-	<PackageReference Include="GHIElectronics.Endpoint.Drawing" Version="0.1.7-beta" />
-  </ItemGroup>
-  
-	<ItemGroup>
-		<None Include="..\images\icon.png">
-			<Pack>True</Pack>
-			<PackagePath>\</PackagePath>
-		</None>
-	</ItemGroup>
-	
+
   <ItemGroup>
     <Compile Update="Properties\Resources.Designer.cs">
       <DesignTime>True</DesignTime>
@@ -79,6 +75,7 @@
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
   </ItemGroup>
+
   <ItemGroup>
     <EmbeddedResource Update="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
@@ -86,7 +83,4 @@
     </EmbeddedResource>
   </ItemGroup>
 
-	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
-		<Exec Command="call ..\dopacknuget.bat $(MSBuildProjectName)" />
-	</Target>
 </Project>

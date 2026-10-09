@@ -37,7 +37,7 @@ namespace GHIElectronics.Endpoint.Update {
                 var pinNumber = pinIndicator % 16;
 
                 this.gpioDriver = new LibGpiodDriver(pinPort);
-                this.gpioController = new GpioController(PinNumberingScheme.Logical, this.gpioDriver);
+                this.gpioController = new GpioController(this.gpioDriver);
 
                 this.gpioController.OpenPin(pinNumber);
                 this.gpioController.SetPinMode(pinNumber, PinMode.Output);

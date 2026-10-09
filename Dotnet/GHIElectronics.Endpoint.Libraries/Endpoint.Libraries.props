@@ -1,0 +1,50 @@
+<Project>
+  <!-- Shared settings of the Endpoint libraries. Each project imports this
+       file first; the NuGet package details come from here and from the
+       project's PackageId and Description (no .nuspec files). -->
+
+  <PropertyGroup>
+    <!-- One version for every library: change it here for a release -->
+    <EndpointLibrariesVersion>0.2.0-beta</EndpointLibrariesVersion>
+
+    <TargetFramework>net10.0</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <!-- Apps built with Native AOT (Ctrl+F5) can use every library: the
+         analyzers warn about code that would not work there -->
+    <IsAotCompatible>true</IsAotCompatible>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
+
+    <Version>$(EndpointLibrariesVersion)</Version>
+    <Authors>GHI Electronics, LLC</Authors>
+    <Company>GHI Electronics, LLC</Company>
+    <Product>Endpoint</Product>
+    <Copyright>Copyright GHI Electronics, LLC 2026</Copyright>
+    <PackageProjectUrl>https://ghielectronics.com/</PackageProjectUrl>
+    <PackageIcon>icon.png</PackageIcon>
+    <PackageTags>Endpoint GHI</PackageTags>
+    <PackageLicenseUrl>http://files.ghielectronics.com/downloads/TinyCLR/License.txt</PackageLicenseUrl>
+    <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
+    <NoWarn>$(NoWarn);NU5125</NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="$(MSBuildThisFileDirectory)images\icon.png" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
+
+  <!-- Release builds make the NuGet packages in output\ (doCopy.bat copies
+       them to D:\Local Nuget) and, if NugetPackerOutputDirectory is set,
+       copy them there too. Signing is off while testing: for a release, build
+       with -p:EndpointSign=true to sign the DLLs with GHI's certificate first
+       (VsixSignerCertificatePath, VsixSignerCertificatePassword,
+       AssemblySignerCertificateSha1). -->
+  <Target Name="EndpointPack" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+    <Exec Condition="'$(EndpointSign)' == 'true'" Command="signtool.exe sign /fd sha512 /f &quot;$(VsixSignerCertificatePath)&quot; /p &quot;$(VsixSignerCertificatePassword)&quot; /t &quot;http://timestamp.digicert.com&quot; /sha1 &quot;$(AssemblySignerCertificateSha1)&quot; &quot;$(TargetPath)&quot;" />
+    <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="Pack"
+             Properties="NoBuild=true;Configuration=$(Configuration);PackageOutputPath=$(MSBuildThisFileDirectory)output\" />
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)output\$(PackageId).$(PackageVersion).nupkg"
+          DestinationFolder="$(NugetPackerOutputDirectory)" Condition="'$(NugetPackerOutputDirectory)' != ''" />
+  </Target>
+</Project>

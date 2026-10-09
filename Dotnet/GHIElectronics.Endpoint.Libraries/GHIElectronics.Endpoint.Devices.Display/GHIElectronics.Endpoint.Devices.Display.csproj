@@ -1,29 +1,16 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+  <Import Project="..\Endpoint.Libraries.props" />
+
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <PackageId>GHIElectronics.Endpoint.Devices.Display</PackageId>
+    <Description>The display driver for Endpoint.</Description>
     <Nullable>disable</Nullable>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-	
-    
+    <NoWarn>$(NoWarn);CS8618;CS0169;CS0219</NoWarn>
   </PropertyGroup>
-  
-  <ItemGroup>
-    <None Include="..\images\icon.png">
-      <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-    </None>
-  </ItemGroup>
-  
-  
 
   <ItemGroup>
-	<PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="2.88.5" />
-	<PackageReference Include="GHIElectronics.Endpoint.Core" Version="0.1.7-beta" />
+    <ProjectReference Include="..\GHIElectronics.Endpoint.Core\GHIElectronics.Endpoint.Core.csproj" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="2.88.9" />
   </ItemGroup>
-	
-  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="call ..\dopacknuget.bat $(MSBuildProjectName)" />
-  </Target>
 </Project>

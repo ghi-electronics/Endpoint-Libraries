@@ -1,41 +1,15 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <Import Project="..\Endpoint.Libraries.props" />
+
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
-    <ImplicitUsings>enable</ImplicitUsings>
+    <PackageId>GHIElectronics.Endpoint.Core</PackageId>
+    <Description>Core of the Endpoint libraries: board pin names and pin setup.</Description>
     <Nullable>disable</Nullable>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-	
-	<GeneratePackageOnBuild>False</GeneratePackageOnBuild>	
-	<PackageId>GHIElectronics.Endpoint.Core</PackageId>
-	<Title>Endpoint</Title>
-    <Description>The Core driver for Endpoint.</Description>
-    <Copyright>Copyright GHI Electronics, LLC 2024</Copyright>
-    <PackageProjectUrl>https://ghielectronics.com/</PackageProjectUrl>
-    <PackageTags>Endpoint</PackageTags>
-    <AssemblyVersion>0.1.2</AssemblyVersion>
-    <FileVersion>0.1.2</FileVersion>
-    <Version>0.1.7-beta</Version>
-    <Authors>GHI Electronics, LLC</Authors>	
-    <Company>GHI Electronics, LLC</Company>
-    <PackageIcon>icon.png</PackageIcon>
   </PropertyGroup>
-  
+
   <ItemGroup>
-    <None Include="..\images\icon.png">
-      <Pack>True</Pack>
-      <PackagePath>\</PackagePath>
-    </None>
+    <PackageReference Include="System.Device.Gpio" Version="4.2.0" />
   </ItemGroup>
-  
-  <ItemGroup>
-    <PackageReference Include="Iot.Device.Bindings" Version="3.1.0" />
-    <PackageReference Include="System.Device.Gpio" Version="3.1.0" />
-	<PackageReference Include="System.Resources.Extensions" Version="8.0.0" />
-  </ItemGroup>
-  
-  <Target Name="PostBuild" AfterTargets="PostBuildEvent">
-    <Exec Command="call ..\dopacknuget.bat $(MSBuildProjectName)" />
-  </Target>
-    
+
 </Project>
