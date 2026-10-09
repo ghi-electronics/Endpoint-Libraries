@@ -17,6 +17,9 @@ namespace GHIElectronics.Endpoint.Core.Chips {
         public enum Speed { Low = 0, Medium = 1, High = 2, VeryHigh = 3 }
         public enum OutputType { PushPull = 0, OpenDrain = 1 }
 
+        /// <summary>A pin's whole setup, to put it back later</summary>
+        public readonly record struct State(Mode Mode, int Alternate, Pull Pull, OutputType Type, Speed Speed);
+
         /// <summary>Port Z: its registers and clock are separate from ports A to K</summary>
         public const int PortZ = 25;
 
@@ -47,6 +50,26 @@ namespace GHIElectronics.Endpoint.Core.Chips {
             var register = line < 8 ? AlternateLow : AlternateHigh;
             var shift = (line % 8) * 4;
             PhysicalMemory.Modify(PortBase(port, line) + register, 0xFu << shift, (uint)function << shift);
+        }
+
+        public static State Save(int port, int line) {
+            var b = PortBase(port, line);
+            var alternate = PhysicalMemory.Read(b + (line < 8 ? AlternateLow : AlternateHigh)) >> ((line % 8) * 4);
+            return new State(
+                (Mode)((PhysicalMemory.Read(b + Moder) >> (line * 2)) & 3),
+                (int)(alternate & 0xF),
+                (Pull)((PhysicalMemory.Read(b + Pulls) >> (line * 2)) & 3),
+                (OutputType)((PhysicalMemory.Read(b + OutputTypes) >> line) & 1),
+                (Speed)((PhysicalMemory.Read(b + Speeds) >> (line * 2)) & 3));
+        }
+
+        /// <summary>Puts the setup back, the mode last (no passing through another mode)</summary>
+        public static void Restore(int port, int line, State state) {
+            SetAlternate(port, line, state.Alternate);
+            SetOutputType(port, line, state.Type);
+            SetPull(port, line, state.Pull);
+            SetSpeed(port, line, state.Speed);
+            SetMode(port, line, state.Mode);
         }
 
         /// <summary>The pin as a peripheral's pin: alternate function first, then the mode</summary>

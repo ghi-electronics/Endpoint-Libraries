@@ -1,134 +1,124 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using static GHIElectronics.Endpoint.Core.EPM815.Gpio;
-
+using System.Diagnostics;
+using System.Globalization;
+using GHIElectronics.Endpoint.Core.Internal;
+using static GHIElectronics.Endpoint.Core.Chips.Stm32Mp1Pins;
 
 namespace GHIElectronics.Endpoint.Core {
     public static partial class EPM815 {
+        /// <summary>
+        /// The SPI buses, for .NET's System.Device.Spi. Initialize connects the
+        /// bus's pins and loads Linux's SPI driver; then use the bus as on any
+        /// Linux board:
+        /// <code>
+        /// EPM815.Spi.Initialize(EPM815.Spi.Spi4);
+        /// using var device = SpiDevice.Create(new SpiConnectionSettings(EPM815.Spi.Spi4, 0) { ClockFrequency = 1_000_000 });
+        /// </code>
+        /// Each constant is the Linux bus number (/dev/spidevN.0), fixed by the
+        /// firmware. Chip select is not driven by the bus: use any GPIO pin.
+        /// </summary>
         public static class Spi {
-            /// <summary>SPI bus.</summary>
+            /// <summary>SPI1: PZ0 (SCK), PZ1 (MISO), PZ2 (MOSI); /dev/spidev0.0</summary>
             public const int Spi1 = 0;
-            //public static int Spi2 = 2;
-            //public static int Spi3 = 3;
+            /// <summary>SPI4: PE12 (SCK), PE13 (MISO), PE14 (MOSI); /dev/spidev1.0</summary>
             public const int Spi4 = 1;
+            /// <summary>SPI5: PF7 (SCK), PF8 (MISO), PF9 (MOSI); /dev/spidev2.0</summary>
             public const int Spi5 = 2;
 
-            //private static bool initialized = false;
-            private static List<int> initializedList = new List<int>();
+            /// <summary>The largest transfer when none is given (Linux's default)</summary>
+            public const int DefaultBufferSize = 4096;
 
-            //const string CMD_LOCATION = "/sbin";
-            //const string DRIVER_LOCATION = "/lib/modules/5.13.0/kernel/drivers/spi/spidev.ko";
-            internal class SpiPinSettings {
-                public int MosiPin { get; set; }
-                public int MisoPin { get; set; }
-                public int ClockPin { get; set; }
-                public Alternate MosiAlternate { get; set; }
-                public Alternate MisoAlternate { get; set; }
-                public Alternate ClockAlternate { get; set; }
+            private sealed record Bus(string Name, ulong Address, int Sck, int Miso, int Mosi, int Alternate);
+
+            // Indexed by the constants above
+            private static readonly Bus[] Buses = {
+                new("SPI1", 0x44004000, Gpio.Pin.PZ0, Gpio.Pin.PZ1, Gpio.Pin.PZ2, 5),
+                new("SPI4", 0x44005000, Gpio.Pin.PE12, Gpio.Pin.PE13, Gpio.Pin.PE14, 5),
+                new("SPI5", 0x44009000, Gpio.Pin.PF7, Gpio.Pin.PF8, Gpio.Pin.PF9, 5),
             };
 
-            internal static SpiPinSettings[] PinSettings =  {
-                /* 1 */ new SpiPinSettings { MosiPin = Gpio.Pin.PZ2 , MisoPin = Gpio.Pin.PZ1 , ClockPin = Gpio.Pin.PZ0 , MosiAlternate = Alternate.AF5 , MisoAlternate = Alternate.AF5 , ClockAlternate = Alternate.AF5  },
-                ///* 2 */ new SpiPinSettings { MosiPin = Gpio.Pin.NONE, MisoPin = Gpio.Pin.NONE, ClockPin = Gpio.Pin.NONE, MosiAlternate = Alternate.NONE, MisoAlternate = Alternate.NONE, ClockAlternate = Alternate.NONE },
-                ///* 3 */ new SpiPinSettings { MosiPin = Gpio.Pin.NONE, MisoPin = Gpio.Pin.NONE, ClockPin = Gpio.Pin.NONE, MosiAlternate = Alternate.NONE, MisoAlternate = Alternate.NONE, ClockAlternate = Alternate.NONE },
-                /* 4 */ new SpiPinSettings { MosiPin = Gpio.Pin.PE14, MisoPin = Gpio.Pin.PE13, ClockPin = Gpio.Pin.PE12, MosiAlternate = Alternate.AF5 , MisoAlternate = Alternate.AF5 , ClockAlternate =Alternate.AF5   },
-                /* 5 */ new SpiPinSettings { MosiPin = Gpio.Pin.PF9 , MisoPin = Gpio.Pin.PF8 , ClockPin = Gpio.Pin.PF7 , MosiAlternate = Alternate.AF5 , MisoAlternate = Alternate.AF5 , ClockAlternate =Alternate.AF5   },
-            };
+            private const string SpidevBufferSize = "/sys/module/spidev/parameters/bufsiz";
+            private static readonly object Gate = new();
 
-            //public static int GetNativePort(int port) {
-            //    switch (port) {
-            //        case 1: return 0;
-            //        case 4: return 1;
-            //        case 5: return 2;
-
-            //    }
-
-            //    throw new Exception($"SPI {port} is not supported.");
-            //}
-            public static void Initialize(int port, int bufferSize=4096) {
-
-                if (port != Spi1 && port != Spi4 && port != Spi5) {
-                    throw new ArgumentException($"Invalid Spi port. The device support only: 0 = SPI1; 1 = SPI4; 2 = SPI5");
+            /// <summary>Connects the bus's pins and loads Linux's SPI driver (spidev) if needed</summary>
+            /// <param name="bus">Spi1, Spi4 or Spi5</param>
+            /// <param name="bufferSize">
+            /// The largest transfer in bytes. It is set when the driver loads, so
+            /// for all buses: the first Initialize after boot decides it.
+            /// </param>
+            public static void Initialize(int bus, int bufferSize = DefaultBufferSize) {
+                var b = Get(bus);
+                if (bufferSize < 1) {
+                    throw new ArgumentOutOfRangeException(nameof(bufferSize), bufferSize, "The buffer size must be at least 1 byte");
                 }
 
-                //port = port - 1;
-
-                if (initializedList.Contains(port))
-                    return;
-
-
-                var pinConfig = PinSettings[port];
-
-                if (IsPinReserved(pinConfig.MosiPin)) {
-                    EPM815.ThrowExceptionPinInUsed(pinConfig.MosiPin);
+                LoadDriver(bufferSize);
+                var device = $"spidev{bus}.0";
+                if (!LinuxDevices.IsAt("spidev", device, b.Address)) {
+                    throw new InvalidOperationException($"/dev/{device} is not {b.Name} in this firmware: update the board's firmware");
                 }
+                WaitFor($"/dev/{device}");
 
-                if (IsPinReserved(pinConfig.MisoPin)) {
-                    EPM815.ThrowExceptionPinInUsed(pinConfig.MisoPin);
-                }
-
-                if (IsPinReserved(pinConfig.ClockPin)) {
-                    EPM815.ThrowExceptionPinInUsed(pinConfig.ClockPin);
-                }
-
-
-
-                SetModer(pinConfig.MosiPin, Moder.Alternate);
-                SetModer(pinConfig.MisoPin, Moder.Alternate);
-                SetModer(pinConfig.ClockPin, Moder.Alternate);
-
-                SetAlternate(pinConfig.MosiPin, pinConfig.MosiAlternate);
-                SetAlternate(pinConfig.MisoPin, pinConfig.MisoAlternate);
-                SetAlternate(pinConfig.ClockPin, pinConfig.ClockAlternate);
-
-                PinReserve(pinConfig.MosiPin);
-                PinReserve(pinConfig.MisoPin);
-                PinReserve(pinConfig.ClockPin);
-
-                // load driver
-                if (Directory.Exists("/sys/class/spidev")) {
-                    initializedList.Add(port);
-                    return;
-                }
-
-                if (bufferSize <= 4096) {
-                    var script = new Script("modprobe", "./", "spidev");
-                    script.Start();
-                }
-                else {
-                    var script = new Script("modprobe", "./", $"spidev bufsiz={bufferSize}");
-                    script.Start();
-                }
-
-                while (!Directory.Exists("/sys/class/spidev")) {
-                    Thread.Sleep(10);
-                }                
+                // Clock and data out switch fast: medium speed edges, as the
+                // ST device trees use for SPI
+                PeripheralPins.Connect(b.Name,
+                    new PinFunction(b.Sck, b.Alternate, Speed: Speed.Medium),
+                    new PinFunction(b.Miso, b.Alternate),
+                    new PinFunction(b.Mosi, b.Alternate, Speed: Speed.Medium));
             }
-            public static void UnInitialize(int port) {
 
-                if (port != Spi1 && port != Spi4 && port != Spi5) {
-                    throw new ArgumentException("Invalid Spi port.");
-                }
+            /// <summary>Gives the bus's pins back, as they were before Initialize</summary>
+            public static void UnInitialize(int bus) => PeripheralPins.Disconnect(Get(bus).Name);
 
-                if (initializedList.Contains(port)) {
-                    //port = port - 1;
-
-                    var pinConfig = PinSettings[port];                 
-
-                    SetModer(pinConfig.MosiPin, Moder.Input);
-                    SetModer(pinConfig.MisoPin, Moder.Input);
-                    SetModer(pinConfig.ClockPin, Moder.Input);
-
-                    PinRelease(pinConfig.MosiPin);
-                    PinRelease(pinConfig.MisoPin);
-                    PinRelease(pinConfig.ClockPin);
-
-                    initializedList.Remove(port);
+            private static void LoadDriver(int bufferSize) {
+                lock (Gate) {
+                    if (!File.Exists(SpidevBufferSize)) {
+                        Modprobe("spidev", bufferSize == DefaultBufferSize ? null : $"bufsiz={bufferSize}");
+                    }
+                    var loaded = int.Parse(File.ReadAllText(SpidevBufferSize).Trim(), CultureInfo.InvariantCulture);
+                    if (loaded < bufferSize) {
+                        throw new InvalidOperationException(
+                            $"Linux's SPI driver is already loaded for transfers up to {loaded} bytes. " +
+                            $"For {bufferSize}, give this size to the first Initialize after boot.");
+                    }
                 }
             }
+
+            private static void Modprobe(string module, string parameter) {
+                var start = new ProcessStartInfo("modprobe") {
+                    RedirectStandardError = true,
+                    UseShellExecute = false,
+                };
+                start.ArgumentList.Add(module);
+                if (parameter is not null) {
+                    start.ArgumentList.Add(parameter);
+                }
+
+                using var process = Process.Start(start);
+                var error = process.StandardError.ReadToEndAsync();
+                if (!process.WaitForExit(5000)) {
+                    process.Kill();
+                    throw new IOException($"Loading the {module} driver took too long");
+                }
+                if (process.ExitCode != 0) {
+                    throw new IOException($"Cannot load the {module} driver: {error.Result.Trim()}");
+                }
+            }
+
+            // The kernel makes the device file right after the driver loads
+            private static void WaitFor(string path) {
+                var watch = Stopwatch.StartNew();
+                while (!File.Exists(path)) {
+                    if (watch.ElapsedMilliseconds > 1000) {
+                        throw new IOException($"{path} did not appear");
+                    }
+                    Thread.Sleep(5);
+                }
+            }
+
+            private static Bus Get(int bus) =>
+                bus >= 0 && bus < Buses.Length
+                    ? Buses[bus]
+                    : throw new ArgumentOutOfRangeException(nameof(bus), bus, "The SPI buses are Spi1, Spi4 and Spi5");
         }
     }
 }

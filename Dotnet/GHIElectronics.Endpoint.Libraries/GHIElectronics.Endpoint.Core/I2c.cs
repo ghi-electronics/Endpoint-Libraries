@@ -1,211 +1,103 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using GHIElectronics.Endpoint.Core;
-
+using System.Globalization;
+using GHIElectronics.Endpoint.Core.Internal;
+using static GHIElectronics.Endpoint.Core.Chips.Stm32Mp1Pins;
 
 namespace GHIElectronics.Endpoint.Core {
-
     public static partial class EPM815 {
+        /// <summary>
+        /// The I2C buses, for .NET's System.Device.I2c. Initialize connects the
+        /// bus's pins and sets its speed; then use the bus as on any Linux board:
+        /// <code>
+        /// EPM815.I2c.Initialize(EPM815.I2c.I2c1);
+        /// using var device = I2cDevice.Create(new I2cConnectionSettings(EPM815.I2c.I2c1, 0x50));
+        /// </code>
+        /// Each constant is the Linux bus number (/dev/i2c-N), fixed by the firmware.
+        /// </summary>
         public static class I2c {
-            /// <summary>I2c controller.</summary>
+            /// <summary>I2C1: PD12 (SCL), PD13 (SDA); /dev/i2c-0</summary>
             public const int I2c1 = 0;
-            //public static int I2c2 = 2;
-            //public static int I2c3 = 3;
-            public const int I2c4 = 2;
+            /// <summary>I2C5: PZ4 (SCL), PZ5 (SDA); /dev/i2c-1</summary>
             public const int I2c5 = 1;
+            /// <summary>I2C4: PB6 (SCL), PF15 (SDA); /dev/i2c-2</summary>
+            public const int I2c4 = 2;
+            /// <summary>I2C6: PD1 (SCL), PD0 (SDA); /dev/i2c-3</summary>
             public const int I2c6 = 3;
 
-            //private static int initialized = 0;
-            private static List<int> initializedList = new List<int>();
+            /// <summary>The speed when none is given: 400 kHz (fast mode)</summary>
+            public const int DefaultFrequency = 400_000;
+            public const int MinFrequency = 10_000;
+            /// <summary>1 MHz (fast mode plus)</summary>
+            public const int MaxFrequency = 1_000_000;
 
-            internal class I2cPinSettings {
-                public int SdaPin { get; set; }
-                public int SclPin { get; set; }
-                public Gpio.Alternate SdaAlternate { get; set; }
-                public Gpio.Alternate SclAlternate { get; set; }
+            private sealed record Bus(string Name, ulong Address, int Scl, int Sda, int SclAlternate, int SdaAlternate);
+
+            // Indexed by the constants above
+            private static readonly Bus[] Buses = {
+                new("I2C1", 0x40012000, Gpio.Pin.PD12, Gpio.Pin.PD13, 5, 5),
+                new("I2C5", 0x40015000, Gpio.Pin.PZ4, Gpio.Pin.PZ5, 4, 4),
+                new("I2C4", 0x5C002000, Gpio.Pin.PB6, Gpio.Pin.PF15, 6, 4),
+                new("I2C6", 0x5C009000, Gpio.Pin.PD1, Gpio.Pin.PD0, 2, 2),
             };
 
-            internal static I2cPinSettings[] PinSettings = {
-                /*i2c1*/new I2cPinSettings { SdaPin = Gpio.Pin.PD13, SclPin = Gpio.Pin.PD12, SdaAlternate = Gpio.Alternate.AF5 ,  SclAlternate = Gpio.Alternate.AF5  },
-                ///*i2c2*/new I2cPinSettings { SdaPin = Gpio.Pin.NONE, SclPin = Gpio.Pin.NONE, SdaAlternate = Gpio.Alternate.AF0 ,  SclAlternate = Gpio.Alternate.AF0  },
-                ///*i2c3*/new I2cPinSettings { SdaPin = Gpio.Pin.NONE, SclPin = Gpio.Pin.NONE, SdaAlternate = Gpio.Alternate.AF0 ,  SclAlternate = Gpio.Alternate.AF0  },                                
-                /*i2c5*/new I2cPinSettings { SdaPin = Gpio.Pin.PZ5 , SclPin = Gpio.Pin.PZ4 , SdaAlternate = Gpio.Alternate.AF4 ,  SclAlternate = Gpio.Alternate.AF4  },
-                /*i2c4*/new I2cPinSettings { SdaPin = Gpio.Pin.PF15, SclPin = Gpio.Pin.PB6 , SdaAlternate = Gpio.Alternate.AF4 ,  SclAlternate = Gpio.Alternate.AF6 },
-                /*i2c6*/new I2cPinSettings { SdaPin = Gpio.Pin.PD0, SclPin = Gpio.Pin.PD1 , SdaAlternate = Gpio.Alternate.AF2 ,  SclAlternate = Gpio.Alternate.AF2 },
-
-            };
-
-            public static void Initialize(int port) => Initialize(port, 0); // default 400KHz
-            public static void Initialize(int port, int frequency_hz) {
-
-                if (port < I2c1 || port > I2c6) {
-                    throw new ArgumentException("Invalid I2c port.");
+            /// <summary>
+            /// Connects the bus's pins (open drain, with the internal pull-ups on
+            /// for boards without their own) and sets its speed, until the next boot
+            /// </summary>
+            /// <param name="bus">I2c1, I2c4, I2c5 or I2c6</param>
+            /// <param name="frequency">The bus speed in Hz, from 10 kHz to 1 MHz</param>
+            public static void Initialize(int bus, int frequency = DefaultFrequency) {
+                var b = Get(bus);
+                if (frequency is < MinFrequency or > MaxFrequency) {
+                    throw new ArgumentOutOfRangeException(nameof(frequency), frequency, $"I2C speeds are {MinFrequency} to {MaxFrequency} Hz");
+                }
+                if (!LinuxDevices.IsAt("i2c-dev", $"i2c-{bus}", b.Address)) {
+                    throw new InvalidOperationException($"/dev/i2c-{bus} is not {b.Name} in this firmware: update the board's firmware");
                 }
 
-                //if ((initialized & (1 << port)) != 0)
-                //    return;
-
-                if (initializedList.Contains(port)) {
-                    return;
-                    
+                var connected = PeripheralPins.Connect(b.Name,
+                    new PinFunction(b.Scl, b.SclAlternate, Pull.Up, OutputType.OpenDrain),
+                    new PinFunction(b.Sda, b.SdaAlternate, Pull.Up, OutputType.OpenDrain));
+                try {
+                    SetFrequency(b, frequency);
                 }
-                //port = port - 1;
-
-
-                var pinConfig = PinSettings[port];
-
-                if (Gpio.IsPinReserved(pinConfig.SclPin)) {
-                    EPM815.ThrowExceptionPinInUsed(pinConfig.SclPin);
-                }
-
-                if (Gpio.IsPinReserved(pinConfig.SdaPin)) {
-                    EPM815.ThrowExceptionPinInUsed(pinConfig.SdaPin);
-                }
-
-
-                // calculation clock:
-                const uint RCC_BASE = 0x50000000U;                
-                
-                var base_address = 0U;
-                var clock_en_address = 0U;
-                var clock_en_value = 0U;
-                var tpresc = 0U;
-
-                if (frequency_hz > 0) {
-                    switch (port) {
-                        case I2c6:
-                        case I2c4:
-                            // PRESC = 15+1 = 16;
-                            // i2c clock = 64MHz/16 = 4MHz;                            
-                            tpresc = 250;//250ns = 1_000_000_000 / 4_000_000 = 250ns
-                            clock_en_address = RCC_BASE + 0x208U; //RCC_MP_APB5ENSETR
-                           
-                            // enable peripheral clock to program register
-                            clock_en_value = Register.Read(clock_en_address);
-
-                            if (port == I2c6) {                                
-                                clock_en_value |= 1 << 3;
-                                base_address = 0x5C009000U;
-                            }
-                            else {
-                                clock_en_value |= 1 << 2;
-                                base_address = 0x5C002000U;
-                            }
-
-                            Register.Write(clock_en_address, clock_en_value);
-
-                            break;
-
-                        case I2c1:
-                        case I2c5:
-
-                            
-
-                            clock_en_address = RCC_BASE + 0xA00U; //RCC_MP_APB5ENSETR
-                                                                  // enable peripheral clock to program register
-                            clock_en_value = Register.Read(clock_en_address);
-
-                            if (port == I2c1) {
-                                clock_en_value |= 1 << 21;
-                                base_address = 0x40012000U;
-                                tpresc = 250;
-                            }
-                            else {
-                                clock_en_value |= 1 << 24;
-                                base_address = 0x40015000;
-                                tpresc = 325;
-                            }
-
-                            Register.Write(clock_en_address, clock_en_value);
-                            break;
-
-
+                catch {
+                    // A bus that was already initialized stays as it was
+                    if (connected) {
+                        PeripheralPins.Disconnect(b.Name);
                     }
-
-                    var cr1_address = base_address;
-                    var timming_address = base_address + 0x10;
-
-                    // Disable I2C - PE bit
-                    var i2c_cr1_val = Register.Read(cr1_address);
-
-                    i2c_cr1_val &= ~0x00000001U;
-
-                    Register.Write(cr1_address, i2c_cr1_val);
-
-                    var i2c_timming_value = Register.Read(timming_address);
-
-                    i2c_timming_value &= ~0xF0FFFFFFU;
-
-                    var clockrate = 1000000000 / frequency_hz / tpresc;
-
-                    if (clockrate > 2)
-                        clockrate -= 2;
-                    else clockrate = 0;
-
-                    var clockhigh = clockrate / 2;
-                    i2c_timming_value |= 0xF0000000U;
-
-                    if (clockhigh > 255) clockhigh = 255;
-
-                    if (clockhigh > 0)
-                        clockhigh -= 1;
-
-                    i2c_timming_value |= (uint)(clockhigh);
-                    i2c_timming_value |= (uint)(clockhigh << 8);                    
-
-                    Register.Write(timming_address, i2c_timming_value);
-
-                    // Enable I2C - PE bit
-                    i2c_cr1_val |= 1;
-                    Register.Write(cr1_address, i2c_cr1_val);
-                }
-             
-
-                Gpio.SetModer(pinConfig.SclPin, Gpio.Moder.Alternate);
-                Gpio.SetModer(pinConfig.SdaPin, Gpio.Moder.Alternate);
-
-                Gpio.SetAlternate(pinConfig.SclPin, pinConfig.SclAlternate);
-                Gpio.SetAlternate(pinConfig.SdaPin, pinConfig.SdaAlternate);
-
-
-                Gpio.SetPull(pinConfig.SclPin, Gpio.Pull.Up);
-                Gpio.SetPull(pinConfig.SdaPin, Gpio.Pull.Up);
-
-                Gpio.SetOutputType(pinConfig.SclPin, Gpio.OutputType.OpenDrain);
-                Gpio.SetOutputType(pinConfig.SdaPin, Gpio.OutputType.OpenDrain);
-
-                Gpio.PinReserve(pinConfig.SclPin);
-                Gpio.PinReserve(pinConfig.SdaPin);
-
-                //initialized |= (1 << port);
-                initializedList.Add(port);
-
-            }
-            public static void UnInitialize(int port) {
-
-                if (port < I2c1 || port > I2c6) {
-                    throw new ArgumentException("Invalid I2c port.");
-                }
-
-                if (initializedList.Contains(port)) {
-
-                    //port = port - 1;
-
-                    var pinConfig = PinSettings[port];
-
-                    Gpio.PinRelease(pinConfig.SclPin);
-                    Gpio.PinRelease(pinConfig.SdaPin);
-
-                    Gpio.SetModer(pinConfig.SclPin, Gpio.Moder.Input);
-                    Gpio.SetModer(pinConfig.SdaPin, Gpio.Moder.Input);
-                    //initialized &= ~(1 << port);
-                    initializedList.Remove(port);
+                    throw;
                 }
             }
 
+            /// <summary>Gives the bus's pins back, as they were before Initialize</summary>
+            public static void UnInitialize(int bus) => PeripheralPins.Disconnect(Get(bus).Name);
+
+            /// <summary>The bus speed in use, in Hz</summary>
+            public static int GetFrequency(int bus) {
+                var path = SpeedFile(Get(bus));
+                return File.Exists(path)
+                    ? int.Parse(File.ReadAllText(path).Trim(), CultureInfo.InvariantCulture)
+                    : DefaultFrequency;   // older firmware: the device tree's speed
+            }
+
+            private static void SetFrequency(Bus b, int frequency) {
+                var path = SpeedFile(b);
+                if (File.Exists(path)) {
+                    File.WriteAllText(path, frequency.ToString(CultureInfo.InvariantCulture));
+                }
+                else if (frequency != DefaultFrequency) {
+                    throw new NotSupportedException("This firmware cannot change the I2C speed: update the board's firmware");
+                }
+            }
+
+            // Added to the kernel's I2C driver by the Endpoint firmware: the
+            // kernel computes the timings for the speed, as for the device tree's
+            private static string SpeedFile(Bus b) => $"/sys/bus/platform/devices/{b.Address:x}.i2c/clock_frequency";
+
+            private static Bus Get(int bus) =>
+                bus >= 0 && bus < Buses.Length
+                    ? Buses[bus]
+                    : throw new ArgumentOutOfRangeException(nameof(bus), bus, "The I2C buses are I2c1, I2c4, I2c5 and I2c6");
         }
     }
 }
