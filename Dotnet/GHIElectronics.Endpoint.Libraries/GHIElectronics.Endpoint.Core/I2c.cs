@@ -84,6 +84,14 @@ namespace GHIElectronics.Endpoint.Core {
                 var path = SpeedFile(b);
                 if (File.Exists(path)) {
                     File.WriteAllText(path, frequency.ToString(CultureInfo.InvariantCulture));
+                    // The kernel lowers a speed the board's bus cannot reach: the
+                    // rise and fall times in its device tree (pull-ups, wiring) are
+                    // too slow for it, for example 1 MHz needs a rise time under 120 ns
+                    var actual = int.Parse(File.ReadAllText(path).Trim(), CultureInfo.InvariantCulture);
+                    if (actual != frequency) {
+                        throw new ArgumentOutOfRangeException(nameof(frequency), frequency,
+                            $"{b.Name} cannot run at {frequency} Hz on this board (its bus rise and fall times are too slow): it runs at {actual} Hz");
+                    }
                 }
                 else if (frequency != DefaultFrequency) {
                     throw new NotSupportedException("This firmware cannot change the I2C speed: update the board's firmware");
