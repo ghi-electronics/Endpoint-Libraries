@@ -8,7 +8,13 @@
 # libendpoint.a (linked into C++ programs).
 
 cmake_minimum_required(VERSION 3.20)
-project(libendpoint VERSION 0.1.0 LANGUAGES CXX)
+
+# The version is in include/endpoint/Version.h, the one place to change it
+file(STRINGS include/endpoint/Version.h ENDPOINT_VERSION_LINES REGEX "^#define ENDPOINT_VERSION_(MAJOR|MINOR|PATCH) ")
+string(REGEX REPLACE ".*MAJOR ([0-9]+).*MINOR ([0-9]+).*PATCH ([0-9]+).*" "\\1.\\2.\\3"
+       ENDPOINT_VERSION "${ENDPOINT_VERSION_LINES}")
+project(libendpoint VERSION ${ENDPOINT_VERSION} LANGUAGES CXX)
+message(STATUS "libendpoint ${PROJECT_VERSION}")
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)

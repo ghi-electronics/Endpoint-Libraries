@@ -34,6 +34,25 @@
     <None Include="$(MSBuildThisFileDirectory)images\icon.png" Pack="true" PackagePath="\" Visible="false" />
   </ItemGroup>
 
+  <!-- The packages need each other (GHIElectronics.Endpoint.Core, ...) at their own
+       version or newer, below the next minor version: 0.2.0-beta needs
+       [0.2.0-beta, 0.3.0-0), so updating one package does not break the others.
+       The rule that makes this safe: within a minor version (0.2.x) the libraries
+       only add, never change or remove; a breaking change goes to the next one
+       (0.3). The "-0" keeps 0.3's pre-releases (0.3.0-beta) out too. NuGet makes
+       a project reference ">= its version" by itself; this adds the upper end. -->
+  <PropertyGroup>
+    <_EndpointMajor>$([System.Text.RegularExpressions.Regex]::Replace($(EndpointLibrariesVersion), '^(\d+)\.(\d+).*$', '$1'))</_EndpointMajor>
+    <_EndpointMinor>$([System.Text.RegularExpressions.Regex]::Replace($(EndpointLibrariesVersion), '^(\d+)\.(\d+).*$', '$2'))</_EndpointMinor>
+    <EndpointCompatibleBelow>$(_EndpointMajor).$([MSBuild]::Add($(_EndpointMinor), 1)).0-0</EndpointCompatibleBelow>
+  </PropertyGroup>
+  <Target Name="EndpointDependencyRanges" AfterTargets="_GetProjectReferenceVersions">
+    <ItemGroup>
+      <_ProjectReferencesWithVersions Update="@(_ProjectReferencesWithVersions)"
+                                      ProjectVersion="[%(ProjectVersion), $(EndpointCompatibleBelow))" />
+    </ItemGroup>
+  </Target>
+
   <!-- Release builds make the NuGet packages in output\ (doCopy.bat copies
        them to D:\Local Nuget) and, if NugetPackerOutputDirectory is set,
        copy them there too. Signing is off while testing: for a release, build

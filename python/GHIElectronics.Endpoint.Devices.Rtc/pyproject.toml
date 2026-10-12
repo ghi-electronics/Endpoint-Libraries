@@ -13,7 +13,7 @@ description = "The real-time clock of GHI Electronics Endpoint, with the API of 
 authors = [{ name = "GHI Electronics, LLC", email = "support@ghielectronics.com" }]
 requires-python = ">=3.9"
 dependencies = [
-    "GHIElectronics.Endpoint.Core==0.2.0",
+    "GHIElectronics.Endpoint.Core>=0.2.0,<0.3",
 ]
 classifiers = ["Programming Language :: Python :: 3", "Operating System :: POSIX :: Linux"]
 

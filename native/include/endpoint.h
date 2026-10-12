@@ -25,4 +25,5 @@
 #include "endpoint/Pwm.h"
 #include "endpoint/Rtc.h"
 #include "endpoint/Spi.h"
+#include "endpoint/Version.h"
 #include "endpoint/Watchdog.h"
