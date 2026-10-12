@@ -16,6 +16,7 @@ enum class ErrorKind : int {
     NotSupported = 5,        // NotSupportedException
     ObjectDisposed = 6,      // ObjectDisposedException
     NotImplemented = 7,      // NotImplementedException
+    Timeout = 8,             // TimeoutException
 };
 
 class EndpointError : public std::runtime_error {
@@ -34,6 +35,7 @@ private:
 [[noreturn]] void ThrowIO(const std::string& message);
 [[noreturn]] void ThrowNotSupported(const std::string& message);
 [[noreturn]] void ThrowNotImplemented();
+[[noreturn]] void ThrowTimeout();  // "The operation has timed out." (as .NET)
 
 // An IO error with the reason of the last failed system call:
 // "what: No such device"

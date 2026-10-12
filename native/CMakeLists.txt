@@ -23,6 +23,8 @@ file(GLOB ENDPOINT_SOURCES CONFIGURE_DEPENDS src/*.cpp)
 add_library(endpoint_objects OBJECT ${ENDPOINT_SOURCES})
 target_include_directories(endpoint_objects PUBLIC include PRIVATE src)
 target_compile_options(endpoint_objects PRIVATE -Wall -Wextra)
+# Release: no debug information (libendpoint.a is linked into customers' programs)
+target_compile_options(endpoint_objects PRIVATE $<$<CONFIG:Release>:-g0>)
 
 add_library(endpoint SHARED $<TARGET_OBJECTS:endpoint_objects>)
 # Release: no debug information in the library the Python package carries
@@ -34,3 +36,8 @@ set_target_properties(endpoint_static PROPERTIES OUTPUT_NAME endpoint)
 add_executable(foundation-test tests/FoundationTest.cpp)
 target_include_directories(foundation-test PRIVATE src)
 target_link_libraries(foundation-test PRIVATE endpoint_static)
+
+# Board test of the public C++ API (endpoint.h), as a customer would use it
+add_executable(cpp-api-test tests/CppApiTest.cpp)
+target_include_directories(cpp-api-test PRIVATE include)
+target_link_libraries(cpp-api-test PRIVATE endpoint_static)

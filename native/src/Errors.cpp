@@ -17,6 +17,8 @@ void ThrowNotSupported(const std::string& message) { throw EndpointError(ErrorKi
 
 void ThrowNotImplemented() { throw EndpointError(ErrorKind::NotImplemented, "Not implemented"); }
 
+void ThrowTimeout() { throw EndpointError(ErrorKind::Timeout, "The operation has timed out."); }
+
 void ThrowSystemError(const std::string& what) {
     auto error = errno;
     throw EndpointError(ErrorKind::IO, what + ": " + std::strerror(error));

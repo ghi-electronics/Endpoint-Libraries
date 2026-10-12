@@ -31,6 +31,10 @@ class NotImplementedException(NotImplementedError):
     """Not implemented yet (.NET NotImplementedException)"""
 
 
+class TimeoutException(TimeoutError):
+    """The time ran out (.NET TimeoutException)"""
+
+
 # libendpoint's error kinds
 _KINDS = {
     1: ArgumentException,
@@ -40,6 +44,7 @@ _KINDS = {
     5: NotSupportedException,
     6: ObjectDisposedException,
     7: NotImplementedException,
+    8: TimeoutException,
 }
 
 

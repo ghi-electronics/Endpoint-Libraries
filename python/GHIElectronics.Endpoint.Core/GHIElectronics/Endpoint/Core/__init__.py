@@ -14,6 +14,7 @@ from ._errors import (
     NotImplementedException,
     NotSupportedException,
     ObjectDisposedException,
+    TimeoutException,
 )
 
 __all__ = [
@@ -25,4 +26,5 @@ __all__ = [
     "NotImplementedException",
     "NotSupportedException",
     "ObjectDisposedException",
+    "TimeoutException",
 ]
