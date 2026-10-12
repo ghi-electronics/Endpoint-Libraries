@@ -30,5 +30,23 @@ namespace GHIElectronics.Endpoint.Core.Internal {
             }
             return -1;
         }
+
+        /// <summary>
+        /// The folder of the IIO device (ADC, DAC...) named <paramref name="name"/>,
+        /// for example /sys/bus/iio/devices/iio:device0 for "48003000.adc:adc@0", or null
+        /// </summary>
+        public static string FindIio(string name) {
+            const string folder = "/sys/bus/iio/devices";
+            if (!Directory.Exists(folder)) {
+                return null;
+            }
+            foreach (var path in Directory.EnumerateFileSystemEntries(folder, "iio:device*")) {
+                var nameFile = Path.Combine(path, "name");
+                if (File.Exists(nameFile) && File.ReadAllText(nameFile).Trim() == name) {
+                    return path;
+                }
+            }
+            return null;
+        }
     }
 }

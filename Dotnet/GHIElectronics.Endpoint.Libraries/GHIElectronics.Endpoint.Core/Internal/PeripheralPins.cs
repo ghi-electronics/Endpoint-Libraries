@@ -5,7 +5,13 @@ namespace GHIElectronics.Endpoint.Core.Internal {
     internal readonly record struct PinFunction(int Pin, int Alternate,
         Stm32Mp1Pins.Pull Pull = Stm32Mp1Pins.Pull.None,
         Stm32Mp1Pins.OutputType Type = Stm32Mp1Pins.OutputType.PushPull,
-        Stm32Mp1Pins.Speed Speed = Stm32Mp1Pins.Speed.Low);
+        Stm32Mp1Pins.Speed Speed = Stm32Mp1Pins.Speed.Low) {
+        /// <summary>The Alternate value that means analog mode instead of a function</summary>
+        public const int AnalogFunction = -1;
+
+        /// <summary>An ADC input or DAC output pin: analog mode, no pull</summary>
+        public static PinFunction Analog(int pin) => new(pin, AnalogFunction);
+    }
 
     /// <summary>
     /// Connects pins to a peripheral, and gives them back as they were found.
@@ -35,7 +41,13 @@ namespace GHIElectronics.Endpoint.Core.Internal {
                     foreach (var p in pins) {
                         var (port, line) = EPM815.Gpio.ChipPin(p.Pin);
                         saved.Add(new Saved(p.Pin, port, line, Stm32Mp1Pins.Save(port, line)));
-                        Stm32Mp1Pins.SetFunction(port, line, p.Alternate, p.Pull, p.Type, p.Speed);
+                        if (p.Alternate == PinFunction.AnalogFunction) {
+                            Stm32Mp1Pins.SetPull(port, line, Stm32Mp1Pins.Pull.None);
+                            Stm32Mp1Pins.SetMode(port, line, Stm32Mp1Pins.Mode.Analog);
+                        }
+                        else {
+                            Stm32Mp1Pins.SetFunction(port, line, p.Alternate, p.Pull, p.Type, p.Speed);
+                        }
                     }
                 }
                 catch {

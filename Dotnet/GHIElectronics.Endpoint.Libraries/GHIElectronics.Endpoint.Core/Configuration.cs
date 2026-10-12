@@ -5,6 +5,9 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("GHIElectronics.Endpoint.Devices.Sdmmc")]
 [assembly: InternalsVisibleTo("GHIElectronics.Endpoint.Devices.Dcmi")]
 [assembly: InternalsVisibleTo("GHIElectronics.Endpoint.Devices.Rtc")]
+[assembly: InternalsVisibleTo("GHIElectronics.Endpoint.Devices.Adc")]
+[assembly: InternalsVisibleTo("GHIElectronics.Endpoint.Devices.Dac")]
+[assembly: InternalsVisibleTo("GHIElectronics.Endpoint.Devices.Watchdog")]
 
 namespace GHIElectronics.Endpoint.Core {
     public static partial class EPM815 {

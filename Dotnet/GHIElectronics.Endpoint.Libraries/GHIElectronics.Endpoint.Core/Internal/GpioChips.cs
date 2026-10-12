@@ -26,6 +26,7 @@ namespace GHIElectronics.Endpoint.Core.Internal {
 
         private static Dictionary<string, int> Scan() {
             var found = new Dictionary<string, int>();
+            var info = stackalloc byte[InfoSize];
             foreach (var path in Directory.EnumerateFiles("/dev", "gpiochip*")) {
                 if (!int.TryParse(Path.GetFileName(path).AsSpan("gpiochip".Length), out var number)) {
                     continue;
@@ -35,7 +36,6 @@ namespace GHIElectronics.Endpoint.Core.Internal {
                     throw Libc.Error($"Cannot open {path}");
                 }
                 try {
-                    var info = stackalloc byte[InfoSize];
                     if (Libc.Ioctl(fd, GetChipInfo, (nint)info) < 0) {
                         throw Libc.Error($"Cannot read the label of {path}");
                     }

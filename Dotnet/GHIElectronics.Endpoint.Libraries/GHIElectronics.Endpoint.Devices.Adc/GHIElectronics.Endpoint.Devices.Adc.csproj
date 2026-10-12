@@ -4,12 +4,14 @@
 
   <PropertyGroup>
     <PackageId>GHIElectronics.Endpoint.Devices.Adc</PackageId>
-    <Description>The ADC driver for Endpoint.</Description>
+    <Description>Endpoint's analog inputs for .NET's System.Device.Analog.</Description>
     <Nullable>disable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\GHIElectronics.Endpoint.Core\GHIElectronics.Endpoint.Core.csproj" />
+    <!-- System.Device.Analog (AnalogController) is in Microsoft's .NET IoT bindings -->
+    <PackageReference Include="Iot.Device.Bindings" Version="4.2.0" />
   </ItemGroup>
 
 </Project>

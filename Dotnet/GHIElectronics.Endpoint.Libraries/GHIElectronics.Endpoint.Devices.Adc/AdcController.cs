@@ -1,179 +1,40 @@
-using System.Text;
+using System.Device.Analog;
 using GHIElectronics.Endpoint.Core;
+using UnitsNet;
 
-namespace GHIElectronics.Endpoint.Devices.Adc
-{
-    /**<example>
-      ADC is used to read Analog values from a specific pin
-      <code>
-      using GHIElectronics.Endpoint.Core;
-      using GHIElectronics.Endpoint.Devices.Adc;
-          
-      var adcController = new AdcController(EPM815.Adc.Pin.ANA1); 
-          
-      while (true){
-          var v = adcController.Read();
-          var v1 = (v * 3.3 / 65535);
-          Console.WriteLine(v1.ToString());
-          Thread.Sleep(1000);
-      }
-      </code>
-      </example>*/
+namespace GHIElectronics.Endpoint.Devices.Adc {
+    /// <summary>
+    /// Endpoint's analog inputs, for .NET's System.Device.Analog. The pins are
+    /// the EPM815.Adc.Pin constants:
+    /// <code>
+    /// using var adc = new AdcController();
+    /// using var input = adc.OpenPin(EPM815.Adc.Pin.PA0);
+    /// Console.WriteLine($"{input.ReadVoltage().Volts:0.000} V (raw {input.ReadRaw()})");
+    /// </code>
+    /// Opening a pin makes it an analog input; closing it puts the pin back
+    /// as it was. The inputs measure 0 V to <see cref="AnalogController.VoltageReference"/> (3.3 V).
+    /// </summary>
+    public sealed class AdcController : AnalogController {
+        /// <summary>A controller for all of Endpoint's analog inputs (both converters)</summary>
+        public AdcController() =>
+            this.VoltageReference = ElectricPotential.FromMillivolts(Converter.Get(1).ReferenceMillivolts);
 
-    public class AdcController : IDisposable {
-        static int initializeCount;
-        private int controllerId;
-        private int channelId;
-        private int pinId;
-        private int fd = -1;        
+        /// <summary>The number of analog inputs</summary>
+        public override int PinCount => EPM815.Adc.Inputs.Length;
 
-        public int ResolutionInBits { get; } = 16;
+        /// <summary>Whether <paramref name="pin"/> is one of the EPM815.Adc.Pin constants</summary>
+        public override bool SupportsAnalogInput(int pin) => EPM815.Adc.Find(pin) is not null;
 
-        internal static int GetPinEncodeFromPin(int pin) {
-            switch (pin) {
-                //case AdcPin.ANA0: return AdcPin.ANA0;
-                //case AdcPin.ANA1: return AdcPin.ANA1;
-                case EPM815.Gpio.Pin.PF11: return EPM815.Adc.Pin.PF11;
-                case EPM815.Gpio.Pin.PA6: return EPM815.Adc.Pin.PA6;
-                case EPM815.Gpio.Pin.PF12: return EPM815.Adc.Pin.PF12;
-                case EPM815.Gpio.Pin.PB0: return EPM815.Adc.Pin.PB0;
-                case EPM815.Gpio.Pin.PC0: return EPM815.Adc.Pin.PC0;
-                case EPM815.Gpio.Pin.PC3: return EPM815.Adc.Pin.PC3;
-                case EPM815.Gpio.Pin.PA3: return EPM815.Adc.Pin.PA3;
-                case EPM815.Gpio.Pin.PA0: return EPM815.Adc.Pin.PA0;
-                case EPM815.Gpio.Pin.PA4: return EPM815.Adc.Pin.PA4;
-                case EPM815.Gpio.Pin.PA5: return EPM815.Adc.Pin.PA5;
-                case EPM815.Gpio.Pin.PF13: return EPM815.Adc.Pin.PF13;
-                case EPM815.Gpio.Pin.PF14: return EPM815.Adc.Pin.PF14;
-            }
+        /// <summary>The pin's channel in its converter (ADC1 or ADC2)</summary>
+        public override int ConvertPinNumberToAnalogChannelNumber(int pinNumber) => Get(pinNumber).Channel;
 
-            return EPM815.Gpio.Pin.NONE;
+        /// <inheritdoc/>
+        protected override AnalogInputPin OpenPinCore(int pinNumber) {
+            var input = Get(pinNumber);
+            return new AdcInputPin(this, input, Converter.Get(input.Converter));
         }
 
-        public AdcController(int adcPin) {
-
-            var pin = adcPin;
-
-            if (adcPin < 255) {
-                pin = GetPinEncodeFromPin(adcPin);
-
-                if (pin == EPM815.Gpio.Pin.NONE) { 
-                     throw new ArgumentException("Adc pin invalid");
-                }
-            }
-
-            this.controllerId = (pin >> 24) & 0xFF;
-            this.channelId = (pin >> 16) & 0xFF;
-            this.pinId = (pin>> 0) & 0xFFFF;
-
-            this.Acquire();
-
-            var path = "/sys/bus/iio/devices/iio:device" + this.controllerId.ToString() + "/in_voltage" + this.channelId.ToString() + "_raw";
-
-            if (File.Exists(path)) {
-                this.fd = Interop.Open(path, Interop.FileOpenFlags.O_RDONLY);
-            }
-
-            if (this.fd < 0) {
-                this.Release();
-                throw new Exception("Could not create Adc device");
-            }
-        }
-
-        public uint ReadRaw() {
-            uint v = 0;
-
-            var buf_read = new byte[8];
-
-            unsafe {
-                fixed (byte* readBufferPointer = buf_read) {
-                    Interop.Seek(this.fd, 0, Interop.SeekFlags.SEEK_SET);
-                    Interop.Read(this.fd, new IntPtr(readBufferPointer), 8);
-                }
-            }            
-
-            v = uint.Parse(UTF8Encoding.UTF8.GetString(buf_read));
-
-            return v;
-        }
-
-        public double Read() {
-            var v = this.ReadRaw();
-
-            return v * 3.3 / 65535;
-        }
-
-        private void Acquire() {
-            if (initializeCount == 0) {
-                this.LoadResources();
-            }
-
-            initializeCount++;
-        }
-
-        private void Release() {
-            initializeCount--;
-
-            if (initializeCount == 0) {
-                this.UnLoadResources();
-            }
-        }
-
-        private void LoadResources() {
-            // load pins 
-            if (this.controllerId == 0 && (this.channelId < 2))
-                return; // ANA0 and ANA1 are special, no pin
-
-            //var pinConfig = STM32MP1.Adc.PinSettings[this.controllerId][this.channelId];
-
-            if (this.pinId >= 0 && this.pinId < 255) {
-                EPM815.Gpio.SetModer(this.pinId, EPM815.Gpio.Moder.Analog);
-
-                EPM815.Gpio.PinReserve(this.pinId);
-            }          
-            // load driver
-        }
-
-        private void UnLoadResources() {
-            // release pins
-            if (this.controllerId == 0 && (this.channelId < 2))
-                return; // ANA0 and ANA1 are special, no pin
-
-            //var pinConfig = STM32MP1.Adc.PinSettings[this.controllerId][this.channelId];
-
-            if (this.pinId >= 0 && this.pinId < 255) {
-                EPM815.Gpio.SetModer(this.pinId, EPM815.Gpio.Moder.Input);
-
-                EPM815.Gpio.PinRelease(this.pinId);
-            }
-        }
-
-        private bool disposed = false;
-        /// <exclude />
-        ~AdcController() {
-            this.Dispose(disposing: false);
-        }
-
-        public void Dispose() {
-            this.Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        /// <exclude />
-        protected void Dispose(bool disposing) {
-            if (this.disposed)
-                return;
-
-            if (disposing) {
-                Interop.Close(this.fd);
-            }
-
-            this.Release();
-
-            this.disposed = true;
-        }
+        private static EPM815.Adc.Input Get(int pin) =>
+            EPM815.Adc.Find(pin) ?? throw new ArgumentException($"Pin {pin} has no analog input: use the EPM815.Adc.Pin constants", nameof(pin));
     }
 }
-
-
-

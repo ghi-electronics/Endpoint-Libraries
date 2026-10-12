@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Globalization;
 using GHIElectronics.Endpoint.Core.Internal;
 using static GHIElectronics.Endpoint.Core.Chips.Stm32Mp1Pins;
@@ -56,7 +55,7 @@ namespace GHIElectronics.Endpoint.Core {
                 if (!LinuxDevices.IsAt("spidev", device, b.Address)) {
                     throw new InvalidOperationException($"/dev/{device} is not {b.Name} in this firmware: update the board's firmware");
                 }
-                WaitFor($"/dev/{device}");
+                KernelModules.WaitFor($"/dev/{device}");
 
                 // Clock and data out switch fast: medium speed edges, as the
                 // ST device trees use for SPI
@@ -72,7 +71,7 @@ namespace GHIElectronics.Endpoint.Core {
             private static void LoadDriver(int bufferSize) {
                 lock (Gate) {
                     if (!File.Exists(SpidevBufferSize)) {
-                        Modprobe("spidev", bufferSize == DefaultBufferSize ? null : $"bufsiz={bufferSize}");
+                        KernelModules.Load("spidev", bufferSize == DefaultBufferSize ? null : $"bufsiz={bufferSize}");
                     }
                     var loaded = int.Parse(File.ReadAllText(SpidevBufferSize).Trim(), CultureInfo.InvariantCulture);
                     if (loaded < bufferSize) {
@@ -80,38 +79,6 @@ namespace GHIElectronics.Endpoint.Core {
                             $"Linux's SPI driver is already loaded for transfers up to {loaded} bytes. " +
                             $"For {bufferSize}, give this size to the first Initialize after boot.");
                     }
-                }
-            }
-
-            private static void Modprobe(string module, string parameter) {
-                var start = new ProcessStartInfo("modprobe") {
-                    RedirectStandardError = true,
-                    UseShellExecute = false,
-                };
-                start.ArgumentList.Add(module);
-                if (parameter is not null) {
-                    start.ArgumentList.Add(parameter);
-                }
-
-                using var process = Process.Start(start);
-                var error = process.StandardError.ReadToEndAsync();
-                if (!process.WaitForExit(5000)) {
-                    process.Kill();
-                    throw new IOException($"Loading the {module} driver took too long");
-                }
-                if (process.ExitCode != 0) {
-                    throw new IOException($"Cannot load the {module} driver: {error.Result.Trim()}");
-                }
-            }
-
-            // The kernel makes the device file right after the driver loads
-            private static void WaitFor(string path) {
-                var watch = Stopwatch.StartNew();
-                while (!File.Exists(path)) {
-                    if (watch.ElapsedMilliseconds > 1000) {
-                        throw new IOException($"{path} did not appear");
-                    }
-                    Thread.Sleep(5);
                 }
             }
 
