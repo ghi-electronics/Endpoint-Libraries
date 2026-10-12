@@ -1,0 +1,25 @@
+# One of the Endpoint Python packages. They share the namespace
+# GHIElectronics.Endpoint (no __init__.py in GHIElectronics/, Endpoint/ and
+# Endpoint/Devices/), so each can be installed and updated on its own.
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "GHIElectronics.Endpoint.Devices.Watchdog"
+version = "0.2.0"
+description = "The watchdog of GHI Electronics Endpoint, with the TinyCLR API."
+authors = [{ name = "GHI Electronics, LLC", email = "support@ghielectronics.com" }]
+requires-python = ">=3.9"
+dependencies = [
+    "GHIElectronics.Endpoint.Core==0.2.0",
+]
+classifiers = ["Programming Language :: Python :: 3", "Operating System :: POSIX :: Linux"]
+
+[project.urls]
+Homepage = "https://www.ghielectronics.com/"
+
+[tool.setuptools.packages.find]
+include = ["GHIElectronics.Endpoint.Devices.Watchdog"]
+namespaces = true

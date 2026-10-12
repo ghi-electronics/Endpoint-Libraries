@@ -25,6 +25,8 @@ target_include_directories(endpoint_objects PUBLIC include PRIVATE src)
 target_compile_options(endpoint_objects PRIVATE -Wall -Wextra)
 
 add_library(endpoint SHARED $<TARGET_OBJECTS:endpoint_objects>)
+# Release: no debug information in the library the Python package carries
+target_link_options(endpoint PRIVATE $<$<CONFIG:Release>:-s>)
 add_library(endpoint_static STATIC $<TARGET_OBJECTS:endpoint_objects>)
 set_target_properties(endpoint_static PROPERTIES OUTPUT_NAME endpoint)
 

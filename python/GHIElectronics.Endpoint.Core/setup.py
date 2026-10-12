@@ -1,19 +1,20 @@
-import setuptools
+# The settings are in pyproject.toml. This file only marks the wheel as one
+# for the board's processor: it carries libendpoint.so (32-bit ARM, glibc
+# 2.34 or newer), which is not a Python extension, so the wheel works with
+# every Python 3 version.
+from setuptools import setup
+from setuptools.command.bdist_wheel import bdist_wheel
+
+PLATFORM = "manylinux_2_34_armv7l"
 
 
+class BoardWheel(bdist_wheel):
+    def finalize_options(self):
+        super().finalize_options()
+        self.root_is_pure = False
 
-setuptools.setup(
-    name = "GHIElectronics.Endpoint.Core",
-    version = "0.1.3",
-    author = "GHI Electronics",
-    author_email = "support@ghielectronics.com",
-    license='MIT', 
-    description = "GHI Electronics Endpoint Python library.",
-    url = "https://www.ghielectronics.com/",
-    packages=setuptools.find_packages(),
-    classifiers=[
-        "Programming Language :: Python :: 3",        
-    ],
- 
-    python_requires='>=3.10'
-)
+    def get_tag(self):
+        return "py3", "none", PLATFORM
+
+
+setup(cmdclass={"bdist_wheel": BoardWheel})

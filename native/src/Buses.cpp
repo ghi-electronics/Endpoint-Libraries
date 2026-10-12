@@ -85,7 +85,10 @@ SpiDeviceImpl::SpiDeviceImpl(const SpiSettings& settings) : settings_(settings) 
         ThrowArgumentOutOfRange("The clock frequency must be more than 0");
     }
 
-    auto path = "/dev/spidev" + std::to_string(settings.busId) + "." + std::to_string(settings.chipSelectLine);
+    // The bus drives no chip select (programs use any GPIO pin): -1, .NET's
+    // "no chip select", is the bus's only device file, spidevN.0
+    auto chipSelect = settings.chipSelectLine < 0 ? 0 : settings.chipSelectLine;
+    auto path = "/dev/spidev" + std::to_string(settings.busId) + "." + std::to_string(chipSelect);
     fd_ = open(path.c_str(), O_RDWR | O_CLOEXEC);
     if (fd_ < 0) {
         if (errno == ENOENT) {

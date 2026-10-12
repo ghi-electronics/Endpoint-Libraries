@@ -1,0 +1,6 @@
+dist/
+build/
+*.egg-info/
+__pycache__/
+# Copied from native/build by build_wheels.py
+GHIElectronics.Endpoint.Core/GHIElectronics/Endpoint/Core/libendpoint.so
