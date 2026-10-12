@@ -8,23 +8,12 @@ namespace GHIElectronics.Endpoint.Core.Internal {
     internal static class KernelModules {
         /// <summary>Loads <paramref name="module"/> (nothing happens if it is loaded already)</summary>
         public static void Load(string module, string parameter = null) {
-            var start = new ProcessStartInfo("modprobe") {
-                RedirectStandardError = true,
-                UseShellExecute = false,
-            };
-            start.ArgumentList.Add(module);
-            if (parameter is not null) {
-                start.ArgumentList.Add(parameter);
+            var what = $"Cannot load the {module} driver";
+            if (parameter is null) {
+                SystemCommands.Run("modprobe", what, module);
             }
-
-            using var process = Process.Start(start);
-            var error = process.StandardError.ReadToEndAsync();
-            if (!process.WaitForExit(5000)) {
-                process.Kill();
-                throw new IOException($"Loading the {module} driver took too long");
-            }
-            if (process.ExitCode != 0) {
-                throw new IOException($"Cannot load the {module} driver: {error.Result.Trim()}");
+            else {
+                SystemCommands.Run("modprobe", what, module, parameter);
             }
         }
 

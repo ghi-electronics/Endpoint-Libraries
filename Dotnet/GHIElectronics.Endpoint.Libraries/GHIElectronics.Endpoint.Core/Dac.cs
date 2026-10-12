@@ -13,6 +13,9 @@ namespace GHIElectronics.Endpoint.Core {
             /// <summary>The DAC's name, for DacController.FromName</summary>
             public const string Id = "EPM815.Dac";
 
+            /// <summary>DAC channel 1, on PA4</summary>
+            public const int PA4 = 0;
+
             /// <summary>DAC channel 2, on PA5</summary>
             public const int PA5 = 1;
 
@@ -22,8 +25,8 @@ namespace GHIElectronics.Endpoint.Core {
             /// <summary>A DAC channel: its pin, and its IIO device and the channel there</summary>
             internal sealed record Output(int Channel, int Pin, string Device, int DeviceChannel);
 
-            // Channel 0 (DAC1 on PA4) is switched off in the firmware's device tree
             internal static readonly Output[] Outputs = {
+                new(PA4, Gpio.Pin.PA4, "40017000.dac:dac@1", 1),
                 new(PA5, Gpio.Pin.PA5, "40017000.dac:dac@2", 2),
             };
 

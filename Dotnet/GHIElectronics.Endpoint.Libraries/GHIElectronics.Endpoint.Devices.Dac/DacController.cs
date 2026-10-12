@@ -41,7 +41,7 @@ namespace GHIElectronics.Endpoint.Devices.Dac {
         /// <summary>The value for the reference voltage (3.3 V)</summary>
         public int MaxValue => 4095;
 
-        /// <summary>Opens a channel for output: EPM815.Dac.PA5</summary>
+        /// <summary>Opens a channel for output: EPM815.Dac.PA4 or EPM815.Dac.PA5</summary>
         public DacChannel OpenChannel(int channelNumber) => new(this, channelNumber);
 
         /// <summary>Nothing to release: each channel is released when it is disposed</summary>
@@ -74,7 +74,7 @@ namespace GHIElectronics.Endpoint.Devices.Dac {
             this.output = EPM815.Dac.Find(channelNumber) ?? throw new ArgumentOutOfRangeException(nameof(channelNumber), channelNumber,
                 channelNumber is >= 0 and < EPM815.Dac.ChannelCount
                     ? $"DAC channel {channelNumber} is not enabled in this firmware"
-                    : "Use EPM815.Dac.PA5");
+                    : "Use EPM815.Dac.PA4 or EPM815.Dac.PA5");
             this.ChannelNumber = channelNumber;
             this.Controller = controller;
 
