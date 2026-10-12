@@ -64,7 +64,7 @@ namespace GHIElectronics.Endpoint.Devices.Adc {
             }
         }
 
-        /// <summary>Linux's exact scale, not an assumed 3.3 V</summary>
+        /// <summary>The driver's exact scale, not an assumed 3.3 V</summary>
         protected override ElectricPotential ConvertToVoltage(uint rawValue) =>
             ElectricPotential.FromMillivolts((rawValue + this.converter.Offset) * this.converter.ScaleMillivolts);
 

@@ -84,7 +84,7 @@ namespace GHIElectronics.Endpoint.Devices.Dac {
             }
             try {
                 var folder = LoadDriver(this.output.Device);
-                var channel = this.output.LinuxChannel;
+                var channel = this.output.DeviceChannel;
                 this.powerDown = $"{folder}/out_voltage{channel}_powerdown";
                 this.value = File.OpenHandle($"{folder}/out_voltage{channel}_raw", FileMode.Open, FileAccess.Write);
                 this.Write(this.value, 0);
@@ -136,12 +136,12 @@ namespace GHIElectronics.Endpoint.Devices.Dac {
         // The DAC drivers are modules: they load the first time a program uses the DAC
         private static string LoadDriver(string device) {
             lock (Gate) {
-                var folder = LinuxDevices.FindIio(device);
+                var folder = EndpointDevices.FindIio(device);
                 if (folder is null) {
                     KernelModules.Load("stm32-dac-core");
                     KernelModules.Load("stm32-dac");
                     var watch = System.Diagnostics.Stopwatch.StartNew();
-                    while ((folder = LinuxDevices.FindIio(device)) is null) {
+                    while ((folder = EndpointDevices.FindIio(device)) is null) {
                         if (watch.ElapsedMilliseconds > 1000) {
                             throw new InvalidOperationException("The DAC did not start: update the board's firmware");
                         }

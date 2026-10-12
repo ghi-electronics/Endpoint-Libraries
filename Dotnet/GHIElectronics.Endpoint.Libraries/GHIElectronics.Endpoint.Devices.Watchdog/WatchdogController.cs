@@ -13,7 +13,7 @@ namespace GHIElectronics.Endpoint.Devices.Watchdog {
     /// while (true) { DoWork(); watchdog.Reset(); }
     /// </code>
     /// The chip's watchdog cannot be stopped once it runs. <see cref="Disable"/>
-    /// hands it to Linux, which then keeps it fed. If the program ends or
+    /// hands it to the system, which then keeps it fed. If the program ends or
     /// crashes without Disable, the board restarts after the timeout, also
     /// when debugging stops.
     /// </summary>
@@ -51,7 +51,7 @@ namespace GHIElectronics.Endpoint.Devices.Watchdog {
         }
 
         /// <summary>
-        /// Starts the watchdog, or changes its timeout. Linux counts whole
+        /// Starts the watchdog, or changes its timeout. The system counts whole
         /// seconds, so the timeout is rounded up to the next second.
         /// </summary>
         /// <param name="timeout">More than 0 and at most <see cref="MaxTimeout"/></param>
@@ -94,7 +94,7 @@ namespace GHIElectronics.Endpoint.Devices.Watchdog {
         }
 
         /// <summary>
-        /// Stops watching this program: Linux keeps the watchdog fed from now
+        /// Stops watching this program: the system keeps the watchdog fed from now
         /// on (the chip's watchdog itself cannot stop)
         /// </summary>
         public unsafe void Disable() {
@@ -135,7 +135,7 @@ namespace GHIElectronics.Endpoint.Devices.Watchdog {
 
         // /dev/watchdogN of the chip's IWDG2 (N depends on the order the drivers started in)
         private static string Device() {
-            var number = LinuxDevices.Find("watchdog", "watchdog", EPM815.Watchdog.Address);
+            var number = EndpointDevices.Find("watchdog", "watchdog", EPM815.Watchdog.Address);
             return number >= 0
                 ? $"/dev/watchdog{number}"
                 : throw new InvalidOperationException("The watchdog is not enabled in this firmware: update the board's firmware");

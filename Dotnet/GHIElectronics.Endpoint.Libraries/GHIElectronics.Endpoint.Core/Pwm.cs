@@ -78,7 +78,7 @@ namespace GHIElectronics.Endpoint.Core {
                 public const int PB9 = Gpio.Pin.PB9;
             }
 
-            // Channel: 0 = the timer's channel 1 (Linux counts from 0)
+            // Channel: 0 = the timer's channel 1 (the system counts from 0)
             private sealed record Output(int Pin, int Timer, int Channel, int Alternate);
 
             private static readonly Output[] Outputs = {
@@ -114,10 +114,10 @@ namespace GHIElectronics.Endpoint.Core {
                 PeripheralPins.Disconnect(Owner(pin));
             }
 
-            /// <summary>The Linux PWM chip of the pin's timer (/sys/class/pwm/pwmchipN), for PwmChannel.Create</summary>
+            /// <summary>The PWM chip of the pin's timer (/sys/class/pwm/pwmchipN), for PwmChannel.Create</summary>
             public static int GetChipId(int pin) {
                 var timer = Get(pin).Timer;
-                var chip = LinuxDevices.Find("pwm", "pwmchip", TimerAddress[timer]);
+                var chip = EndpointDevices.Find("pwm", "pwmchip", TimerAddress[timer]);
                 return chip >= 0 ? chip : throw new InvalidOperationException($"TIM{timer}'s PWM is not enabled in this firmware");
             }
 

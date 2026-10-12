@@ -1,9 +1,9 @@
 namespace GHIElectronics.Endpoint.Core.Internal {
     /// <summary>
-    /// Finds Linux devices by the hardware they belong to: numbers like
+    /// Finds the system's device for a peripheral by the hardware it belongs to: numbers like
     /// pwmchip12 or i2c-1 depend on the order the drivers started in.
     /// </summary>
-    internal static class LinuxDevices {
+    internal static class EndpointDevices {
         /// <summary>
         /// Whether /sys/class/<paramref name="cls"/>/<paramref name="name"/> belongs
         /// to the peripheral at <paramref name="address"/> (for example i2c-0 and 0x40012000)

@@ -1,317 +1,165 @@
-using System;
-using System.CodeDom;
-using System.Device.Gpio;
-using System.Linq;
-using System.Xml.Linq;
-using GHIElectronics.Endpoint.Core;
+using System.Runtime.InteropServices;
+using GHIElectronics.Endpoint.Core.Internal;
 using Iot.Device.Rtc;
-using UnitsNet;
 
 namespace GHIElectronics.Endpoint.Devices.Rtc {
+    /// <summary>How the RTC's backup battery or supercapacitor (VBAT) is charged (as in TinyCLR)</summary>
     public enum BatteryChargeMode {
+        /// <summary>No charging</summary>
         None = 0,
+        /// <summary>Charging through 1.5 kΩ</summary>
         Fast = 1,
-        Slow = 2
+        /// <summary>Charging through 5 kΩ</summary>
+        Slow = 2,
     }
 
-    
-
+    /// <summary>
+    /// The chip's real-time clock, for .NET IoT's RtcBase (Iot.Device.Rtc).
+    /// It counts UTC: at boot, the system time is set from it.
+    /// <code>
+    /// using var rtc = new RtcController();
+    /// if (!rtc.IsValid) {
+    ///     rtc.DateTime = DateTimeOffset.UtcNow;   // set it once; a backup battery keeps it
+    /// }
+    /// Console.WriteLine(rtc.DateTime);
+    /// </code>
+    /// <see cref="IsValid"/> and <see cref="SetChargeMode"/> are the same as TinyCLR's.
+    /// </summary>
     public class RtcController : RtcBase {
-        static int initializeCount = 0;
+        // Linux's RTC calls (linux/rtc.h)
+        private const nuint ReadTimeRequest = 0x80247009;  // RTC_RD_TIME
+        private const nuint SetTimeRequest = 0x4024700A;   // RTC_SET_TIME
 
-        const uint PWR_CR3 = 0x50001000 + 0x0C;
-        public RtcController() => this.Acquire();
+        private const ulong RtcAddress = 0x5C004000;
 
-        public void EnableChargeMode(BatteryChargeMode chargeMode) {
-            var read = Register.Read(PWR_CR3);
+        // PWR_CR3: VBE switches VBAT charging on, VBRS picks 1.5 kΩ instead of 5 kΩ
+        private const ulong PwrCr3 = 0x5000100C;
+        private const uint ChargeEnable = 1u << 8, ChargeFast = 1u << 9;
 
-            switch (chargeMode) {
-                case BatteryChargeMode.None:
-                    read &= ~(uint)(1 << 8);
-                    Register.Write(PWR_CR3, read);
+        // struct rtc_time
+        [StructLayout(LayoutKind.Sequential)]
+        private struct RtcTime {
+            public int Second, Minute, Hour, Day, Month, Year, WeekDay, YearDay, DaylightSaving;
+        }
 
-                    break;
+        private readonly string device;
+        private bool disposed;
 
-                case BatteryChargeMode.Fast:
-                    read |= (uint)(3 << 8);
-                    Register.Write(PWR_CR3, read);
-
-                    break;
-
-                case BatteryChargeMode.Slow:
-                    read |= (uint)(1 << 8);
-                    read &= ~(uint)(1 << 9);
-                    Register.Write(PWR_CR3, read);
-                    break;
+        /// <summary>The chip's RTC</summary>
+        public RtcController() {
+            var number = EndpointDevices.Find("rtc", "rtc", RtcAddress);
+            if (number < 0) {
+                throw new InvalidOperationException("The RTC is not enabled in this firmware: update the board's firmware");
             }
-
+            this.device = $"/dev/rtc{number}";
+            this.LocalTimeZone = TimeZoneInfo.Utc;
         }
 
-        public DateTime GetSystemTime() {
-            //var script = new Script("hwclock", "./", "");
-            var script = new Script("date", "./", "");
+        /// <summary>
+        /// Whether the RTC has been set since it last lost power. Without
+        /// power it starts again at 2000-01-01.
+        /// </summary>
+        public bool IsValid => this.Read().Year > 100;  // years since 1900
 
-            script.Start();
-
-            if (script.Output.Length > 0) {
-                var elements = script.Output.Split(' ');
-                var id = 0;
-
-                // month
-                var month = -1;
-                id++;
-                for (var i = 0; i < months.Length; i++) {
-                    if (elements[id] == months[i]) {
-                        month = i;
-                        month++;
-                        break;
-                    }
-                }
-
-                // dayofmonth
-                id++;
-                if (elements[id] == string.Empty) // day < 10
-                    id++;
-
-                var dayofmonth = int.Parse(elements[id]);
-
-                // hour:min:sec
-                id++;
-                var elements2 = elements[id].Split(':');
-                var hour = int.Parse(elements2[0]);
-                var minute = int.Parse(elements2[1]);
-                var second = int.Parse(elements2[2]);
-
-                //Ignore UTC
-                id++;
- 
-                // year
-                id++;
-                var year = int.Parse(elements[id]);
-
-                return new DateTime(year, month, dayofmonth, hour, minute, second);
-
-            }
-
-            throw new Exception("Invalid rtc time!");
+        /// <summary>Charges the backup battery or supercapacitor on VBAT, or stops charging</summary>
+        public void SetChargeMode(BatteryChargeMode chargeMode) {
+            var bits = chargeMode switch {
+                BatteryChargeMode.None => 0u,
+                BatteryChargeMode.Fast => ChargeEnable | ChargeFast,
+                BatteryChargeMode.Slow => ChargeEnable,
+                _ => throw new ArgumentOutOfRangeException(nameof(chargeMode), chargeMode, null),
+            };
+            PhysicalMemory.Modify(PwrCr3, ChargeEnable | ChargeFast, bits);
         }
 
-        private static string[] months = { "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"};
-        public void SetSystemTime(DateTime value) {
+        // TODO: backup memory (TinyCLR API) in the chip's TAMP backup registers
+        // (32 x 4 bytes). Check first which registers the boot loader uses.
 
-            //date -s 2024.08.31-17:02:00
-            var arg = "-s ";
+        /// <summary>Not implemented yet: the size of the backup memory in bytes</summary>
+        public uint BackupMemorySize => throw NotImplemented();
 
-            arg += value.Year + ".";
-            arg += value.Month + ".";
-            arg += value.Day;
+        /// <summary>Not implemented yet</summary>
+        public void WriteBackupMemory(byte[] sourceData) => throw NotImplemented();
 
-            arg += "-";
-            arg += value.Hour + ":";
-            arg += value.Minute + ":";
-            arg += value.Second;
+        /// <summary>Not implemented yet</summary>
+        public void WriteBackupMemory(byte[] sourceData, uint destinationOffset) => throw NotImplemented();
 
-            var script = new Script("date", "/sbin/", arg);
+        /// <summary>Not implemented yet</summary>
+        public void WriteBackupMemory(byte[] sourceData, uint sourceOffset, uint destinationOffset, int count) => throw NotImplemented();
 
-            script.Start();
+        /// <summary>Not implemented yet</summary>
+        public int ReadBackupMemory(byte[] destinationData) => throw NotImplemented();
 
-            //arg = "-w";
-            //script = new Script("hwclock", "/sbin/", arg);
+        /// <summary>Not implemented yet</summary>
+        public int ReadBackupMemory(byte[] destinationData, uint sourceOffset) => throw NotImplemented();
 
-            //script.Start();
-        }
+        /// <summary>Not implemented yet</summary>
+        public int ReadBackupMemory(byte[] destinationData, uint destinationOffset, uint sourceOffset, int count) => throw NotImplemented();
 
-        //public void EnableWakeup(WakeupPin wakeupPin, PinEventTypes edge) {
-        //    this.EnableWakeup(System.DateTime.MaxValue, wakeupPin, edge); ;
-        //}
-        //public void EnableWakeup(System.DateTime dtWakeup, WakeupPin wakeupPin = WakeupPin.None, PinEventTypes edge = PinEventTypes.Rising) {
-        //    var flag = true;
-        //    var message = string.Empty;
-        //    Script script;
-        //    string args;
-            
-        //    if (wakeupPin != WakeupPin.None) {
+        // TODO: Calibrate (TinyCLR API) with the RTC's smooth calibration (RTC_CALR)
 
-        //        const uint PWR_BASE = 0x50001000U; // page 157
-        //        const uint PWR_WKUPCR = PWR_BASE + 0x20U; // page 157
-        //        const uint PWR_MPUWKUPENR = PWR_BASE + 0x28U; // page 157
+        /// <summary>Not implemented yet</summary>
+        public void Calibrate(int pulse) => throw NotImplemented();
 
-        //        if (edge == PinEventTypes.None)
-        //            throw new Exception("PinEventTypes edge supports Rising or Falling only.");
+        private static NotImplementedException NotImplemented() => new("Not implemented");
 
-
-        //        Register.Write(PWR_MPUWKUPENR, 0); // clear
-
-        //        var cr = 0x3FU; // clear wakeup flag
-
-        //        var pin = (int)wakeupPin;
-        //        var polarity = edge == PinEventTypes.Falling ? 0 : 1;
-
-        //        if (polarity == 0) // detect on low
-        //        {
-        //            cr |= (uint)((1 << 8) << pin); // detect on low
-        //            cr |= (uint)((1 << 16) << pin); // pull up
-        //        }
-        //        else {
-        //            cr |= (uint)((2 << 16) << pin); // pull down
-        //        }
-
-        //        Register.Write(PWR_WKUPCR, cr); // set
-        //        Register.Write(PWR_MPUWKUPENR, (uint)(1 << pin)); // set
-        //    }
-
-        //    if (dtWakeup != System.DateTime.MaxValue) {
-        //        script = new Script("rtcwake_clear.sh", "./", "");
-        //        script.Start();
-
-
-        //        var dt = dtWakeup.Year.ToString("d4") + "-" + dtWakeup.Month.ToString("d2") + "-" + dtWakeup.Day.ToString("d2");
-
-        //        dt += " ";
-        //        dt += dtWakeup.Hour.ToString("d2") + ":" + dtWakeup.Minute.ToString("d2") + ":" + dtWakeup.Second.ToString("d2");
-
-        //        args = $"-m no --date \"{dt}\"";
-
-        //        script = new Script("rtcwake", "./", args);
-        //        script.Start();
-        //        if (!script.Output.Contains("wakeup using /dev/rtc0 at")) {
-        //            flag = false;
-        //            message = script.Error;
-
-
-        //        }
-        //    }
-            
-        //    if (!flag) {
-        //        throw new Exception(message);
-        //    }
-        //}
-
-        public DateTime Now {
-            get => this.ReadTime();
-            set => this.SetTime(value);
-        }
-
-        private void Acquire() {
-            if (initializeCount == 0) {
-                this.LoadResources();
-            }
-
-            initializeCount++;
-        }
-
-        private void Release() {
-            initializeCount--;
-
-            if (initializeCount == 0) {
-                this.UnLoadResources();
-            }
-        }
-
-        private void LoadResources() {
-
-            
-           
-        }
-
-        private void UnLoadResources() {
-           
-
-           
-        }
-
-        private bool disposed = false;
-
-        /// <exclude />
-        ~RtcController() {
-            this.Dispose(disposing: false);
-        }
-
-        public new void Dispose() {
-            base.Dispose(); 
-            this.Dispose(disposing: true);
-            GC.SuppressFinalize(this);
-        }
-
-        /// <exclude />
-        protected new void Dispose(bool disposing) {
-            if (this.disposed)
-                return;
-
-            if (disposing) {
-                
-            }
-
-
-            this.Release();
-
-            this.disposed = true;
-        }
-
-        protected override void SetTime(DateTime time) {
-            var arg = "-s ";
-
-            arg += time.Year + ".";
-            arg += time.Month + ".";
-            arg += time.Day;
-
-            arg += "-";
-            arg += time.Hour + ":";
-            arg += time.Minute + ":";
-            arg += time.Second;
-
-            var script = new Script("date", "/sbin/", arg);
-
-            script.Start();
-
-            arg = "-w";
-            script = new Script("hwclock", "/sbin/", arg);
-
-            script.Start();
-        }
+        /// <inheritdoc/>
         protected override DateTime ReadTime() {
-            var script = new Script("hwclock", "./", "");
+            var t = this.Read();
+            return new DateTime(t.Year + 1900, t.Month + 1, t.Day, t.Hour, t.Minute, t.Second);
+        }
 
-            script.Start();
-
-            if (script.Output.Length > 0) {
-                var elements = script.Output.Split(' ');
-                var id = 0;
-
-                // month
-                var month = -1;
-                id++;
-                for (var i = 0; i < months.Length; i++) {
-                    if (elements[id] == months[i]) {
-                        month = i;
-                        month++;
-                        break;
-                    }
-                }
-
-                // dayofmonth
-                id++;
-                if (elements[id] == string.Empty) // day < 10
-                    id++;
-
-                var dayofmonth = int.Parse(elements[id]);
-
-                // hour:min:sec
-                id++;
-                var elements2 = elements[id].Split(':');
-                var hour = int.Parse(elements2[0]);
-                var minute = int.Parse(elements2[1]);
-                var second = int.Parse(elements2[2]);
-
-                // year
-                id++;
-                var year = int.Parse(elements[id]);
-
-                return new DateTime(year, month, dayofmonth, hour, minute, second);
-
+        /// <inheritdoc/>
+        protected override unsafe void SetTime(DateTime time) {
+            if (time.Kind == DateTimeKind.Local) {
+                time = time.ToUniversalTime();
+            }
+            if (time.Year is < 2000 or > 2099) {
+                throw new ArgumentOutOfRangeException(nameof(time), time, "The RTC counts from 2000 to 2099");
             }
 
-            throw new Exception("Invalid rtc time!");
+            var t = new RtcTime {
+                Second = time.Second, Minute = time.Minute, Hour = time.Hour,
+                Day = time.Day, Month = time.Month - 1, Year = time.Year - 1900,
+                WeekDay = (int)time.DayOfWeek, YearDay = time.DayOfYear - 1,
+            };
+            this.Call(SetTimeRequest, (nint)(&t), "set");
+        }
+
+        /// <inheritdoc/>
+        protected override void Dispose(bool disposing) {
+            this.disposed = true;
+            base.Dispose(disposing);
+        }
+
+        private unsafe RtcTime Read() {
+            RtcTime t;
+            this.Call(ReadTimeRequest, (nint)(&t), "read");
+            return t;
+        }
+
+        // Linux lets one program at a time open the RTC: open it only for
+        // each call, and wait a little if another program has it
+        private void Call(nuint request, nint argument, string what) {
+            ObjectDisposedException.ThrowIf(this.disposed, this);
+            for (var attempt = 0; ; attempt++) {
+                var fd = Libc.Open(this.device, Libc.O_RDONLY | Libc.O_CLOEXEC);
+                if (fd >= 0) {
+                    try {
+                        if (Libc.Ioctl(fd, request, argument) < 0) {
+                            throw Libc.Error($"Cannot {what} the RTC");
+                        }
+                        return;
+                    }
+                    finally {
+                        Libc.Close(fd);
+                    }
+                }
+                if (Marshal.GetLastPInvokeError() != Libc.EBUSY || attempt == 100) {
+                    throw Libc.Error($"Cannot open {this.device}");
+                }
+                Thread.Sleep(10);
+            }
         }
     }
 }

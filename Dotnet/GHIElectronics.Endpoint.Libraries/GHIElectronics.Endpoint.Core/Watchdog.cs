@@ -13,7 +13,7 @@ namespace GHIElectronics.Endpoint.Core {
             /// <summary>The watchdog's name, for WatchdogController.FromName</summary>
             public const string Id = "EPM815.Watchdog";
 
-            /// <summary>IWDG2, the watchdog Linux gives to programs</summary>
+            /// <summary>IWDG2, the watchdog that programs use</summary>
             internal const ulong Address = 0x5A002000;
         }
     }

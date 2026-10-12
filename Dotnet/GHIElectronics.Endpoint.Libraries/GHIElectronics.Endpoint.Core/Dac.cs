@@ -19,8 +19,8 @@ namespace GHIElectronics.Endpoint.Core {
             /// <summary>The number of DAC channels in the chip</summary>
             internal const int ChannelCount = 2;
 
-            /// <summary>A DAC channel: its pin, and its Linux IIO device and channel</summary>
-            internal sealed record Output(int Channel, int Pin, string Device, int LinuxChannel);
+            /// <summary>A DAC channel: its pin, and its IIO device and the channel there</summary>
+            internal sealed record Output(int Channel, int Pin, string Device, int DeviceChannel);
 
             // Channel 0 (DAC1 on PA4) is switched off in the firmware's device tree
             internal static readonly Output[] Outputs = {

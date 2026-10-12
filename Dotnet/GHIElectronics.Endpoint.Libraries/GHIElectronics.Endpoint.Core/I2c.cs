@@ -6,12 +6,12 @@ namespace GHIElectronics.Endpoint.Core {
     public static partial class EPM815 {
         /// <summary>
         /// The I2C buses, for .NET's System.Device.I2c. Initialize connects the
-        /// bus's pins and sets its speed; then use the bus as on any Linux board:
+        /// bus's pins and sets its speed; then use .NET's I2cDevice as usual:
         /// <code>
         /// EPM815.I2c.Initialize(EPM815.I2c.I2c1);
         /// using var device = I2cDevice.Create(new I2cConnectionSettings(EPM815.I2c.I2c1, 0x50));
         /// </code>
-        /// Each constant is the Linux bus number (/dev/i2c-N), fixed by the firmware.
+        /// Each constant is the bus number for I2cConnectionSettings (/dev/i2c-N), fixed by the firmware.
         /// </summary>
         public static class I2c {
             /// <summary>I2C1: PD12 (SCL), PD13 (SDA); /dev/i2c-0</summary>
@@ -50,7 +50,7 @@ namespace GHIElectronics.Endpoint.Core {
                 if (frequency is < MinFrequency or > MaxFrequency) {
                     throw new ArgumentOutOfRangeException(nameof(frequency), frequency, $"I2C speeds are {MinFrequency} to {MaxFrequency} Hz");
                 }
-                if (!LinuxDevices.IsAt("i2c-dev", $"i2c-{bus}", b.Address)) {
+                if (!EndpointDevices.IsAt("i2c-dev", $"i2c-{bus}", b.Address)) {
                     throw new InvalidOperationException($"/dev/i2c-{bus} is not {b.Name} in this firmware: update the board's firmware");
                 }
 

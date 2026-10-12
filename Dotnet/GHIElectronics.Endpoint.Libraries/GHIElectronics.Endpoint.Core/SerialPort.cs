@@ -4,7 +4,7 @@ namespace GHIElectronics.Endpoint.Core {
     public static partial class EPM815 {
         /// <summary>
         /// The serial ports (UARTs), for .NET's System.IO.Ports. Initialize
-        /// connects the port's pins; then use it as on any Linux board:
+        /// connects the port's pins; then use .NET's SerialPort as usual:
         /// <code>
         /// EPM815.SerialPort.Initialize(EPM815.SerialPort.Uart4);
         /// using var port = new System.IO.Ports.SerialPort(EPM815.SerialPort.Uart4, 115200);
@@ -65,7 +65,7 @@ namespace GHIElectronics.Endpoint.Core {
                     }
 
                     var name = Path.GetFileName(port.Device);
-                    if (!LinuxDevices.IsAt("tty", name, port.Address)) {
+                    if (!EndpointDevices.IsAt("tty", name, port.Address)) {
                         throw new InvalidOperationException($"{port.Device} is not {port.Name} in this firmware: update the board's firmware");
                     }
 

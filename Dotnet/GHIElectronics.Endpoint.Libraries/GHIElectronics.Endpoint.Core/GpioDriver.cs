@@ -14,9 +14,9 @@ namespace GHIElectronics.Endpoint.Core {
             /// gpio.Write(EPM815.Gpio.Pin.PC0, PinValue.High);
             /// </code>
             /// Open pins are reserved, so the other libraries (I2C, UART...) cannot
-            /// take them by mistake. The pins go through the kernel (libgpiod), so
-            /// every pin mode, pull-up/down and pin change event works as on any
-            /// Linux board.
+            /// take them by mistake. The pins go through the system's GPIO driver
+            /// (libgpiod), so every pin mode, pull-up/down and pin change event
+            /// of .NET's GpioController works.
             /// </summary>
             public sealed class Driver : GpioDriver {
                 private const string Owner = "GPIO";

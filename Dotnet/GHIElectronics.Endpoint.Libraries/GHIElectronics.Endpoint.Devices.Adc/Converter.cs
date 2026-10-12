@@ -26,7 +26,7 @@ namespace GHIElectronics.Endpoint.Devices.Adc {
 
         private Converter(int number) {
             var name = number == 1 ? "48003000.adc:adc@0" : "48003000.adc:adc@100";
-            this.Folder = LinuxDevices.FindIio(name)
+            this.Folder = EndpointDevices.FindIio(name)
                 ?? throw new InvalidOperationException($"ADC{number} is not enabled in this firmware: update the board's firmware");
 
             this.ScaleMillivolts = double.Parse(File.ReadAllText($"{this.Folder}/in_voltage_scale"), CultureInfo.InvariantCulture);
