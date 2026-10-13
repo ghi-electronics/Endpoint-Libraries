@@ -28,6 +28,13 @@ Keyboards, mice and joysticks have TinyCLR's classes:
         mouse.CursorMoved += lambda sender, a: print("Cursor at", a.NewPosition.X, a.NewPosition.Y)
         mouse.ButtonChanged += lambda sender, a: print(a.Which.name, a.State.name)
 
+A program's own devices: pyusb for one with no driver (DeviceType.Unknown),
+the hid package (hidapi) for HID devices; the board has their libraries:
+
+    pip install pyusb hid
+    device = usb.core.find(idVendor=e.VendorId, idProduct=e.ProductId)
+    device = hid.Device(vid=e.VendorId, pid=e.ProductId)
+
 A controller or device stays alive until it is disposed, also when the
 program keeps no variable for it.
 """

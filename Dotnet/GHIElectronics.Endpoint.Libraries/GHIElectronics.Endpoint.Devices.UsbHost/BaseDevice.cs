@@ -3,13 +3,16 @@ using GHIElectronics.Endpoint.Core.Internal;
 
 namespace GHIElectronics.Endpoint.Devices.UsbHost {
     /// <summary>
-    /// A USB keyboard, mouse or joystick, opened with the DeviceName that its
-    /// UsbHostController event gives ("/dev/input/event2"). Its events come on
-    /// the device's own thread. When the device is unplugged, Disconnected is
-    /// raised. A device stays alive until it is disposed.
+    /// A USB device that the program uses: Keyboard, Mouse, Joystick, HidDevice or
+    /// RawDevice, opened with the DeviceName that its UsbHostController event gives.
+    /// Its events come on the device's own thread. When the device is unplugged,
+    /// Disconnected is raised. A device stays alive until it is disposed.
     /// </summary>
     public abstract unsafe class BaseDevice : IDisposable {
+        private enum Kind { Input, Hid, Raw }
+
         private readonly GCHandle self;
+        private readonly Kind kind;
         private nint handle;
         private protected readonly int capabilities;
 
@@ -23,24 +26,40 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
             ArgumentNullException.ThrowIfNull(deviceName);
             this.DeviceName = deviceName;
             this.Type = type;
+            this.kind = type switch {
+                DeviceType.Mouse or DeviceType.Keyboard or DeviceType.Joystick => Kind.Input,
+                DeviceType.HID => Kind.Hid,
+                _ => Kind.Raw,
+            };
             this.self = GCHandle.Alloc(this);
+            var context = GCHandle.ToIntPtr(this.self);
             try {
-                Libendpoint.Check(Libendpoint.InputOpen(deviceName, (int)type, &Changed, GCHandle.ToIntPtr(this.self), out this.handle));
-                Libendpoint.Check(Libendpoint.InputInfo(this.handle, out var vendorId, out var productId, out _, out this.capabilities));
+                int vendorId, productId;
+                switch (this.kind) {
+                    case Kind.Input:
+                        Libendpoint.Check(Libendpoint.InputOpen(deviceName, (int)type, &InputChanged, context, out this.handle));
+                        Libendpoint.Check(Libendpoint.InputInfo(this.handle, out vendorId, out productId, out _, out this.capabilities));
+                        break;
+                    case Kind.Hid:
+                        Libendpoint.Check(Libendpoint.HidOpen(deviceName, &Unplugged, context, out this.handle));
+                        Libendpoint.Check(Libendpoint.HidInfo(this.handle, out vendorId, out productId, out _, null, 0));
+                        break;
+                    default:
+                        Libendpoint.Check(Libendpoint.UsbRawOpen(deviceName, &Unplugged, context, out this.handle));
+                        Libendpoint.Check(Libendpoint.UsbRawInfo(this.handle, out vendorId, out productId, out _));
+                        break;
+                }
                 this.VendorId = (ushort)vendorId;
                 this.ProductId = (ushort)productId;
             }
             catch {
-                if (this.handle != 0) {
-                    Libendpoint.InputClose(this.handle);
-                    this.handle = 0;
-                }
+                this.Close(Interlocked.Exchange(ref this.handle, 0));
                 this.self.Free();
                 throw;
             }
         }
 
-        /// <summary>What the device was opened with: "/dev/input/event2"</summary>
+        /// <summary>What the device was opened with: "/dev/input/event2", "/dev/hidraw0", "/dev/bus/usb/001/005"</summary>
         public string DeviceName { get; }
 
         /// <summary>The device's type.</summary>
@@ -59,29 +78,52 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
                 if (device == 0) {
                     return false;
                 }
-                Libendpoint.Check(Libendpoint.InputInfo(device, out _, out _, out var connected, out _));
+                int connected;
+                switch (this.kind) {
+                    case Kind.Input:
+                        Libendpoint.Check(Libendpoint.InputInfo(device, out _, out _, out connected, out _));
+                        break;
+                    case Kind.Hid:
+                        Libendpoint.Check(Libendpoint.HidInfo(device, out _, out _, out connected, null, 0));
+                        break;
+                    default:
+                        Libendpoint.Check(Libendpoint.UsbRawInfo(device, out _, out _, out connected));
+                        break;
+                }
                 return connected != 0;
             }
         }
 
-        /// <summary>Stops the device's events (one being delivered finishes first)</summary>
+        /// <summary>Stops the device's events (one being delivered finishes first) and closes it</summary>
         public void Dispose() {
             var old = Interlocked.Exchange(ref this.handle, 0);
             if (old != 0) {
-                Libendpoint.InputClose(old);
+                this.Close(old);
                 this.self.Free();
+            }
+        }
+
+        private void Close(nint device) {
+            if (device == 0) {
+                return;
+            }
+            switch (this.kind) {
+                case Kind.Input: Libendpoint.InputClose(device); break;
+                case Kind.Hid: Libendpoint.HidClose(device); break;
+                default: Libendpoint.UsbRawClose(device); break;
             }
         }
 
         private protected nint Handle() => this.handle != 0 ? this.handle : throw new ObjectDisposedException(this.GetType().Name);
 
-        // The device's events: see Input::Event in libendpoint
-        private protected abstract void OnEvent(int kind, int a, int b, int c, int d, int e);
+        // A keyboard's, mouse's or joystick's events (see Input::Event in libendpoint)
+        private protected virtual void OnEvent(int kind, int a, int b, int c, int d, int e) {
+        }
 
         // From the device's thread. A handler's exception must not stop the
         // events (it cannot go back into the library): it is printed.
         [UnmanagedCallersOnly]
-        private static void Changed(nint context, int kind, int a, int b, int c, int d, int e) {
+        private static void InputChanged(nint context, int kind, int a, int b, int c, int d, int e) {
             try {
                 if (GCHandle.FromIntPtr(context).Target is BaseDevice device) {
                     if (kind == 8) {
@@ -94,6 +136,18 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
             }
             catch (Exception exception) {
                 Console.Error.WriteLine($"Unhandled exception in a USB device event: {exception}");
+            }
+        }
+
+        [UnmanagedCallersOnly]
+        private static void Unplugged(nint context) {
+            try {
+                if (GCHandle.FromIntPtr(context).Target is BaseDevice device) {
+                    device.Disconnected?.Invoke(device, EventArgs.Empty);
+                }
+            }
+            catch (Exception exception) {
+                Console.Error.WriteLine($"Unhandled exception in Disconnected: {exception}");
             }
         }
     }

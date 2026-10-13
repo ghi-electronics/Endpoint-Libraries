@@ -5,13 +5,13 @@ using GHIElectronics.Endpoint.Core.Internal;
 namespace GHIElectronics.Endpoint.Devices.UsbHost {
     /// <summary>What a device gives, and its DeviceName</summary>
     public enum DeviceType {
-        /// <summary>No driver on the board: the program talks to it ("/dev/bus/usb/001/005")</summary>
+        /// <summary>No driver on the board: the program talks to it with RawDevice ("/dev/bus/usb/001/005")</summary>
         Unknown = 0,
 
         /// <summary>"/dev/bus/usb/001/002"</summary>
         Hub = 1,
 
-        /// <summary>A HID device that is no keyboard, mouse or joystick ("/dev/hidraw0")</summary>
+        /// <summary>A HID device that is no keyboard, mouse or joystick: open it with HidDevice ("/dev/hidraw0")</summary>
         HID = 2,
 
         /// <summary>"/dev/input/event2": open it with new Mouse(e.DeviceName)</summary>

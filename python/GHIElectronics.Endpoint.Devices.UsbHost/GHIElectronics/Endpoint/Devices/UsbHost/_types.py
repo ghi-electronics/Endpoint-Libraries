@@ -9,11 +9,13 @@ class DeviceType(IntEnum):
     """What a device gives, and its DeviceName"""
 
     Unknown = 0
-    """No driver on the board: the program talks to it ("/dev/bus/usb/001/005", for pyusb)"""
+    """No driver on the board: the program talks to it with pyusb ("/dev/bus/usb/001/005"):
+    usb.core.find(idVendor=e.VendorId, idProduct=e.ProductId)"""
     Hub = 1
     """"/dev/bus/usb/001/002" """
     HID = 2
-    """A HID device that is no keyboard, mouse or joystick ("/dev/hidraw0")"""
+    """A HID device that is no keyboard, mouse or joystick ("/dev/hidraw0"): use the hid
+    package (hidapi), hid.Device(vid=e.VendorId, pid=e.ProductId)"""
     Mouse = 3
     """"/dev/input/event2": open it with Mouse(e.DeviceName)"""
     Keyboard = 4

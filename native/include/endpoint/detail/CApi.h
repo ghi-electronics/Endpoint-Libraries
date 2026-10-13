@@ -141,6 +141,23 @@ int endpoint_input_set_cursor_bounds(void* device, int cursor, int minX, int max
 int endpoint_input_set_cursor_position(void* device, int x, int y);
 int endpoint_input_set_scale(void* device, double scale);
 
+// A program's own USB devices (for .NET's RawDevice and HidDevice)
+typedef void (*endpoint_unplugged_callback)(void* context);
+int endpoint_usbraw_open(const char* deviceName, endpoint_unplugged_callback callback, void* context, void** device);
+int endpoint_usbraw_close(void* device);
+int endpoint_usbraw_info(void* device, int* vendorId, int* productId, int* connected);
+int endpoint_usbraw_control(void* device, int requestType, int request, int value, int index, uint8_t* data,
+                            int length, int timeoutMs, int* transferred);
+int endpoint_usbraw_transfer(void* device, int endpoint, uint8_t* data, int length, int timeoutMs, int* transferred);
+int endpoint_hid_open(const char* deviceName, endpoint_unplugged_callback callback, void* context, void** device);
+int endpoint_hid_close(void* device);
+int endpoint_hid_info(void* device, int* vendorId, int* productId, int* connected, char* name, int nameSize);
+int endpoint_hid_report_descriptor(void* device, uint8_t* buffer, int size, int* length);
+int endpoint_hid_write(void* device, const uint8_t* data, int length, int* written);
+int endpoint_hid_read(void* device, uint8_t* buffer, int size, int timeoutMs, int* length);
+int endpoint_hid_get_feature(void* device, uint8_t* buffer, int size, int* length);
+int endpoint_hid_send_feature(void* device, const uint8_t* data, int length);
+
 #ifdef __cplusplus
 }
 #endif

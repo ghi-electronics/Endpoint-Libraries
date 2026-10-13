@@ -99,5 +99,48 @@ namespace GHIElectronics.Endpoint.Core.Internal {
 
         [LibraryImport(Library, EntryPoint = "endpoint_input_set_scale")]
         public static partial int InputSetScale(nint device, double scale);
+
+        // A program's own USB devices (RawDevice, HidDevice): the callback (context) runs once, on the
+        // device's own thread, when it is unplugged
+
+        [LibraryImport(Library, EntryPoint = "endpoint_usbraw_open", StringMarshalling = StringMarshalling.Utf8)]
+        public static partial int UsbRawOpen(string deviceName, delegate* unmanaged<nint, void> unplugged, nint context, out nint device);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_usbraw_close")]
+        public static partial int UsbRawClose(nint device);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_usbraw_info")]
+        public static partial int UsbRawInfo(nint device, out int vendorId, out int productId, out int connected);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_usbraw_control")]
+        public static partial int UsbRawControl(nint device, int requestType, int request, int value, int index, byte* data, int length,
+                                                int timeoutMs, out int transferred);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_usbraw_transfer")]
+        public static partial int UsbRawTransfer(nint device, int endpoint, byte* data, int length, int timeoutMs, out int transferred);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_hid_open", StringMarshalling = StringMarshalling.Utf8)]
+        public static partial int HidOpen(string deviceName, delegate* unmanaged<nint, void> unplugged, nint context, out nint device);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_hid_close")]
+        public static partial int HidClose(nint device);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_hid_info")]
+        public static partial int HidInfo(nint device, out int vendorId, out int productId, out int connected, byte* name, int nameSize);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_hid_report_descriptor")]
+        public static partial int HidReportDescriptor(nint device, byte* buffer, int size, out int length);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_hid_write")]
+        public static partial int HidWrite(nint device, byte* data, int length, out int written);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_hid_read")]
+        public static partial int HidRead(nint device, byte* buffer, int size, int timeoutMs, out int length);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_hid_get_feature")]
+        public static partial int HidGetFeature(nint device, byte* buffer, int size, out int length);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_hid_send_feature")]
+        public static partial int HidSendFeature(nint device, byte* data, int length);
     }
 }

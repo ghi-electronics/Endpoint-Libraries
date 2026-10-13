@@ -5,7 +5,8 @@
 #   cmake --build --preset endpoint
 #
 # Output in build/: libendpoint.so (loaded by the Python package) and
-# libendpoint.a (linked into C++ programs).
+# libendpoint.a (linked into C++ programs); libusb-1.0.so and
+# libhidapi-libusb.so, link-only stand-ins for the board's libusb and hidapi.
 
 cmake_minimum_required(VERSION 3.20)
 
@@ -14,7 +15,7 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS include/endpoint/
 file(STRINGS include/endpoint/Version.h ENDPOINT_VERSION_LINES REGEX "^#define ENDPOINT_VERSION_(MAJOR|MINOR|PATCH) ")
 string(REGEX REPLACE ".*MAJOR ([0-9]+).*MINOR ([0-9]+).*PATCH ([0-9]+).*" "\\1.\\2.\\3"
        ENDPOINT_VERSION "${ENDPOINT_VERSION_LINES}")
-project(libendpoint VERSION ${ENDPOINT_VERSION} LANGUAGES CXX)
+project(libendpoint VERSION ${ENDPOINT_VERSION} LANGUAGES C CXX)
 message(STATUS "libendpoint ${PROJECT_VERSION}")
 
 set(CMAKE_CXX_STANDARD 20)
@@ -44,6 +45,18 @@ target_link_options(endpoint PRIVATE -Wl,--version-script=${CMAKE_CURRENT_SOURCE
 set_property(TARGET endpoint APPEND PROPERTY LINK_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/src/libendpoint.map)
 add_library(endpoint_static STATIC $<TARGET_OBJECTS:endpoint_objects>)
 set_target_properties(endpoint_static PROPERTIES OUTPUT_NAME endpoint)
+
+# Link-only stand-ins for the board's libusb and hidapi (third-party/, made by
+# update_from_firmware.py): C/C++ programs link against them and use the
+# firmware's libraries on the board. build/libusb-1.0.so, build/libhidapi-libusb.so.
+add_library(usb-1.0 SHARED third-party/libusb/stub.c)
+target_link_options(usb-1.0 PRIVATE -nostdlib -Wl,-soname,libusb-1.0.so.0)
+add_library(hidapi-libusb SHARED third-party/hidapi/stub.c)
+target_link_options(hidapi-libusb PRIVATE -nostdlib -Wl,-soname,libhidapi-libusb.so.0)
+# Their names on the board (not CMake's own); nothing in them but names (no unwind tables)
+set_target_properties(usb-1.0 hidapi-libusb PROPERTIES NO_SONAME ON)
+target_compile_options(usb-1.0 PRIVATE -fno-unwind-tables -fno-asynchronous-unwind-tables)
+target_compile_options(hidapi-libusb PRIVATE -fno-unwind-tables -fno-asynchronous-unwind-tables)
 
 # Board tests of the internal parts (run as root on the board)
 add_executable(foundation-test tests/FoundationTest.cpp)

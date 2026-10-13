@@ -17,6 +17,12 @@
 // DeviceName is what to open it with (see DeviceType). The events come on the
 // library's USB thread. USB drives come as MassStorage: use StorageController
 // (Storage.h) for them.
+//
+// A program's own devices: libusb for one with no driver (Unknown) and hidapi
+// for HID devices; the board has both, and C/C++ projects have their headers:
+//
+//   #include <libusb-1.0/libusb.h>    // libusb_open_device_with_vid_pid(nullptr, e.VendorId(), e.ProductId())
+//   #include <hidapi/hidapi.h>        // hid_open(e.VendorId(), e.ProductId(), nullptr)
 #pragma once
 
 #include <array>
@@ -33,9 +39,9 @@ using DeviceConnectionStatus = Core::DeviceConnectionStatus;
 
 // What a device gives, and its DeviceName
 enum class DeviceType {
-    Unknown = 0,      // no driver on the board: the program talks to it ("/dev/bus/usb/001/005")
+    Unknown = 0,      // no driver on the board: the program talks to it with libusb ("/dev/bus/usb/001/005")
     Hub = 1,          // "/dev/bus/usb/001/002"
-    HID = 2,          // a HID device that is no keyboard, mouse or joystick ("/dev/hidraw0")
+    HID = 2,          // a HID device that is no keyboard, mouse or joystick ("/dev/hidraw0"): use hidapi
     Mouse = 3,        // "/dev/input/event2": open it with Mouse
     Keyboard = 4,     // "/dev/input/event1": open it with Keyboard
     Joystick = 5,     // joysticks and gamepads ("/dev/input/event3"): open it with Joystick
