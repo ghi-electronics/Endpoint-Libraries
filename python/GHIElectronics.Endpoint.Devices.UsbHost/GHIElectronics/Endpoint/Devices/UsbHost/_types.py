@@ -29,7 +29,7 @@ class DeviceType(IntEnum):
     Serial = 8
     """A serial port, for pyserial ("/dev/ttyUSB0", "/dev/ttyACM0")"""
     Webcam = 9
-    """"/dev/video0" """
+    """"/dev/video0": open it with Camera (GHIElectronics.Endpoint.Devices.Media)"""
     Audio = 10
     """A sound card: speaker, microphone ("hw:1")"""
     Network = 11

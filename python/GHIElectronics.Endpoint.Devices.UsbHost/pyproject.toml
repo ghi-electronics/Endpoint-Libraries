@@ -8,12 +8,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "GHIElectronics.Endpoint.Devices.UsbHost"
-version = "0.2.5"
+version = "0.2.6"
 description = "USB devices of GHI Electronics Endpoint: connected and disconnected events, what each device is and its port or network interface."
 authors = [{ name = "GHI Electronics, LLC", email = "support@ghielectronics.com" }]
 requires-python = ">=3.9"
 dependencies = [
-    "GHIElectronics.Endpoint.Core>=0.2.5,<0.3",
+    "GHIElectronics.Endpoint.Core>=0.2.6,<0.3",
 ]
 classifiers = ["Programming Language :: Python :: 3", "Operating System :: POSIX :: Linux"]
 

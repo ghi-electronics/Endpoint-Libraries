@@ -4,7 +4,7 @@
 
   <PropertyGroup>
     <PackageId>GHIElectronics.Endpoint.Devices.Media</PackageId>
-    <Description>Endpoint's sound: MP3 for .NET IoT's SoundDevice (Iot.Device.Media), which plays and records WAV on any sound card of the board.</Description>
+    <Description>Endpoint's webcams (Camera: JPEG pictures and streaming from any USB camera) and sound (MP3 for .NET IoT's SoundDevice, which plays and records WAV on any sound card).</Description>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 

@@ -1,0 +1,1 @@
+stb_image_write.h from https://github.com/nothings/stb commit 2c980bb59875b0d32144a71867fbdebb2f77cd20 (public domain or MIT, see LICENSE). JPEG encoding for Camera (cameras that send raw YUYV pictures).

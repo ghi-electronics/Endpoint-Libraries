@@ -32,7 +32,7 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
         /// <summary>A serial port, for System.IO.Ports.SerialPort ("/dev/ttyUSB0", "/dev/ttyACM0")</summary>
         Serial = 8,
 
-        /// <summary>"/dev/video0"</summary>
+        /// <summary>"/dev/video0": open it with Camera (GHIElectronics.Endpoint.Devices.Media)</summary>
         Webcam = 9,
 
         /// <summary>A sound card: speaker, microphone ("hw:1"), for Iot.Device.Media.SoundDevice</summary>

@@ -93,6 +93,16 @@ struct Watch {
     }
 };
 
+std::shared_ptr<Watch> WatchUnplug(int fd, UnpluggedCallback unplugged) { return Watch::Start(fd, std::move(unplugged)); }
+
+void StopWatch(const std::shared_ptr<Watch>& watch) {
+    if (watch) {
+        watch->Stop();
+    }
+}
+
+bool IsGone(const std::shared_ptr<Watch>& watch) { return watch && watch->gone; }
+
 namespace {
 
 std::string ReadLine(const std::string& path) {

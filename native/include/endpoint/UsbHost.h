@@ -49,7 +49,7 @@ enum class DeviceType {
     MassStorage = 6,  // a drive: use StorageController (no name)
     Printer = 7,      // "/dev/usb/lp0": open it with Printer
     Serial = 8,       // a serial port, for SerialPort ("/dev/ttyUSB0", "/dev/ttyACM0")
-    Webcam = 9,       // "/dev/video0"
+    Webcam = 9,       // "/dev/video0": open it with Media::Camera
     Audio = 10,       // a sound card: speaker, microphone ("hw:1"), for Media::SoundDevice
     Network = 11,     // an Ethernet, WiFi or cellular adapter: the network interface ("eth1", "wlan1")
     Bluetooth = 12,   // "hci0"

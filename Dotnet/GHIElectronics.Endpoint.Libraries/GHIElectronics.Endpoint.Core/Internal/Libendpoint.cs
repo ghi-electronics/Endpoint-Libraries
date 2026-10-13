@@ -174,5 +174,52 @@ namespace GHIElectronics.Endpoint.Core.Internal {
 
         [LibraryImport(Library, EntryPoint = "endpoint_mp3_close")]
         public static partial int Mp3Close(nint decoder);
+
+        // Webcams (Camera, GHIElectronics.Endpoint.Devices.Media): frame (context, jpeg, length, width, height) and
+        // unplugged (context) run on the camera's own threads
+
+        [LibraryImport(Library, EntryPoint = "endpoint_camera_open", StringMarshalling = StringMarshalling.Utf8)]
+        public static partial int CameraOpen(string deviceName, delegate* unmanaged<nint, byte*, int, int, int, void> frame,
+                                             delegate* unmanaged<nint, void> unplugged, nint context, out nint camera);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_camera_close")]
+        public static partial int CameraClose(nint camera);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_camera_info")]
+        public static partial int CameraInfo(nint camera, byte* name, int nameSize, out int connected, out int formats);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_camera_format")]
+        public static partial int CameraFormat(nint camera, int index, out int width, out int height, out int pixelFormat, out int maxFrameRate);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_camera_get_resolution")]
+        public static partial int CameraGetResolution(nint camera, out int width, out int height, out int pixelFormat, out int frameRate);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_camera_set_resolution")]
+        public static partial int CameraSetResolution(nint camera, int width, int height, int frameRate, int pixelFormat);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_camera_get_quality")]
+        public static partial int CameraGetQuality(nint camera, out int quality);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_camera_set_quality")]
+        public static partial int CameraSetQuality(nint camera, int quality);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_camera_capture")]
+        public static partial int CameraCapture(nint camera, int timeoutMs, out byte* jpeg, out int length);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_camera_free")]
+        public static partial int CameraFree(byte* jpeg);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_camera_start_streaming")]
+        public static partial int CameraStartStreaming(nint camera);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_camera_stop_streaming")]
+        public static partial int CameraStopStreaming(nint camera);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_camera_get_control")]
+        public static partial int CameraGetControl(nint camera, int control, out int supported, out int minimum, out int maximum,
+                                                   out int step, out int defaultValue, out int value);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_camera_set_control")]
+        public static partial int CameraSetControl(nint camera, int control, int value);
     }
 }

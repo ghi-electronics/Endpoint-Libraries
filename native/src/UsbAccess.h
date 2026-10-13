@@ -22,6 +22,13 @@ using UnpluggedCallback = std::function<void()>;
 
 struct Watch;
 
+// Waits (on its own thread) for a device's file to report that the device is
+// gone, then calls unplugged once. StopWatch: not called any more (one running
+// now finishes first).
+std::shared_ptr<Watch> WatchUnplug(int fd, UnpluggedCallback unplugged);
+void StopWatch(const std::shared_ptr<Watch>& watch);
+bool IsGone(const std::shared_ptr<Watch>& watch);
+
 class RawDevice {
 public:
     RawDevice(const std::string& deviceName, UnpluggedCallback unplugged);

@@ -35,6 +35,10 @@ InputCallback = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_int, ctypes.c_i
 # Called once, on the device's own thread, when it is unplugged: (context)
 UnpluggedCallback = ctypes.CFUNCTYPE(None, ctypes.c_void_p)
 
+# A camera's frame while streaming, on its own thread: (context, jpeg, length, width, height)
+CameraFrameCallback = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint8), ctypes.c_int, ctypes.c_int,
+                                       ctypes.c_int)
+
 _FUNCTIONS = {
     "gpio_create": [_out_handle],
     "gpio_dispose": [_handle],
@@ -144,6 +148,20 @@ _FUNCTIONS = {
     "sound_set_volume": [_handle, _int, _int64],
     "sound_get_mute": [_handle, _int, _out_int],
     "sound_set_mute": [_handle, _int, _int],
+    "camera_open": [_text, CameraFrameCallback, UnpluggedCallback, ctypes.c_void_p, _out_handle],
+    "camera_close": [_handle],
+    "camera_info": [_handle, _buffer, _int, _out_int, _out_int],
+    "camera_format": [_handle, _int, _out_int, _out_int, _out_int, _out_int],
+    "camera_get_resolution": [_handle, _out_int, _out_int, _out_int, _out_int],
+    "camera_set_resolution": [_handle, _int, _int, _int, _int],
+    "camera_get_quality": [_handle, _out_int],
+    "camera_set_quality": [_handle, _int],
+    "camera_capture": [_handle, _int, ctypes.POINTER(ctypes.POINTER(ctypes.c_uint8)), _out_int],
+    "camera_free": [ctypes.POINTER(ctypes.c_uint8)],
+    "camera_start_streaming": [_handle],
+    "camera_stop_streaming": [_handle],
+    "camera_get_control": [_handle, _int, _out_int, _out_int, _out_int, _out_int, _out_int, _out_int],
+    "camera_set_control": [_handle, _int, _int],
 }
 
 

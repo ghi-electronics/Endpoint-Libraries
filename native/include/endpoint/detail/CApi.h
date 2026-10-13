@@ -184,6 +184,25 @@ int endpoint_mp3_open(const char* path, const uint8_t* data, int length, void** 
 int endpoint_mp3_read(void* decoder, int16_t* samples, int count, int* got);
 int endpoint_mp3_close(void* decoder);
 
+// Webcams (Camera)
+typedef void (*endpoint_camera_frame_callback)(void* context, const uint8_t* jpeg, int length, int width, int height);
+int endpoint_camera_open(const char* deviceName, endpoint_camera_frame_callback frame, endpoint_unplugged_callback unplugged,
+                         void* context, void** camera);
+int endpoint_camera_close(void* camera);
+int endpoint_camera_info(void* camera, char* name, int nameSize, int* connected, int* formats);
+int endpoint_camera_format(void* camera, int index, int* width, int* height, int* pixelFormat, int* maxFrameRate);
+int endpoint_camera_get_resolution(void* camera, int* width, int* height, int* pixelFormat, int* frameRate);
+int endpoint_camera_set_resolution(void* camera, int width, int height, int frameRate, int pixelFormat);
+int endpoint_camera_get_quality(void* camera, int* quality);
+int endpoint_camera_set_quality(void* camera, int quality);
+int endpoint_camera_capture(void* camera, int timeoutMs, uint8_t** jpeg, int* length);
+int endpoint_camera_free(uint8_t* jpeg);
+int endpoint_camera_start_streaming(void* camera);
+int endpoint_camera_stop_streaming(void* camera);
+int endpoint_camera_get_control(void* camera, int control, int* supported, int* minimum, int* maximum, int* step,
+                                int* defaultValue, int* value);
+int endpoint_camera_set_control(void* camera, int control, int value);
+
 #ifdef __cplusplus
 }
 #endif
