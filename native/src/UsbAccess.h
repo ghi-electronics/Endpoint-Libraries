@@ -86,4 +86,36 @@ private:
     std::shared_ptr<Watch> watch;
 };
 
+// A USB printer ("/dev/usb/lp0", the DeviceName of a Printer): the bytes the
+// printer understands (ESC/POS, ZPL, PCL, PostScript...) go to it as they are
+class Printer {
+public:
+    // Printer status flags (0: ready)
+    enum : int { PaperOut = 0x01, Offline = 0x02, Error = 0x04 };
+
+    Printer(const std::string& deviceName, UnpluggedCallback unplugged);
+    ~Printer();
+    Printer(const Printer&) = delete;
+    Printer& operator=(const Printer&) = delete;
+
+    int VendorId() const { return vendorId; }
+    int ProductId() const { return productId; }
+    bool Connected() const;
+
+    // The printer's IEEE 1284 Device ID: "MFG:EPSON;CMD:ESC/POS;MDL:TM-T20II;CLS:PRINTER;"
+    std::string DeviceId() const;
+    // PaperOut, Offline and Error, as the printer reports them
+    int Status() const;
+    // Sends all the bytes; a TimeoutException if the printer does not take them
+    // within timeoutMs (-1: no limit)
+    int Write(const uint8_t* data, int length, int timeoutMs);
+    // What a printer answers (status requests): its length, 0 if nothing came in timeoutMs
+    int Read(uint8_t* buffer, int size, int timeoutMs);
+
+private:
+    int fd = -1;
+    int vendorId = 0, productId = 0;
+    std::shared_ptr<Watch> watch;
+};
+
 }  // namespace GHIElectronics::Endpoint::Internal::UsbAccess

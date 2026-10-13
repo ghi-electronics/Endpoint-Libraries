@@ -43,11 +43,12 @@ from GHIElectronics.Endpoint.Core import DeviceConnectionStatus
 from GHIElectronics.Endpoint.Core._event import Event
 from GHIElectronics.Endpoint.Core._native import UsbHostCallback, native
 
-from ._input import BaseDevice, Joystick, Keyboard, Mouse
+from ._input import BaseDevice, Joystick, Keyboard, Mouse, Printer, PrinterStatus
 from ._types import ButtonState, Buttons, Cursor, DeviceType, HatSwitchDirection, Key, KeyState, Position
 
 __all__ = ["BaseDevice", "ButtonState", "Buttons", "Cursor", "DeviceConnectionStatus", "DeviceType",
-           "HatSwitchDirection", "Joystick", "Key", "KeyState", "Keyboard", "Mouse", "Position",
+           "HatSwitchDirection", "Joystick", "Key", "KeyState", "Keyboard", "Mouse", "Position", "Printer",
+           "PrinterStatus",
            "UsbDeviceConnectionEventArgs", "UsbHostController"]
 
 

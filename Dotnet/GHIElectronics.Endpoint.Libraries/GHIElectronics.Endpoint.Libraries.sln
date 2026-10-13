@@ -44,6 +44,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GHIElectronics.Endpoint.Dev
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GHIElectronics.Endpoint.Devices.Storage", "GHIElectronics.Endpoint.Devices.Storage\GHIElectronics.Endpoint.Devices.Storage.csproj", "{03DEC396-51DC-4F21-9266-BE94332A1F85}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "GHIElectronics.Endpoint.Devices.Media", "GHIElectronics.Endpoint.Devices.Media\GHIElectronics.Endpoint.Devices.Media.csproj", "{D74F20AD-07AB-4B12-86C2-D77322419193}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -270,6 +272,18 @@ Global
 		{03DEC396-51DC-4F21-9266-BE94332A1F85}.Release|x64.Build.0 = Release|Any CPU
 		{03DEC396-51DC-4F21-9266-BE94332A1F85}.Release|x86.ActiveCfg = Release|Any CPU
 		{03DEC396-51DC-4F21-9266-BE94332A1F85}.Release|x86.Build.0 = Release|Any CPU
+		{D74F20AD-07AB-4B12-86C2-D77322419193}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D74F20AD-07AB-4B12-86C2-D77322419193}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D74F20AD-07AB-4B12-86C2-D77322419193}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{D74F20AD-07AB-4B12-86C2-D77322419193}.Debug|x64.Build.0 = Debug|Any CPU
+		{D74F20AD-07AB-4B12-86C2-D77322419193}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{D74F20AD-07AB-4B12-86C2-D77322419193}.Debug|x86.Build.0 = Debug|Any CPU
+		{D74F20AD-07AB-4B12-86C2-D77322419193}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D74F20AD-07AB-4B12-86C2-D77322419193}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D74F20AD-07AB-4B12-86C2-D77322419193}.Release|x64.ActiveCfg = Release|Any CPU
+		{D74F20AD-07AB-4B12-86C2-D77322419193}.Release|x64.Build.0 = Release|Any CPU
+		{D74F20AD-07AB-4B12-86C2-D77322419193}.Release|x86.ActiveCfg = Release|Any CPU
+		{D74F20AD-07AB-4B12-86C2-D77322419193}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

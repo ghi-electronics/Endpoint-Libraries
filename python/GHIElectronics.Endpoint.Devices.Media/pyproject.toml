@@ -1,0 +1,25 @@
+# One of the Endpoint Python packages. They share the namespace
+# GHIElectronics.Endpoint (no __init__.py in GHIElectronics/, Endpoint/ and
+# Endpoint/Devices/), so each can be installed and updated on its own.
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "GHIElectronics.Endpoint.Devices.Media"
+version = "0.2.5"
+description = "Sound of GHI Electronics Endpoint, with the API of .NET IoT's SoundDevice: play WAV and MP3, record WAV, volume and mute, on any sound card of the board."
+authors = [{ name = "GHI Electronics, LLC", email = "support@ghielectronics.com" }]
+requires-python = ">=3.9"
+dependencies = [
+    "GHIElectronics.Endpoint.Core>=0.2.5,<0.3",
+]
+classifiers = ["Programming Language :: Python :: 3", "Operating System :: POSIX :: Linux"]
+
+[project.urls]
+Homepage = "https://www.ghielectronics.com/"
+
+[tool.setuptools.packages.find]
+include = ["GHIElectronics.Endpoint.Devices.Media"]
+namespaces = true

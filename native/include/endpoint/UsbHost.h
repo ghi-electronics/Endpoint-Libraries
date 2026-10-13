@@ -29,6 +29,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <exception>
+#include <span>
 #include <string>
 
 #include "detail/Handle.h"
@@ -46,10 +47,10 @@ enum class DeviceType {
     Keyboard = 4,     // "/dev/input/event1": open it with Keyboard
     Joystick = 5,     // joysticks and gamepads ("/dev/input/event3"): open it with Joystick
     MassStorage = 6,  // a drive: use StorageController (no name)
-    Printer = 7,      // "/dev/usb/lp0"
+    Printer = 7,      // "/dev/usb/lp0": open it with Printer
     Serial = 8,       // a serial port, for SerialPort ("/dev/ttyUSB0", "/dev/ttyACM0")
     Webcam = 9,       // "/dev/video0"
-    Audio = 10,       // a sound card: speaker, microphone ("hw:1")
+    Audio = 10,       // a sound card: speaker, microphone ("hw:1"), for Media::SoundDevice
     Network = 11,     // an Ethernet, WiFi or cellular adapter: the network interface ("eth1", "wlan1")
     Bluetooth = 12,   // "hci0"
 };
@@ -181,8 +182,8 @@ struct Position {
     bool operator==(const Position&) const = default;
 };
 
-// A USB keyboard, mouse or joystick (Keyboard, Mouse, Joystick), opened with the
-// DeviceName its UsbHostController event gives ("/dev/input/event2"). Its events
+// A USB keyboard, mouse, joystick or printer (Keyboard, Mouse, Joystick, Printer),
+// opened with the DeviceName its UsbHostController event gives ("/dev/input/event2"). Its events
 // come on the device's own thread. It cannot be copied or moved: keep it in a
 // std::unique_ptr (or a variable that lives long enough).
 class BaseDevice {
@@ -191,7 +192,7 @@ public:
     BaseDevice(const BaseDevice&) = delete;
     BaseDevice& operator=(const BaseDevice&) = delete;
 
-    // What the device was opened with: "/dev/input/event2"
+    // What the device was opened with: "/dev/input/event2", "/dev/usb/lp0"
     const std::string& DeviceName() const { return name_; }
     DeviceType Type() const { return type_; }
     uint16_t VendorId() const { return vendorId_; }
@@ -199,7 +200,12 @@ public:
 
     bool Connected() const {
         int vendorId, productId, connected = 0, capabilities;
-        Core::detail::Check(endpoint_input_info(Get(), &vendorId, &productId, &connected, &capabilities));
+        if (type_ == DeviceType::Printer) {
+            Core::detail::Check(endpoint_printer_info(Get(), &vendorId, &productId, &connected));
+        }
+        else {
+            Core::detail::Check(endpoint_input_info(Get(), &vendorId, &productId, &connected, &capabilities));
+        }
         return connected != 0;
     }
 
@@ -207,26 +213,40 @@ public:
     Core::Event<BaseDevice&> Disconnected;
 
     // Stops the device's events (one being delivered finishes first)
-    void Dispose() { handle_.Reset(); }
+    void Dispose() {
+        if (handle_ != nullptr) {
+            (type_ == DeviceType::Printer ? endpoint_printer_close : endpoint_input_close)(handle_);
+            handle_ = nullptr;
+        }
+    }
 
 protected:
     BaseDevice(std::string deviceName, DeviceType type) : name_(std::move(deviceName)), type_(type) {}
 
-    // Called last by the constructors of Mouse, Keyboard and Joystick: the events can come from now on
+    // Called last by the constructors of Mouse, Keyboard, Joystick and Printer: the events can come from now on
     void Open() {
-        void* handle = nullptr;
-        Core::detail::Check(endpoint_input_open(name_.c_str(), static_cast<int>(type_), &Changed, this, &handle));
-        handle_ = Handle(handle);
         int vendorId = 0, productId = 0, connected = 0;
-        Core::detail::Check(endpoint_input_info(handle, &vendorId, &productId, &connected, &capabilities_));
+        if (type_ == DeviceType::Printer) {
+            Core::detail::Check(endpoint_printer_open(name_.c_str(), &Unplugged, this, &handle_));
+            Core::detail::Check(endpoint_printer_info(handle_, &vendorId, &productId, &connected));
+        }
+        else {
+            Core::detail::Check(endpoint_input_open(name_.c_str(), static_cast<int>(type_), &Changed, this, &handle_));
+            Core::detail::Check(endpoint_input_info(handle_, &vendorId, &productId, &connected, &capabilities_));
+        }
         vendorId_ = static_cast<uint16_t>(vendorId);
         productId_ = static_cast<uint16_t>(productId);
     }
 
-    void* Get() const { return handle_.Get("device"); }
+    void* Get() const {
+        if (handle_ == nullptr) {
+            throw Core::ObjectDisposedException("The device is disposed");
+        }
+        return handle_;
+    }
 
-    // The device's events (see Input::Event in libendpoint)
-    virtual void OnEvent(int kind, int a, int b, int c, int d, int e) = 0;
+    // A keyboard's, mouse's or joystick's events (see Input::Event in libendpoint)
+    virtual void OnEvent(int, int, int, int, int, int) {}
 
     int capabilities_ = 0;
 
@@ -248,13 +268,21 @@ private:
         }
     }
 
-    using Handle = Core::detail::Handle<endpoint_input_close>;
+    static void Unplugged(void* context) {
+        auto self = static_cast<BaseDevice*>(context);
+        try {
+            self->Disconnected(*self);
+        }
+        catch (const std::exception& error) {
+            std::fprintf(stderr, "Unhandled exception in Disconnected: %s\n", error.what());
+        }
+    }
 
     std::string name_;
     DeviceType type_;
     uint16_t vendorId_ = 0;
     uint16_t productId_ = 0;
-    Handle handle_;
+    void* handle_ = nullptr;
 };
 
 // A USB mouse. The cursor stays between 0 and 512 at first, as on TinyCLR: set
@@ -502,6 +530,58 @@ private:
         Core::detail::Check(endpoint_input_joystick_state(Get(), static_cast<int>(cursor), &x, &y, &hat, &buttons));
         return {{x, y}, static_cast<HatSwitchDirection>(hat), buttons};
     }
+};
+
+// What a printer reports about itself
+enum class PrinterStatus { Ready = 0, PaperOut = 0x01, Offline = 0x02, Error = 0x04 };  // flags
+
+// A USB printer: the bytes it understands (ESC/POS for receipt printers, ZPL or
+// EPL for label printers, PCL or PostScript for office printers) go to it as they are.
+//
+//   auto printer = std::make_unique<Printer>(e.DeviceName());   // DeviceType::Printer
+//   printer->Write("Hello\n\n\n");
+class Printer : public BaseDevice {
+public:
+    explicit Printer(const std::string& deviceName) : BaseDevice(deviceName, DeviceType::Printer) { Open(); }
+    ~Printer() override { Dispose(); }
+
+    // How long Write waits for the printer to take the data, in milliseconds (-1: as long as it takes)
+    int WriteTimeout() const { return writeTimeout_; }
+    void WriteTimeout(int milliseconds) { writeTimeout_ = milliseconds; }
+
+    // The printer's IEEE 1284 Device ID: "MFG:EPSON;CMD:ESC/POS;MDL:TM-T20II;CLS:PRINTER;"
+    std::string DeviceId() const {
+        char text[1024];
+        Core::detail::Check(endpoint_printer_device_id(Get(), text, sizeof text));
+        return text;
+    }
+
+    // PaperOut, Offline and Error flags, as the printer reports them (Ready: none)
+    PrinterStatus Status() const {
+        int status = 0;
+        Core::detail::Check(endpoint_printer_status(Get(), &status));
+        return static_cast<PrinterStatus>(status);
+    }
+
+    // Sends bytes (or text) to the printer: all of them, or a TimeoutException after WriteTimeout
+    int Write(std::span<const uint8_t> data) {
+        int written = 0;
+        Core::detail::Check(endpoint_printer_write(Get(), data.data(), static_cast<int>(data.size()), writeTimeout_, &written));
+        return written;
+    }
+    int Write(const std::string& text) {
+        return Write(std::span<const uint8_t>(reinterpret_cast<const uint8_t*>(text.data()), text.size()));
+    }
+
+    // What the printer answers (to a status request): its length, 0 if nothing came in timeoutMs (-1: no limit)
+    int Read(std::span<uint8_t> buffer, int timeoutMs = -1) {
+        int length = 0;
+        Core::detail::Check(endpoint_printer_read(Get(), buffer.data(), static_cast<int>(buffer.size()), timeoutMs, &length));
+        return length;
+    }
+
+private:
+    int writeTimeout_ = -1;
 };
 
 }  // namespace GHIElectronics::Endpoint::Devices::UsbHost

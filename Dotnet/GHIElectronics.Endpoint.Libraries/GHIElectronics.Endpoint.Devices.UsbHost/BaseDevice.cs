@@ -3,13 +3,13 @@ using GHIElectronics.Endpoint.Core.Internal;
 
 namespace GHIElectronics.Endpoint.Devices.UsbHost {
     /// <summary>
-    /// A USB device that the program uses: Keyboard, Mouse, Joystick, HidDevice or
-    /// RawDevice, opened with the DeviceName that its UsbHostController event gives.
+    /// A USB device that the program uses: Keyboard, Mouse, Joystick, HidDevice,
+    /// Printer or RawDevice, opened with the DeviceName that its UsbHostController event gives.
     /// Its events come on the device's own thread. When the device is unplugged,
     /// Disconnected is raised. A device stays alive until it is disposed.
     /// </summary>
     public abstract unsafe class BaseDevice : IDisposable {
-        private enum Kind { Input, Hid, Raw }
+        private enum Kind { Input, Hid, Raw, Printer }
 
         private readonly GCHandle self;
         private readonly Kind kind;
@@ -29,6 +29,7 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
             this.kind = type switch {
                 DeviceType.Mouse or DeviceType.Keyboard or DeviceType.Joystick => Kind.Input,
                 DeviceType.HID => Kind.Hid,
+                DeviceType.Printer => Kind.Printer,
                 _ => Kind.Raw,
             };
             this.self = GCHandle.Alloc(this);
@@ -43,6 +44,10 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
                     case Kind.Hid:
                         Libendpoint.Check(Libendpoint.HidOpen(deviceName, &Unplugged, context, out this.handle));
                         Libendpoint.Check(Libendpoint.HidInfo(this.handle, out vendorId, out productId, out _, null, 0));
+                        break;
+                    case Kind.Printer:
+                        Libendpoint.Check(Libendpoint.PrinterOpen(deviceName, &Unplugged, context, out this.handle));
+                        Libendpoint.Check(Libendpoint.PrinterInfo(this.handle, out vendorId, out productId, out _));
                         break;
                     default:
                         Libendpoint.Check(Libendpoint.UsbRawOpen(deviceName, &Unplugged, context, out this.handle));
@@ -59,7 +64,7 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
             }
         }
 
-        /// <summary>What the device was opened with: "/dev/input/event2", "/dev/hidraw0", "/dev/bus/usb/001/005"</summary>
+        /// <summary>What the device was opened with: "/dev/input/event2", "/dev/hidraw0", "/dev/usb/lp0", "/dev/bus/usb/001/005"</summary>
         public string DeviceName { get; }
 
         /// <summary>The device's type.</summary>
@@ -86,6 +91,9 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
                     case Kind.Hid:
                         Libendpoint.Check(Libendpoint.HidInfo(device, out _, out _, out connected, null, 0));
                         break;
+                    case Kind.Printer:
+                        Libendpoint.Check(Libendpoint.PrinterInfo(device, out _, out _, out connected));
+                        break;
                     default:
                         Libendpoint.Check(Libendpoint.UsbRawInfo(device, out _, out _, out connected));
                         break;
@@ -110,6 +118,7 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
             switch (this.kind) {
                 case Kind.Input: Libendpoint.InputClose(device); break;
                 case Kind.Hid: Libendpoint.HidClose(device); break;
+                case Kind.Printer: Libendpoint.PrinterClose(device); break;
                 default: Libendpoint.UsbRawClose(device); break;
             }
         }

@@ -12,6 +12,7 @@
 
 #include <algorithm>
 #include <atomic>
+#include <chrono>
 #include <cerrno>
 #include <climits>
 #include <cstdlib>
@@ -102,6 +103,15 @@ std::string ReadLine(const std::string& path) {
 }
 
 int Hex(const std::string& text) { return static_cast<int>(std::strtol(text.c_str(), nullptr, 16)); }
+
+// A device that is gone gives EIO (hidraw) or ENODEV: both become "unplugged"
+void UnpluggedIsNoDevice(int fd) {
+    if (errno == EIO) {
+        int error = errno;
+        pollfd state{fd, 0, 0};
+        errno = poll(&state, 1, 0) > 0 && (state.revents & (POLLHUP | POLLERR)) ? ENODEV : error;
+    }
+}
 
 int OpenDevice(const std::string& deviceName, int flags) {
     int fd = open(deviceName.c_str(), flags | O_CLOEXEC);
@@ -382,6 +392,7 @@ int HidDevice::Write(const uint8_t* data, int length) {
             continue;
         }
         if (errno != EINTR) {
+            UnpluggedIsNoDevice(fd);
             ThrowTransfer("Cannot write the report");
         }
     }
@@ -400,6 +411,7 @@ int HidDevice::Read(uint8_t* buffer, int size, int timeoutMs) {
             continue;
         }
         if (errno != EAGAIN) {
+            UnpluggedIsNoDevice(fd);
             ThrowTransfer("Cannot read a report");
         }
         pollfd in{fd, POLLIN, 0};
@@ -420,6 +432,7 @@ int HidDevice::GetFeatureReport(uint8_t* buffer, int size) {
     }
     int result = ioctl(fd, HIDIOCGFEATURE(size), buffer);
     if (result < 0) {
+        UnpluggedIsNoDevice(fd);
         ThrowTransfer("Cannot get the feature report");
     }
     return result;
@@ -430,7 +443,133 @@ void HidDevice::SendFeatureReport(const uint8_t* data, int length) {
         ThrowArgument("A report has at least its report ID (0 if the device has none)");
     }
     if (ioctl(fd, HIDIOCSFEATURE(length), data) < 0) {
+        UnpluggedIsNoDevice(fd);
         ThrowTransfer("Cannot send the feature report");
+    }
+}
+
+// ---- Printer
+
+namespace {
+
+// The printer driver's (usblp) requests
+constexpr unsigned long GetVendorProduct = _IOC(_IOC_READ, 'P', 6, 2 * sizeof(int));
+constexpr unsigned long GetDeviceId(size_t length) { return _IOC(_IOC_READ, 'P', 1, length); }
+constexpr unsigned long GetStatus = 0x060b;  // LPGETSTATUS
+
+}  // namespace
+
+Printer::Printer(const std::string& deviceName, UnpluggedCallback unplugged) {
+    fd = OpenDevice(deviceName, O_RDWR | O_NONBLOCK);
+    int ids[2] = {};
+    if (ioctl(fd, GetVendorProduct, ids) != 0) {
+        close(fd);
+        ThrowArgument(deviceName + " is not a USB printer (use the DeviceName of a Printer from UsbHostController)");
+    }
+    vendorId = ids[0];
+    productId = ids[1];
+    try {
+        watch = Watch::Start(fd, std::move(unplugged));
+    }
+    catch (...) {
+        close(fd);
+        throw;
+    }
+}
+
+Printer::~Printer() {
+    if (watch) {
+        watch->Stop();
+    }
+    close(fd);
+}
+
+bool Printer::Connected() const { return !watch->gone; }
+
+std::string Printer::DeviceId() const {
+    // Two bytes of length (big endian, with themselves), then the text
+    uint8_t buffer[1024] = {};
+    if (ioctl(fd, GetDeviceId(sizeof buffer), buffer) < 0) {
+        ThrowTransfer("Cannot read the printer's Device ID");
+    }
+    size_t length = std::min<size_t>((buffer[0] << 8) | buffer[1], sizeof buffer);
+    return length > 2 ? std::string(reinterpret_cast<char*>(buffer + 2), length - 2) : std::string();
+}
+
+int Printer::Status() const {
+    int status = 0;
+    if (ioctl(fd, GetStatus, &status) != 0) {
+        ThrowTransfer("Cannot read the printer's status");
+    }
+    // The parallel port's lines: paper out (high), selected (high), error (low)
+    return ((status & 0x20) ? PaperOut : 0) | ((status & 0x10) ? 0 : Offline) | ((status & 0x08) ? 0 : Error);
+}
+
+int Printer::Write(const uint8_t* data, int length, int timeoutMs) {
+    if (length < 0 || (length > 0 && data == nullptr)) {
+        ThrowArgumentOutOfRange("The length must not be negative");
+    }
+    auto deadline = std::chrono::steady_clock::now() + std::chrono::milliseconds(timeoutMs);
+    int done = 0;
+    while (done < length) {
+        ssize_t result = write(fd, data + done, static_cast<size_t>(length - done));
+        if (result > 0) {
+            done += static_cast<int>(result);
+            continue;
+        }
+        if (result < 0 && errno == EINTR) {
+            continue;
+        }
+        if (result < 0 && errno == ENOSPC) {
+            ThrowIO("The printer is out of paper");
+        }
+        if (result < 0 && errno != EAGAIN) {
+            ThrowTransfer("Cannot write to the printer");
+        }
+        int wait = -1;
+        if (timeoutMs >= 0) {
+            auto left = std::chrono::duration_cast<std::chrono::milliseconds>(deadline - std::chrono::steady_clock::now()).count();
+            if (left <= 0) {
+                ThrowTimeout();
+            }
+            wait = static_cast<int>(left);
+        }
+        pollfd out{fd, POLLOUT, 0};
+        if (poll(&out, 1, wait) > 0 && (out.revents & POLLHUP)) {
+            errno = ENODEV;
+            ThrowTransfer("Cannot write to the printer");
+        }
+    }
+    return done;
+}
+
+int Printer::Read(uint8_t* buffer, int size, int timeoutMs) {
+    if (size < 1 || buffer == nullptr) {
+        ThrowArgument("The buffer is empty");
+    }
+    while (true) {
+        ssize_t result = read(fd, buffer, static_cast<size_t>(size));
+        if (result >= 0) {
+            return static_cast<int>(result);
+        }
+        if (errno == EINTR) {
+            continue;
+        }
+        if (errno == EINVAL) {
+            ThrowNotSupported("This printer does not answer (it has no way back to the board)");
+        }
+        if (errno != EAGAIN) {
+            ThrowTransfer("Cannot read from the printer");
+        }
+        pollfd in{fd, POLLIN, 0};
+        int ready = poll(&in, 1, timeoutMs < 0 ? -1 : timeoutMs);
+        if (ready == 0) {
+            return 0;
+        }
+        if (ready > 0 && (in.revents & POLLHUP) && !(in.revents & POLLIN)) {
+            errno = ENODEV;
+            ThrowTransfer("Cannot read from the printer");
+        }
     }
 }
 

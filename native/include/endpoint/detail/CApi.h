@@ -157,6 +157,32 @@ int endpoint_hid_write(void* device, const uint8_t* data, int length, int* writt
 int endpoint_hid_read(void* device, uint8_t* buffer, int size, int timeoutMs, int* length);
 int endpoint_hid_get_feature(void* device, uint8_t* buffer, int size, int* length);
 int endpoint_hid_send_feature(void* device, const uint8_t* data, int length);
+int endpoint_printer_open(const char* deviceName, endpoint_unplugged_callback callback, void* context, void** device);
+int endpoint_printer_close(void* device);
+int endpoint_printer_info(void* device, int* vendorId, int* productId, int* connected);
+int endpoint_printer_device_id(void* device, char* text, int size);
+int endpoint_printer_status(void* device, int* status);
+int endpoint_printer_write(void* device, const uint8_t* data, int length, int timeoutMs, int* written);
+int endpoint_printer_read(void* device, uint8_t* buffer, int size, int timeoutMs, int* length);
+
+// Sound (SoundDevice) and MP3
+int endpoint_sound_create(const char* playback, const char* recording, const char* mixer, int sampleRate, int channels,
+                          int bitsPerSample, int unmute, void** device);
+int endpoint_sound_dispose(void* device);
+int endpoint_sound_play_file(void* device, const char* path, int mp3);
+int endpoint_sound_play_buffer(void* device, const uint8_t* data, int length, int mp3);
+int endpoint_sound_record_file(void* device, int seconds, const char* path);
+int endpoint_sound_record_buffer(void* device, int seconds, uint8_t* buffer, int size, int* length);
+int endpoint_sound_start_recording(void* device, const char* path);
+int endpoint_sound_stop_recording(void* device);
+int endpoint_sound_get_volume(void* device, int capture, int64_t* volume);
+int endpoint_sound_set_volume(void* device, int capture, int64_t volume);
+int endpoint_sound_get_mute(void* device, int capture, int* mute);
+int endpoint_sound_set_mute(void* device, int capture, int mute);
+int endpoint_mp3_open(const char* path, const uint8_t* data, int length, void** decoder, int* sampleRate, int* channels,
+                      int64_t* samples);
+int endpoint_mp3_read(void* decoder, int16_t* samples, int count, int* got);
+int endpoint_mp3_close(void* decoder);
 
 #ifdef __cplusplus
 }

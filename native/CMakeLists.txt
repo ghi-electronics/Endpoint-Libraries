@@ -29,6 +29,9 @@ set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 file(GLOB ENDPOINT_SOURCES CONFIGURE_DEPENDS src/*.cpp)
 
 add_library(endpoint_objects OBJECT ${ENDPOINT_SOURCES})
+# MP3 decoding (third-party/minimp3, public domain), for SoundDevice.PlayMp3
+target_sources(endpoint_objects PRIVATE third-party/minimp3/minimp3.c)
+set_source_files_properties(third-party/minimp3/minimp3.c PROPERTIES COMPILE_OPTIONS "-w")
 target_include_directories(endpoint_objects PUBLIC include PRIVATE src)
 target_compile_options(endpoint_objects PRIVATE -Wall -Wextra)
 # Release: no debug information (libendpoint.a is linked into customers' programs)
@@ -72,3 +75,8 @@ target_link_libraries(cpp-api-test PRIVATE endpoint_static)
 add_executable(cpp-input-test tests/CppInputTest.cpp)
 target_include_directories(cpp-input-test PRIVATE include)
 target_link_libraries(cpp-input-test PRIVATE endpoint_static)
+
+# Board test of SoundDevice and Printer (with the test sound cards snd-aloop and snd-dummy)
+add_executable(cpp-media-test tests/CppMediaTest.cpp)
+target_include_directories(cpp-media-test PRIVATE include)
+target_link_libraries(cpp-media-test PRIVATE endpoint_static)

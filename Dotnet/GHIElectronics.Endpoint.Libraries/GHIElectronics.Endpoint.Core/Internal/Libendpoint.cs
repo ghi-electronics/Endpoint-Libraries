@@ -142,5 +142,37 @@ namespace GHIElectronics.Endpoint.Core.Internal {
 
         [LibraryImport(Library, EntryPoint = "endpoint_hid_send_feature")]
         public static partial int HidSendFeature(nint device, byte* data, int length);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_printer_open", StringMarshalling = StringMarshalling.Utf8)]
+        public static partial int PrinterOpen(string deviceName, delegate* unmanaged<nint, void> unplugged, nint context, out nint device);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_printer_close")]
+        public static partial int PrinterClose(nint device);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_printer_info")]
+        public static partial int PrinterInfo(nint device, out int vendorId, out int productId, out int connected);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_printer_device_id")]
+        public static partial int PrinterDeviceId(nint device, byte* text, int size);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_printer_status")]
+        public static partial int PrinterStatus(nint device, out int status);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_printer_write")]
+        public static partial int PrinterWrite(nint device, byte* data, int length, int timeoutMs, out int written);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_printer_read")]
+        public static partial int PrinterRead(nint device, byte* buffer, int size, int timeoutMs, out int length);
+
+        // MP3 decoding, for PlayMp3 (GHIElectronics.Endpoint.Devices.Media)
+
+        [LibraryImport(Library, EntryPoint = "endpoint_mp3_open", StringMarshalling = StringMarshalling.Utf8)]
+        public static partial int Mp3Open(string? path, byte* data, int length, out nint decoder, out int sampleRate, out int channels, out long samples);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_mp3_read")]
+        public static partial int Mp3Read(nint decoder, short* samples, int count, out int got);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_mp3_close")]
+        public static partial int Mp3Close(nint decoder);
     }
 }

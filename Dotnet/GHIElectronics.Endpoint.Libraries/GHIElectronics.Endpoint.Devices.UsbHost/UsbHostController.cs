@@ -26,7 +26,7 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
         /// <summary>A drive: use StorageController (GHIElectronics.Endpoint.Devices.Storage). No name.</summary>
         MassStorage = 6,
 
-        /// <summary>"/dev/usb/lp0"</summary>
+        /// <summary>"/dev/usb/lp0": open it with new Printer(e.DeviceName)</summary>
         Printer = 7,
 
         /// <summary>A serial port, for System.IO.Ports.SerialPort ("/dev/ttyUSB0", "/dev/ttyACM0")</summary>
@@ -35,7 +35,7 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
         /// <summary>"/dev/video0"</summary>
         Webcam = 9,
 
-        /// <summary>A sound card: speaker, microphone ("hw:1")</summary>
+        /// <summary>A sound card: speaker, microphone ("hw:1"), for Iot.Device.Media.SoundDevice</summary>
         Audio = 10,
 
         /// <summary>An Ethernet, WiFi or cellular adapter: its NetworkInterface's Name ("eth1", "wlan1")</summary>

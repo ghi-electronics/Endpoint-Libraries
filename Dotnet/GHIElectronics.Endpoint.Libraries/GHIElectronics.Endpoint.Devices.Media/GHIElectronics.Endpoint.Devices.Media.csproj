@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="..\Endpoint.Libraries.props" />
+
+  <PropertyGroup>
+    <PackageId>GHIElectronics.Endpoint.Devices.Media</PackageId>
+    <Description>Endpoint's sound: MP3 for .NET IoT's SoundDevice (Iot.Device.Media), which plays and records WAV on any sound card of the board.</Description>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GHIElectronics.Endpoint.Core\GHIElectronics.Endpoint.Core.csproj" />
+    <PackageReference Include="Iot.Device.Bindings" Version="4.2.0" />
+  </ItemGroup>
+
+</Project>

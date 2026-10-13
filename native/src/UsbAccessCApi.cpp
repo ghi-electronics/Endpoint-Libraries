@@ -115,3 +115,47 @@ ENDPOINT_API int endpoint_hid_get_feature(void* device, uint8_t* buffer, int siz
 ENDPOINT_API int endpoint_hid_send_feature(void* device, const uint8_t* data, int length) {
     return Call([&] { Device<UsbAccess::HidDevice>(device)->SendFeatureReport(data, length); });
 }
+
+// deviceName: "/dev/usb/lp0", the DeviceName of a Printer
+ENDPOINT_API int endpoint_printer_open(const char* deviceName, endpoint_unplugged_callback callback, void* context,
+                                       void** device) {
+    return Call([&] { *device = new UsbAccess::Printer(deviceName ? deviceName : "", Unplugged(callback, context)); });
+}
+
+ENDPOINT_API int endpoint_printer_close(void* device) {
+    return Call([&] { delete Device<UsbAccess::Printer>(device); });
+}
+
+ENDPOINT_API int endpoint_printer_info(void* device, int* vendorId, int* productId, int* connected) {
+    return Call([&] {
+        auto d = Device<UsbAccess::Printer>(device);
+        *vendorId = d->VendorId();
+        *productId = d->ProductId();
+        *connected = d->Connected() ? 1 : 0;
+    });
+}
+
+// The IEEE 1284 Device ID ("MFG:...;CMD:...;MDL:...;")
+ENDPOINT_API int endpoint_printer_device_id(void* device, char* text, int size) {
+    return Call([&] {
+        auto id = Device<UsbAccess::Printer>(device)->DeviceId();
+        if (text == nullptr || size <= static_cast<int>(id.size())) {
+            ThrowArgument("The buffer is too small");
+        }
+        std::memcpy(text, id.c_str(), id.size() + 1);
+    });
+}
+
+// status: PaperOut 1, Offline 2, Error 4 (0: ready)
+ENDPOINT_API int endpoint_printer_status(void* device, int* status) {
+    return Call([&] { *status = Device<UsbAccess::Printer>(device)->Status(); });
+}
+
+// timeoutMs -1: no limit
+ENDPOINT_API int endpoint_printer_write(void* device, const uint8_t* data, int length, int timeoutMs, int* written) {
+    return Call([&] { *written = Device<UsbAccess::Printer>(device)->Write(data, length, timeoutMs); });
+}
+
+ENDPOINT_API int endpoint_printer_read(void* device, uint8_t* buffer, int size, int timeoutMs, int* length) {
+    return Call([&] { *length = Device<UsbAccess::Printer>(device)->Read(buffer, size, timeoutMs); });
+}

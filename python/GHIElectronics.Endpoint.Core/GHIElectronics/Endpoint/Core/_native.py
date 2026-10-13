@@ -32,6 +32,9 @@ UsbHostCallback = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_int, ctypes.c
 InputCallback = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
                                  ctypes.c_int, ctypes.c_int)
 
+# Called once, on the device's own thread, when it is unplugged: (context)
+UnpluggedCallback = ctypes.CFUNCTYPE(None, ctypes.c_void_p)
+
 _FUNCTIONS = {
     "gpio_create": [_out_handle],
     "gpio_dispose": [_handle],
@@ -122,6 +125,25 @@ _FUNCTIONS = {
     "input_set_cursor_bounds": [_handle, _int, _int, _int, _int, _int],
     "input_set_cursor_position": [_handle, _int, _int],
     "input_set_scale": [_handle, _double],
+    "printer_open": [_text, UnpluggedCallback, ctypes.c_void_p, _out_handle],
+    "printer_close": [_handle],
+    "printer_info": [_handle, _out_int, _out_int, _out_int],
+    "printer_device_id": [_handle, _buffer, _int],
+    "printer_status": [_handle, _out_int],
+    "printer_write": [_handle, _buffer, _int, _int, _out_int],
+    "printer_read": [_handle, _buffer, _int, _int, _out_int],
+    "sound_create": [_text, _text, _text, _int, _int, _int, _int, _out_handle],
+    "sound_dispose": [_handle],
+    "sound_play_file": [_handle, _text, _int],
+    "sound_play_buffer": [_handle, _buffer, _int, _int],
+    "sound_record_file": [_handle, _int, _text],
+    "sound_record_buffer": [_handle, _int, _buffer, _int, _out_int],
+    "sound_start_recording": [_handle, _text],
+    "sound_stop_recording": [_handle],
+    "sound_get_volume": [_handle, _int, _out_int64],
+    "sound_set_volume": [_handle, _int, _int64],
+    "sound_get_mute": [_handle, _int, _out_int],
+    "sound_set_mute": [_handle, _int, _int],
 }
 
 
@@ -140,7 +162,7 @@ class _Native:
         def call(*args):
             result = function(*args)
             if result != 0:
-                raise _exception(result, _library.endpoint_last_error().decode())
+                raise _exception(result, _library.endpoint_last_error().decode(errors="replace"))
         return call
 
     @staticmethod

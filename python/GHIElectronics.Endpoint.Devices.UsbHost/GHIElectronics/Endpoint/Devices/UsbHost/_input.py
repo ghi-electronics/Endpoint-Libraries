@@ -1,11 +1,13 @@
-"""USB keyboards, mice and joysticks, with TinyCLR's API. Each is opened with
-the DeviceName its UsbHostController event gives ("/dev/input/event2"); its
-events come on the device's own thread; it stays alive until it is disposed."""
+"""USB keyboards, mice and joysticks with TinyCLR's API, and printers. Each is
+opened with the DeviceName its UsbHostController event gives
+("/dev/input/event2", "/dev/usb/lp0"); its events come on the device's own
+thread; it stays alive until it is disposed."""
 
 from enum import IntFlag
+import ctypes
 
 from GHIElectronics.Endpoint.Core._event import Event
-from GHIElectronics.Endpoint.Core._native import InputCallback, native
+from GHIElectronics.Endpoint.Core._native import InputCallback, UnpluggedCallback, native
 
 from ._types import ButtonState, Buttons, Cursor, DeviceType, HatSwitchDirection, Key, KeyState, Position
 
@@ -44,7 +46,7 @@ def _key(value):
 
 
 class BaseDevice:
-    """A USB keyboard, mouse or joystick (Keyboard, Mouse, Joystick)"""
+    """A USB device the program uses: Keyboard, Mouse, Joystick or Printer"""
 
     Disconnected = _EventProperty()
     """The device was unplugged: handler(sender, e)"""
@@ -56,14 +58,21 @@ class BaseDevice:
                 if isinstance(value, _EventProperty):
                     self.__dict__[value.attribute] = Event()
         self._handle = None
-        self._callback = InputCallback(self._changed)  # kept: the library calls it
+        self._printer = deviceType == DeviceType.Printer
         handle = native.out_handle()
-        native.input_open(str(deviceName).encode(), int(deviceType), self._callback, None, native.ref(handle))
+        vendor, product, connected, capabilities = (native.out_int() for _ in range(4))
+        # The callbacks are kept: the library calls them
+        if self._printer:
+            self._callback = UnpluggedCallback(lambda context: self.Disconnected(self, None))
+            native.printer_open(str(deviceName).encode(), self._callback, None, native.ref(handle))
+            native.printer_info(handle, native.ref(vendor), native.ref(product), native.ref(connected))
+        else:
+            self._callback = InputCallback(self._changed)
+            native.input_open(str(deviceName).encode(), int(deviceType), self._callback, None, native.ref(handle))
+            native.input_info(handle, native.ref(vendor), native.ref(product), native.ref(connected),
+                              native.ref(capabilities))
         self._handle = handle
         native.keep_alive(self)
-        vendor, product, connected, capabilities = (native.out_int() for _ in range(4))
-        native.input_info(handle, native.ref(vendor), native.ref(product), native.ref(connected),
-                          native.ref(capabilities))
         self._deviceName = str(deviceName)
         self._type = deviceType
         self._vendorId = vendor.value
@@ -72,7 +81,7 @@ class BaseDevice:
 
     @property
     def DeviceName(self):
-        """What the device was opened with: "/dev/input/event2" """
+        """What the device was opened with: "/dev/input/event2", "/dev/usb/lp0" """
         return self._deviceName
 
     @property
@@ -92,13 +101,16 @@ class BaseDevice:
         if self._handle is None:
             return False
         values = [native.out_int() for _ in range(4)]
-        native.input_info(self._handle, *[native.ref(v) for v in values])
+        if self._printer:
+            native.printer_info(self._handle, *[native.ref(v) for v in values[:3]])
+        else:
+            native.input_info(self._handle, *[native.ref(v) for v in values])
         return values[2].value != 0
 
     def Dispose(self):
         """Stops the device's events (one being delivered finishes first)"""
         if self._handle is not None:
-            native.input_close(self._handle)
+            (native.printer_close if self._printer else native.input_close)(self._handle)
             self._handle = None
             native.let_go(self)
 
@@ -339,3 +351,60 @@ class Joystick(BaseDevice):
                                                                  Delta=Position(d, e)))
         elif event == _HAT:
             self.HatSwitchPressed(self, Joystick.HatSwitchPressedEventArgs(Direction=HatSwitchDirection(a)))
+
+
+class PrinterStatus(IntFlag):
+    """What a printer reports about itself (Ready: nothing)"""
+
+    Ready = 0
+    PaperOut = 0x01
+    Offline = 0x02
+    Error = 0x04
+
+
+class Printer(BaseDevice):
+    """A USB printer: the bytes it understands (ESC/POS for receipt printers, ZPL or
+    EPL for label printers, PCL or PostScript for office printers) go to it as
+    they are.
+
+        printer = Printer(e.DeviceName)     # from UsbHostController, DeviceType.Printer
+        printer.Write("Hello\n\n\n")
+        printer.Write(bytes([0x1D, 0x56, 0x00]))   # ESC/POS: cut the paper
+    """
+
+    def __init__(self, deviceName):
+        super().__init__(deviceName, DeviceType.Printer)
+        self.WriteTimeout = -1
+        """How long Write waits for the printer to take the data, in milliseconds (-1: as long as it takes)"""
+
+    @property
+    def DeviceId(self):
+        """The printer's IEEE 1284 Device ID: "MFG:EPSON;CMD:ESC/POS;MDL:TM-T20II;CLS:PRINTER;" """
+        text = ctypes.create_string_buffer(1024)
+        native.printer_device_id(self._h(), text, len(text))
+        return text.value.decode(errors="replace")
+
+    @property
+    def Status(self):
+        """PaperOut, Offline and Error, as the printer reports them (Ready: none)"""
+        status = native.out_int()
+        native.printer_status(self._h(), native.ref(status))
+        return PrinterStatus(status.value)
+
+    def Write(self, data):
+        """Sends bytes (or text, as UTF-8) to the printer; all of them, or a TimeoutException
+        after WriteTimeout"""
+        if isinstance(data, str):
+            data = data.encode()
+        pointer, length, keep = native.readable(data)
+        written = native.out_int()
+        native.printer_write(self._h(), pointer, length, int(self.WriteTimeout), native.ref(written))
+        return written.value
+
+    def Read(self, buffer, timeout=-1):
+        """Reads what the printer answers (to a status request) into a bytearray: its length,
+        0 if nothing came in timeout milliseconds (-1: as long as it takes)"""
+        pointer, size = native.writable(buffer)
+        length = native.out_int()
+        native.printer_read(self._h(), pointer, size, int(timeout), native.ref(length))
+        return length.value

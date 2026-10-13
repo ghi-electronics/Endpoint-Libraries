@@ -1,7 +1,7 @@
 // GHI Electronics Endpoint for C++: the board's hardware with the same API
 // as .NET (System.Device.Gpio, I2c, Spi, Pwm, Analog; System.IO.Ports;
 // Iot.Device.SocketCan; .NET IoT's RtcBase; TinyCLR's DAC and watchdog;
-// SD cards and USB drives; USB devices).
+// SD cards and USB drives; USB devices; .NET IoT's SoundDevice).
 //
 //   #include <endpoint.h>
 //   using namespace GHIElectronics::Endpoint::Core;
@@ -22,6 +22,7 @@
 #include "endpoint/Dac.h"
 #include "endpoint/Gpio.h"
 #include "endpoint/I2c.h"
+#include "endpoint/Media.h"
 #include "endpoint/Ports.h"
 #include "endpoint/Pwm.h"
 #include "endpoint/Rtc.h"

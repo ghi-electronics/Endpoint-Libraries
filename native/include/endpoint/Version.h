@@ -13,7 +13,7 @@
 
 #define ENDPOINT_VERSION_MAJOR 0
 #define ENDPOINT_VERSION_MINOR 2
-#define ENDPOINT_VERSION_PATCH 4
+#define ENDPOINT_VERSION_PATCH 5
 
 // "0.2.0"
 #define ENDPOINT_VERSION_TEXT(major, minor, patch) #major "." #minor "." #patch

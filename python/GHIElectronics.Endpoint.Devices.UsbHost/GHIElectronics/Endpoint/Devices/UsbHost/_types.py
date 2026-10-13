@@ -25,7 +25,7 @@ class DeviceType(IntEnum):
     MassStorage = 6
     """A drive: use StorageController (no name)"""
     Printer = 7
-    """"/dev/usb/lp0" """
+    """"/dev/usb/lp0": open it with Printer(e.DeviceName)"""
     Serial = 8
     """A serial port, for pyserial ("/dev/ttyUSB0", "/dev/ttyACM0")"""
     Webcam = 9
