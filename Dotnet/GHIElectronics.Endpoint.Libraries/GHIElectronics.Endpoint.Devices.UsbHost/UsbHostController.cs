@@ -14,13 +14,13 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
         /// <summary>A HID device that is no keyboard, mouse or joystick ("/dev/hidraw0")</summary>
         HID = 2,
 
-        /// <summary>"/dev/input/event2"</summary>
+        /// <summary>"/dev/input/event2": open it with new Mouse(e.DeviceName)</summary>
         Mouse = 3,
 
-        /// <summary>"/dev/input/event1"</summary>
+        /// <summary>"/dev/input/event1": open it with new Keyboard(e.DeviceName)</summary>
         Keyboard = 4,
 
-        /// <summary>Joysticks and gamepads ("/dev/input/event3")</summary>
+        /// <summary>Joysticks and gamepads ("/dev/input/event3"): open it with new Joystick(e.DeviceName)</summary>
         Joystick = 5,
 
         /// <summary>A drive: use StorageController (GHIElectronics.Endpoint.Devices.Storage). No name.</summary>

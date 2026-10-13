@@ -69,5 +69,35 @@ namespace GHIElectronics.Endpoint.Core.Internal {
 
         [LibraryImport(Library, EntryPoint = "endpoint_usbhost_disable")]
         public static partial int UsbHostDisable(nint controller);
+
+        // USB keyboards, mice and joysticks: the callback (context, event, a, b, c, d, e) runs on the device's own thread
+
+        [LibraryImport(Library, EntryPoint = "endpoint_input_open", StringMarshalling = StringMarshalling.Utf8)]
+        public static partial int InputOpen(string deviceName, int type, delegate* unmanaged<nint, int, int, int, int, int, int, void> callback,
+                                            nint context, out nint device);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_input_close")]
+        public static partial int InputClose(nint device);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_input_info")]
+        public static partial int InputInfo(nint device, out int vendorId, out int productId, out int connected, out int capabilities);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_input_key_state")]
+        public static partial int InputKeyState(nint device, int key, out int state);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_input_mouse_state")]
+        public static partial int InputMouseState(nint device, out int x, out int y, out int wheel, out int buttons);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_input_joystick_state")]
+        public static partial int InputJoystickState(nint device, int cursor, out int x, out int y, out int hat, out uint buttons);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_input_set_cursor_bounds")]
+        public static partial int InputSetCursorBounds(nint device, int cursor, int minX, int maxX, int minY, int maxY);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_input_set_cursor_position")]
+        public static partial int InputSetCursorPosition(nint device, int x, int y);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_input_set_scale")]
+        public static partial int InputSetScale(nint device, double scale);
     }
 }
