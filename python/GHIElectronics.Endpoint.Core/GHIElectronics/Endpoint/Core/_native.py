@@ -28,6 +28,10 @@ _hdc = ctypes.c_ssize_t
 UsbHostCallback = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_int, ctypes.c_uint32, ctypes.c_int, ctypes.c_int,
                                    ctypes.c_int, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p)
 
+# Called on the input device's own thread: (context, event, a, b, c, d, e)
+InputCallback = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
+                                 ctypes.c_int, ctypes.c_int)
+
 _FUNCTIONS = {
     "gpio_create": [_out_handle],
     "gpio_dispose": [_handle],
@@ -109,6 +113,15 @@ _FUNCTIONS = {
     "usbhost_dispose": [_handle],
     "usbhost_enable": [_handle],
     "usbhost_disable": [_handle],
+    "input_open": [_text, _int, InputCallback, ctypes.c_void_p, _out_handle],
+    "input_close": [_handle],
+    "input_info": [_handle, _out_int, _out_int, _out_int, _out_int],
+    "input_key_state": [_handle, _int, _out_int],
+    "input_mouse_state": [_handle, _out_int, _out_int, _out_int, _out_int],
+    "input_joystick_state": [_handle, _int, _out_int, _out_int, _out_int, _out_uint32],
+    "input_set_cursor_bounds": [_handle, _int, _int, _int, _int, _int],
+    "input_set_cursor_position": [_handle, _int, _int],
+    "input_set_scale": [_handle, _double],
 }
 
 
@@ -176,6 +189,18 @@ class _Native:
     @staticmethod
     def disposed(name):
         return ObjectDisposedException(f"The {name} is disposed")
+
+    # Objects with events stay alive until they are disposed, as in .NET: a
+    # program that does not keep one in a variable still gets its events
+    _alive = set()
+
+    @staticmethod
+    def keep_alive(target):
+        _Native._alive.add(target)
+
+    @staticmethod
+    def let_go(target):
+        _Native._alive.discard(target)
 
 
 native = _Native()

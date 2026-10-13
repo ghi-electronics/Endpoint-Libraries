@@ -128,6 +128,19 @@ int endpoint_usbhost_dispose(void* controller);
 int endpoint_usbhost_enable(void* controller);
 int endpoint_usbhost_disable(void* controller);
 
+// USB keyboards, mice and joysticks
+typedef void (*endpoint_input_callback)(void* context, int event, int a, int b, int c, int d, int e);
+int endpoint_input_open(const char* deviceName, int type, endpoint_input_callback callback, void* context,
+                        void** device);
+int endpoint_input_close(void* device);
+int endpoint_input_info(void* device, int* vendorId, int* productId, int* connected, int* capabilities);
+int endpoint_input_key_state(void* device, int key, int* state);
+int endpoint_input_mouse_state(void* device, int* x, int* y, int* wheel, int* buttons);
+int endpoint_input_joystick_state(void* device, int cursor, int* x, int* y, int* hat, uint32_t* buttons);
+int endpoint_input_set_cursor_bounds(void* device, int cursor, int minX, int maxX, int minY, int maxY);
+int endpoint_input_set_cursor_position(void* device, int x, int y);
+int endpoint_input_set_scale(void* device, double scale);
+
 #ifdef __cplusplus
 }
 #endif

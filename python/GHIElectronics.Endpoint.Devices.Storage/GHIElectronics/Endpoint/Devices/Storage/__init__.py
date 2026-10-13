@@ -18,7 +18,8 @@ GHIElectronics.Endpoint.Devices.Storage:
 
 The events come on the library's storage thread. A drive that is pulled out
 is unmounted by the library. The SD card is /media/sd/; USB drives get the
-first free /media/usbN/, as Windows gives the first free drive letter.
+first free /media/usbN/, as Windows gives the first free drive letter. A
+controller stays alive until it is disposed.
 """
 
 import ctypes
@@ -131,6 +132,7 @@ class StorageController:
         handle = native.out_handle()
         native.storage_create(name.encode(), self._callback, None, native.ref(handle))
         self._handle = handle
+        native.keep_alive(self)
 
     @property
     def Name(self):
@@ -163,6 +165,7 @@ class StorageController:
         if self._handle is not None:
             native.storage_dispose(self._handle)
             self._handle = None
+            native.let_go(self)
 
     def _changed(self, context, hdc, status, label):
         self._event(self, DeviceConnectionEventArgs(DeviceConnectionStatus(status), hdc,

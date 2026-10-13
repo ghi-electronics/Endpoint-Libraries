@@ -19,46 +19,29 @@ Keyboard and Mouse, a webcam gives Webcam and Audio (its microphone).
 DeviceName is what to open it with (see DeviceType). The events come on the
 library's USB thread. USB drives come as MassStorage: use StorageController
 (GHIElectronics.Endpoint.Devices.Storage) for them.
-"""
 
-from enum import IntEnum
+Keyboards, mice and joysticks have TinyCLR's classes:
+
+    if e.DeviceStatus == DeviceConnectionStatus.Connected and e.Type == DeviceType.Mouse:
+        mouse = Mouse(e.DeviceName)
+        mouse.SetCursorBounds(Position(0, 0), Position(799, 479))
+        mouse.CursorMoved += lambda sender, a: print("Cursor at", a.NewPosition.X, a.NewPosition.Y)
+        mouse.ButtonChanged += lambda sender, a: print(a.Which.name, a.State.name)
+
+A controller or device stays alive until it is disposed, also when the
+program keeps no variable for it.
+"""
 
 from GHIElectronics.Endpoint.Core import DeviceConnectionStatus
 from GHIElectronics.Endpoint.Core._event import Event
 from GHIElectronics.Endpoint.Core._native import UsbHostCallback, native
 
-__all__ = ["DeviceConnectionStatus", "DeviceType", "UsbDeviceConnectionEventArgs", "UsbHostController"]
+from ._input import BaseDevice, Joystick, Keyboard, Mouse
+from ._types import ButtonState, Buttons, Cursor, DeviceType, HatSwitchDirection, Key, KeyState, Position
 
-
-class DeviceType(IntEnum):
-    """What a device gives, and its DeviceName"""
-
-    Unknown = 0
-    """No driver on the board: the program talks to it ("/dev/bus/usb/001/005", for pyusb)"""
-    Hub = 1
-    """"/dev/bus/usb/001/002" """
-    HID = 2
-    """A HID device that is no keyboard, mouse or joystick ("/dev/hidraw0")"""
-    Mouse = 3
-    """"/dev/input/event2" """
-    Keyboard = 4
-    """"/dev/input/event1" """
-    Joystick = 5
-    """Joysticks and gamepads ("/dev/input/event3")"""
-    MassStorage = 6
-    """A drive: use StorageController (no name)"""
-    Printer = 7
-    """"/dev/usb/lp0" """
-    Serial = 8
-    """A serial port, for pyserial ("/dev/ttyUSB0", "/dev/ttyACM0")"""
-    Webcam = 9
-    """"/dev/video0" """
-    Audio = 10
-    """A sound card: speaker, microphone ("hw:1")"""
-    Network = 11
-    """An Ethernet, WiFi or cellular adapter: the network interface ("eth1", "wlan1")"""
-    Bluetooth = 12
-    """"hci0" """
+__all__ = ["BaseDevice", "ButtonState", "Buttons", "Cursor", "DeviceConnectionStatus", "DeviceType",
+           "HatSwitchDirection", "Joystick", "Key", "KeyState", "Keyboard", "Mouse", "Position",
+           "UsbDeviceConnectionEventArgs", "UsbHostController"]
 
 
 class UsbDeviceConnectionEventArgs:
@@ -105,6 +88,7 @@ class UsbHostController:
         handle = native.out_handle()
         native.usbhost_create(self._callback, None, native.ref(handle))
         self._handle = handle
+        native.keep_alive(self)
 
     @property
     def OnConnectionChangedEvent(self):
@@ -133,6 +117,7 @@ class UsbHostController:
         if self._handle is not None:
             native.usbhost_dispose(self._handle)
             self._handle = None
+            native.let_go(self)
 
     def _changed(self, context, status, id, type, vendorId, productId, deviceName, manufacturer, product,
                  serialNumber):

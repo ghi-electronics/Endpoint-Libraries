@@ -54,3 +54,8 @@ target_link_libraries(foundation-test PRIVATE endpoint_static)
 add_executable(cpp-api-test tests/CppApiTest.cpp)
 target_include_directories(cpp-api-test PRIVATE include)
 target_link_libraries(cpp-api-test PRIVATE endpoint_static)
+
+# Board test of Mouse, Keyboard and Joystick (with tests/virtual_input.py)
+add_executable(cpp-input-test tests/CppInputTest.cpp)
+target_include_directories(cpp-input-test PRIVATE include)
+target_link_libraries(cpp-input-test PRIVATE endpoint_static)

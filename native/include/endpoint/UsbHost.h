@@ -19,6 +19,7 @@
 // (Storage.h) for them.
 #pragma once
 
+#include <array>
 #include <cstdint>
 #include <cstdio>
 #include <exception>
@@ -35,9 +36,9 @@ enum class DeviceType {
     Unknown = 0,      // no driver on the board: the program talks to it ("/dev/bus/usb/001/005")
     Hub = 1,          // "/dev/bus/usb/001/002"
     HID = 2,          // a HID device that is no keyboard, mouse or joystick ("/dev/hidraw0")
-    Mouse = 3,        // "/dev/input/event2"
-    Keyboard = 4,     // "/dev/input/event1"
-    Joystick = 5,     // joysticks and gamepads ("/dev/input/event3")
+    Mouse = 3,        // "/dev/input/event2": open it with Mouse
+    Keyboard = 4,     // "/dev/input/event1": open it with Keyboard
+    Joystick = 5,     // joysticks and gamepads ("/dev/input/event3"): open it with Joystick
     MassStorage = 6,  // a drive: use StorageController (no name)
     Printer = 7,      // "/dev/usb/lp0"
     Serial = 8,       // a serial port, for SerialPort ("/dev/ttyUSB0", "/dev/ttyACM0")
@@ -132,6 +133,369 @@ private:
     using Handle = Core::detail::Handle<endpoint_usbhost_dispose>;
 
     Handle handle_;  // last: closed first, before the event goes away
+};
+
+// The types of TinyCLR's USB host (GHIElectronics.TinyCLR.Devices.Usb): the
+// same names and values. Key is the USB key code.
+enum class Buttons : uint8_t { None = 0x00, Left = 0x01, Right = 0x02, Middle = 0x04, Extended1 = 0x08, Extended2 = 0x10 };
+enum class ButtonState { Released = 0, Pressed = 1 };
+enum class Cursor { Cursor1 = 0, Cursor2 = 1 };  // a joystick's left and right stick
+enum class KeyState { Released = 2, Pressed = 1 };
+enum class HatSwitchDirection { Up, UpRight, Right, DownRight, Down, DownLeft, Left, UpLeft, None };
+
+// The keys on the keyboard: USB key codes (D0 to D9 are the number keys). A key
+// TinyCLR has no name for (F13, media keys) comes as its USB key code.
+enum class Key : uint8_t {
+    None = 0x00, A = 0x04, B = 0x05, C = 0x06, D = 0x07, E = 0x08,
+    F = 0x09, G = 0x0A, H = 0x0B, I = 0x0C, J = 0x0D, K = 0x0E,
+    L = 0x0F, M = 0x10, N = 0x11, O = 0x12, P = 0x13, Q = 0x14,
+    R = 0x15, S = 0x16, T = 0x17, U = 0x18, V = 0x19, W = 0x1A,
+    X = 0x1B, Y = 0x1C, Z = 0x1D, D1 = 0x1E, D2 = 0x1F, D3 = 0x20,
+    D4 = 0x21, D5 = 0x22, D6 = 0x23, D7 = 0x24, D8 = 0x25, D9 = 0x26,
+    D0 = 0x27, Enter = 0x28, Escape = 0x29, BackSpace = 0x2A, Tab = 0x2B, Space = 0x2C,
+    Substract = 0x2D, Equal = 0x2E, OpenBrackets = 0x2F, CloseBrackets = 0x30, Backslash = 0x31, NonUS = 0x32,
+    Semicolon = 0x33, Quotes = 0x34, GraveAccent = 0x35, Comma = 0x36, Period = 0x37, Divide = 0x38,
+    CapsLock = 0x39, F1 = 0x3A, F2 = 0x3B, F3 = 0x3C, F4 = 0x3D, F5 = 0x3E,
+    F6 = 0x3F, F7 = 0x40, F8 = 0x41, F9 = 0x42, F10 = 0x43, F11 = 0x44,
+    F12 = 0x45, PrintScreen = 0x46, ScrollLock = 0x47, Pause = 0x48, Insert = 0x49, Home = 0x4A,
+    PageUp = 0x4B, Delete = 0x4C, End = 0x4D, PageDown = 0x4E, RightArrow = 0x4F, LeftArrow = 0x50,
+    DownArrow = 0x51, UpArrow = 0x52, NumLock = 0x53, KeypadDivide = 0x54, KeypadMultiply = 0x55, KeypadSubstract = 0x56,
+    KeypadAdd = 0x57, KeypadEnter = 0x58, Keypad1 = 0x59, Keypad2 = 0x5A, Keypad3 = 0x5B, Keypad4 = 0x5C,
+    Keypad5 = 0x5D, Keypad6 = 0x5E, Keypad7 = 0x5F, Keypad8 = 0x60, Keypad9 = 0x61, Keypad0 = 0x62,
+    KeypadDelete = 0x63, NonUS2 = 0x64, Application = 0x65, LeftCtrl = 0xE0, LeftShift = 0xE1, LeftAlt = 0xE2,
+    LeftGUI = 0xE3, RightCtrl = 0xE4, RightShift = 0xE5, RightAlt = 0xE6, RightGUI = 0xE7,
+};
+
+struct Position {
+    int X = 0;
+    int Y = 0;
+    int Z = 0;
+
+    friend Position operator-(const Position& a, const Position& b) { return {a.X - b.X, a.Y - b.Y, a.Z - b.Z}; }
+    bool operator==(const Position&) const = default;
+};
+
+// A USB keyboard, mouse or joystick (Keyboard, Mouse, Joystick), opened with the
+// DeviceName its UsbHostController event gives ("/dev/input/event2"). Its events
+// come on the device's own thread. It cannot be copied or moved: keep it in a
+// std::unique_ptr (or a variable that lives long enough).
+class BaseDevice {
+public:
+    virtual ~BaseDevice() { Dispose(); }
+    BaseDevice(const BaseDevice&) = delete;
+    BaseDevice& operator=(const BaseDevice&) = delete;
+
+    // What the device was opened with: "/dev/input/event2"
+    const std::string& DeviceName() const { return name_; }
+    DeviceType Type() const { return type_; }
+    uint16_t VendorId() const { return vendorId_; }
+    uint16_t ProductId() const { return productId_; }
+
+    bool Connected() const {
+        int vendorId, productId, connected = 0, capabilities;
+        Core::detail::Check(endpoint_input_info(Get(), &vendorId, &productId, &connected, &capabilities));
+        return connected != 0;
+    }
+
+    // The device was unplugged
+    Core::Event<BaseDevice&> Disconnected;
+
+    // Stops the device's events (one being delivered finishes first)
+    void Dispose() { handle_.Reset(); }
+
+protected:
+    BaseDevice(std::string deviceName, DeviceType type) : name_(std::move(deviceName)), type_(type) {}
+
+    // Called last by the constructors of Mouse, Keyboard and Joystick: the events can come from now on
+    void Open() {
+        void* handle = nullptr;
+        Core::detail::Check(endpoint_input_open(name_.c_str(), static_cast<int>(type_), &Changed, this, &handle));
+        handle_ = Handle(handle);
+        int vendorId = 0, productId = 0, connected = 0;
+        Core::detail::Check(endpoint_input_info(handle, &vendorId, &productId, &connected, &capabilities_));
+        vendorId_ = static_cast<uint16_t>(vendorId);
+        productId_ = static_cast<uint16_t>(productId);
+    }
+
+    void* Get() const { return handle_.Get("device"); }
+
+    // The device's events (see Input::Event in libendpoint)
+    virtual void OnEvent(int kind, int a, int b, int c, int d, int e) = 0;
+
+    int capabilities_ = 0;
+
+private:
+    // From the device's thread. A handler's error must not stop the events: it
+    // is printed, as .NET prints an unhandled exception.
+    static void Changed(void* context, int kind, int a, int b, int c, int d, int e) {
+        auto self = static_cast<BaseDevice*>(context);
+        try {
+            if (kind == 8) {
+                self->Disconnected(*self);
+            }
+            else {
+                self->OnEvent(kind, a, b, c, d, e);
+            }
+        }
+        catch (const std::exception& error) {
+            std::fprintf(stderr, "Unhandled exception in a USB device event: %s\n", error.what());
+        }
+    }
+
+    using Handle = Core::detail::Handle<endpoint_input_close>;
+
+    std::string name_;
+    DeviceType type_;
+    uint16_t vendorId_ = 0;
+    uint16_t productId_ = 0;
+    Handle handle_;
+};
+
+// A USB mouse. The cursor stays between 0 and 512 at first, as on TinyCLR: set
+// it to the screen with SetCursorBounds.
+//
+//   auto mouse = std::make_unique<Mouse>(e.DeviceName());   // DeviceType::Mouse
+//   mouse->SetCursorBounds({0, 0}, {799, 479});
+//   mouse->CursorMoved += [](Mouse&, const Mouse::CursorMovedEventArgs& a) {
+//       std::printf("Cursor at %d, %d\n", a.NewPosition().X, a.NewPosition().Y);
+//   };
+class Mouse : public BaseDevice {
+public:
+    class ButtonChangedEventArgs {
+    public:
+        ButtonChangedEventArgs(Buttons which, ButtonState state) : which_(which), state_(state) {}
+        Buttons Which() const { return which_; }
+        ButtonState State() const { return state_; }
+
+    private:
+        Buttons which_;
+        ButtonState state_;
+    };
+
+    class WheelMovedEventArgs {
+    public:
+        WheelMovedEventArgs(int newPosition, int delta) : newPosition_(newPosition), delta_(delta) {}
+        int NewPosition() const { return newPosition_; }
+        int Delta() const { return delta_; }
+
+    private:
+        int newPosition_;
+        int delta_;
+    };
+
+    class CursorMovedEventArgs {
+    public:
+        CursorMovedEventArgs(Position newPosition, Position delta) : newPosition_(newPosition), delta_(delta) {}
+        Position NewPosition() const { return newPosition_; }
+        Position Delta() const { return delta_; }
+
+    private:
+        Position newPosition_;
+        Position delta_;
+    };
+
+    explicit Mouse(const std::string& deviceName) : BaseDevice(deviceName, DeviceType::Mouse) { Open(); }
+    ~Mouse() override { Dispose(); }
+
+    // A button was pressed or released; the wheel moved; the cursor moved
+    Core::Event<Mouse&, const ButtonChangedEventArgs&> ButtonChanged;
+    Core::Event<Mouse&, const WheelMovedEventArgs&> WheelMoved;
+    Core::Event<Mouse&, const CursorMovedEventArgs&> CursorMoved;
+
+    ButtonState LeftButtonState() const { return Button(Buttons::Left); }
+    ButtonState RightButtonState() const { return Button(Buttons::Right); }
+    ButtonState MiddleButtonState() const { return Button(Buttons::Middle); }
+    ButtonState Extended1ButtonState() const { return Button(Buttons::Extended1); }
+    ButtonState Extended2ButtonState() const { return Button(Buttons::Extended2); }
+
+    Position CursorPosition() const {
+        auto s = State();
+        return {s[0], s[1]};
+    }
+    int WheelPosition() const { return State()[2]; }
+    bool AbsolutePosition() const { return false; }  // a USB mouse moves relative
+
+    // Scales the x, y, and wheel delta values
+    void SetScale(float scale) { Core::detail::Check(endpoint_input_set_scale(Get(), scale)); }
+    void SetCursorBounds(Position minimum, Position maximum) {
+        Core::detail::Check(endpoint_input_set_cursor_bounds(Get(), 0, minimum.X, maximum.X, minimum.Y, maximum.Y));
+    }
+    void SetCursorPosition(Position newPosition) {
+        Core::detail::Check(endpoint_input_set_cursor_position(Get(), newPosition.X, newPosition.Y));
+    }
+
+protected:
+    void OnEvent(int kind, int a, int b, int c, int d, int) override {
+        switch (kind) {
+            case 2: ButtonChanged(*this, ButtonChangedEventArgs(static_cast<Buttons>(a), static_cast<ButtonState>(b))); break;
+            case 3: CursorMoved(*this, CursorMovedEventArgs({a, b}, {c, d})); break;
+            case 4: WheelMoved(*this, WheelMovedEventArgs(a, b)); break;
+        }
+    }
+
+private:
+    std::array<int, 4> State() const {
+        std::array<int, 4> s{};
+        Core::detail::Check(endpoint_input_mouse_state(Get(), &s[0], &s[1], &s[2], &s[3]));
+        return s;
+    }
+    ButtonState Button(Buttons button) const {
+        return (State()[3] & static_cast<int>(button)) ? ButtonState::Pressed : ButtonState::Released;
+    }
+};
+
+// A USB keyboard. CharDown and CharUp come only for keys with an ASCII character
+// (a US keyboard; Ctrl+A to Ctrl+Z give 1 to 26). A key held down gives one KeyDown.
+//
+//   auto keyboard = std::make_unique<Keyboard>(e.DeviceName());   // DeviceType::Keyboard
+//   keyboard->CharDown += [](Keyboard&, const Keyboard::KeyboardEventArgs& a) { std::putchar(a.ASCII()); };
+class Keyboard : public BaseDevice {
+public:
+    class KeyboardEventArgs {
+    public:
+        KeyboardEventArgs(Key which, char ascii) : which_(which), ascii_(ascii) {}
+        Key Which() const { return which_; }
+        // The ASCII character, 0 if the key has none
+        char ASCII() const { return ascii_; }
+
+    private:
+        Key which_;
+        char ascii_;
+    };
+
+    explicit Keyboard(const std::string& deviceName) : BaseDevice(deviceName, DeviceType::Keyboard) { Open(); }
+    ~Keyboard() override { Dispose(); }
+
+    Core::Event<Keyboard&, const KeyboardEventArgs&> KeyUp;
+    Core::Event<Keyboard&, const KeyboardEventArgs&> KeyDown;
+    Core::Event<Keyboard&, const KeyboardEventArgs&> CharUp;
+    Core::Event<Keyboard&, const KeyboardEventArgs&> CharDown;
+
+    KeyState IsKeyPressed(Key key) const {
+        int state = 0;
+        Core::detail::Check(endpoint_input_key_state(Get(), static_cast<int>(key), &state));
+        return static_cast<KeyState>(state);
+    }
+
+protected:
+    void OnEvent(int kind, int a, int b, int c, int, int) override {
+        if (kind != 1) {
+            return;
+        }
+        KeyboardEventArgs args(static_cast<Key>(a), static_cast<char>(c));
+        if (static_cast<KeyState>(b) == KeyState::Pressed) {
+            KeyDown(*this, args);
+            if (c != 0) {
+                CharDown(*this, args);
+            }
+        }
+        else {
+            KeyUp(*this, args);
+            if (c != 0) {
+                CharUp(*this, args);
+            }
+        }
+    }
+};
+
+// A USB joystick or game pad. The sticks go from -512 to 512 at first, as on
+// TinyCLR: Cursor1 is the left stick, Cursor2 the right one. Buttons are
+// numbered from 0.
+//
+//   auto joystick = std::make_unique<Joystick>(e.DeviceName());   // DeviceType::Joystick
+//   joystick->ButtonChanged += [](Joystick&, const Joystick::ButtonChangedEventArgs& a) {
+//       std::printf("Button %d %s\n", a.Which(), a.State() == ButtonState::Pressed ? "pressed" : "released");
+//   };
+class Joystick : public BaseDevice {
+public:
+    enum DeviceCapabilities : uint8_t {
+        CursorX = 0x01,
+        CursorY = 0x02,
+        Cursor2X = 0x04,
+        Cursor2Y = 0x08,
+        HatSwitch = 0x10,
+        Buttons = 0x20,
+    };
+
+    class ButtonChangedEventArgs {
+    public:
+        ButtonChangedEventArgs(int which, ButtonState state) : which_(which), state_(state) {}
+        int Which() const { return which_; }  // the button's number
+        ButtonState State() const { return state_; }
+
+    private:
+        int which_;
+        ButtonState state_;
+    };
+
+    class CursorMovedEventArgs {
+    public:
+        CursorMovedEventArgs(Cursor which, Position newPosition, Position delta)
+            : which_(which), newPosition_(newPosition), delta_(delta) {}
+        Cursor Which() const { return which_; }
+        Position NewPosition() const { return newPosition_; }
+        Position Delta() const { return delta_; }
+
+    private:
+        Cursor which_;
+        Position newPosition_;
+        Position delta_;
+    };
+
+    class HatSwitchPressedEventArgs {
+    public:
+        explicit HatSwitchPressedEventArgs(HatSwitchDirection direction) : direction_(direction) {}
+        HatSwitchDirection Direction() const { return direction_; }
+
+    private:
+        HatSwitchDirection direction_;
+    };
+
+    explicit Joystick(const std::string& deviceName) : BaseDevice(deviceName, DeviceType::Joystick) { Open(); }
+    ~Joystick() override { Dispose(); }
+
+    Core::Event<Joystick&, const ButtonChangedEventArgs&> ButtonChanged;
+    Core::Event<Joystick&, const CursorMovedEventArgs&> CursorMoved;
+    Core::Event<Joystick&, const HatSwitchPressedEventArgs&> HatSwitchPressed;
+
+    uint8_t Capabilities() const { return static_cast<uint8_t>(capabilities_); }
+    Position CursorPosition() const { return State(Cursor::Cursor1).position; }
+    Position Cursor2Position() const { return State(Cursor::Cursor2).position; }
+    HatSwitchDirection CurrentHatSwitchDirection() const { return State(Cursor::Cursor1).hat; }
+
+    void SetCursorBounds(Cursor cursor, int minX, int maxX, int minY, int maxY) {
+        Core::detail::Check(endpoint_input_set_cursor_bounds(Get(), static_cast<int>(cursor), minX, maxX, minY, maxY));
+    }
+
+    // The state of a button (0 to 31)
+    ButtonState GetButtonState(int buttonNumber) const {
+        if (buttonNumber < 0 || buttonNumber > 31) {
+            throw Core::ArgumentOutOfRangeException("The button number must be 0 to 31");
+        }
+        return (State(Cursor::Cursor1).buttons >> buttonNumber) & 1 ? ButtonState::Pressed : ButtonState::Released;
+    }
+
+protected:
+    void OnEvent(int kind, int a, int b, int c, int d, int e) override {
+        switch (kind) {
+            case 5: ButtonChanged(*this, ButtonChangedEventArgs(a, static_cast<ButtonState>(b))); break;
+            case 6: CursorMoved(*this, CursorMovedEventArgs(static_cast<Cursor>(a), {b, c}, {d, e})); break;
+            case 7: HatSwitchPressed(*this, HatSwitchPressedEventArgs(static_cast<HatSwitchDirection>(a))); break;
+        }
+    }
+
+private:
+    struct Snapshot {
+        Position position;
+        HatSwitchDirection hat;
+        uint32_t buttons;
+    };
+    Snapshot State(Cursor cursor) const {
+        int x = 0, y = 0, hat = 0;
+        uint32_t buttons = 0;
+        Core::detail::Check(endpoint_input_joystick_state(Get(), static_cast<int>(cursor), &x, &y, &hat, &buttons));
+        return {{x, y}, static_cast<HatSwitchDirection>(hat), buttons};
+    }
 };
 
 }  // namespace GHIElectronics::Endpoint::Devices::UsbHost
