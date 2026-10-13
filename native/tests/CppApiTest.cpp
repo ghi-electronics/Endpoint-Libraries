@@ -12,6 +12,7 @@
 #include <cstdlib>
 #include <fstream>
 #include <functional>
+#include <mutex>
 #include <string>
 #include <thread>
 #include <vector>
@@ -212,6 +213,62 @@ int main() {
         Check(std::chrono::abs(read - now) < 2s && rtc.IsValid(), "DateTime set and read back, IsValid");
         rtc.SetChargeMode(Rtc::BatteryChargeMode::None);
         Throws<NotImplementedException>([&] { rtc.BackupMemorySize(); }, "BackupMemorySize (TODO)");
+    }
+
+    std::printf("=== Storage (with a USB drive plugged in, it is mounted and written too)\n");
+    {
+        Throws<ArgumentException>([] { Storage::StorageController::FromName("EPM815.StorageController.Floppy"); },
+                                  "an unknown storage controller");
+        Throws<InvalidOperationException>([] { Storage::FileSystem::Mount(12345); }, "a handle that is not a drive's");
+
+        auto usb = Storage::StorageController::FromName(EPM815::StorageController::UsbHostMassStorage);
+        std::mutex lock;
+        std::vector<intptr_t> connected;
+        int calls = 0;
+        int first = (usb.OnConnectionChangedEvent += [&](Storage::StorageController& sender, const Storage::DeviceConnectionEventArgs& e) {
+            std::lock_guard guard(lock);
+            calls++;
+            if (e.DeviceStatus() == Storage::DeviceConnectionStatus::Connected && &sender == &usb) {
+                connected.push_back(e.Hdc());
+            }
+        });
+        int second = (usb.OnConnectionChangedEvent += [&](Storage::StorageController&, const Storage::DeviceConnectionEventArgs&) {
+            std::lock_guard guard(lock);
+            calls++;
+        });
+        usb.OnConnectionChangedEvent -= second;
+        Check(first != second, "+= gives an id for -=");
+        usb.Enable();
+        std::this_thread::sleep_for(1s);
+
+        std::vector<intptr_t> drives;
+        {
+            std::lock_guard guard(lock);
+            drives = connected;
+            Check(calls == static_cast<int>(connected.size()), "a handler removed with -= is not called");
+        }
+        if (drives.empty()) {
+            std::printf("      (no USB drive plugged in: nothing mounted)\n");
+        }
+        for (auto hdc : drives) {
+            auto drive = Storage::FileSystem::Mount(hdc);
+            Check(drive.Name().starts_with("/media/usb") && drive.Name().ends_with("/") && drive.IsReady(),
+                  "mounted on " + drive.Name() + " (" + drive.DriveFormat() + ", " +
+                      std::to_string(drive.AvailableFreeSpace() >> 20) + " MB free)");
+            Check(Storage::FileSystem::Mount(hdc).Name() == drive.Name(), "a second Mount gives the same folder");
+            std::string text = "Written by the Endpoint C++ test";
+            std::ofstream(drive.RootDirectory() / "endpoint-cpp-test.txt") << text;
+            Storage::FileSystem::Flush(hdc);
+            std::string back;
+            std::getline(std::ifstream(drive.RootDirectory() / "endpoint-cpp-test.txt"), back);
+            Check(back == text, "written, flushed and read back");
+            Check(drive.TotalSize() > 0 && drive.DriveType() == Storage::DriveType::Fixed, "TotalSize and DriveType");
+        }
+        Storage::DriveInfo data("/data");
+        Check(data.DriveFormat() == "ext4" && data.IsReady() && data.TotalSize() > 0, "DriveInfo(\"/data\"): ext4");
+        Check(!Storage::DriveInfo("/no/such/folder").IsReady(), "a folder that does not exist is not ready");
+        usb.Dispose();
+        Throws<ObjectDisposedException>([&] { usb.Enable(); }, "Enable after Dispose");
     }
 
     std::printf("\n%s\n", failures == 0 ? "ALL PASSED" : (std::to_string(failures) + " FAILED").c_str());

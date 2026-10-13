@@ -20,6 +20,9 @@ _out_int64 = ctypes.POINTER(ctypes.c_int64)
 
 # Called on libendpoint's own thread: (context, pin, change type)
 GpioCallback = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_int, ctypes.c_int)
+# Called on libendpoint's storage thread: (context, drive handle, status, volume label)
+StorageCallback = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_ssize_t, ctypes.c_int, ctypes.c_char_p)
+_hdc = ctypes.c_ssize_t
 
 _FUNCTIONS = {
     "gpio_create": [_out_handle],
@@ -90,6 +93,14 @@ _FUNCTIONS = {
     "rtc_is_valid": [_out_int],
     "rtc_set_charge_mode": [_int],
     "rtc_not_implemented": [],
+    "storage_create": [_text, StorageCallback, ctypes.c_void_p, _out_handle],
+    "storage_dispose": [_handle],
+    "storage_enable": [_handle],
+    "storage_disable": [_handle],
+    "storage_mount": [_hdc, _buffer, _int],
+    "storage_flush": [_hdc],
+    "storage_unmount": [_hdc],
+    "driveinfo_get": [_text, _buffer, _int, _out_int, _out_int, _out_int64, _out_int64, _out_int64],
 }
 
 

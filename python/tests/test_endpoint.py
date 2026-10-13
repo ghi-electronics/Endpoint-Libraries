@@ -13,7 +13,7 @@ import time
 
 from GHIElectronics.Endpoint.Core import (EPM815, ArgumentException, ArgumentOutOfRangeException,
                                           InvalidOperationException, IOException, NotImplementedException,
-                                          NotSupportedException)
+                                          NotSupportedException, ObjectDisposedException)
 from GHIElectronics.Endpoint.Devices.Adc import AdcController
 from GHIElectronics.Endpoint.Devices.Dac import DacController
 from GHIElectronics.Endpoint.Devices.Gpio import GpioController, PinEventTypes, PinMode, PinValue
@@ -21,6 +21,8 @@ from GHIElectronics.Endpoint.Devices.I2c import I2cConnectionSettings, I2cDevice
 from GHIElectronics.Endpoint.Devices.Pwm import PwmChannel
 from GHIElectronics.Endpoint.Devices.Rtc import BatteryChargeMode, RtcController
 from GHIElectronics.Endpoint.Devices.Spi import SpiConnectionSettings, SpiDevice, SpiMode
+from GHIElectronics.Endpoint.Devices.Storage import (DeviceConnectionStatus, DriveInfo, DriveType, FileSystem,
+                                                StorageController)
 from GHIElectronics.Endpoint.Devices.Watchdog import WatchdogController
 
 failures = 0
@@ -196,6 +198,49 @@ slow = int(os.popen("devmem 0x5000100C").read(), 16)
 rtc.SetChargeMode(BatteryChargeMode.None_)
 check((slow & 0x300) == 0x100 and (int(os.popen("devmem 0x5000100C").read(), 16) & 0x300) == 0, "charge modes Slow, None_")
 raises(NotImplementedException, lambda: rtc.BackupMemorySize, "BackupMemorySize (TODO)")
+
+print("=== Storage (with a USB drive plugged in, it is mounted and written too)")
+raises(ArgumentException, lambda: StorageController.FromName("EPM815.StorageController.Floppy"), "an unknown storage controller")
+raises(InvalidOperationException, lambda: FileSystem.Mount(12345), "a handle that is not a drive's")
+usb = StorageController.FromName(EPM815.StorageController.UsbHostMassStorage)
+connected, calls = [], []
+
+
+def on_usb(sender, e):
+    calls.append(e)
+    if e.DeviceStatus == DeviceConnectionStatus.Connected and sender is usb:
+        connected.append(e.Hdc)
+
+
+def never(sender, e):
+    calls.append("never")
+
+
+usb.OnConnectionChangedEvent += on_usb
+usb.OnConnectionChangedEvent += never
+usb.OnConnectionChangedEvent -= never
+raises(TypeError, lambda: setattr(usb, "OnConnectionChangedEvent", on_usb), "= instead of +=")
+usb.Enable()
+time.sleep(1)
+check("never" not in calls and len(calls) == len(connected), f"+= and -=: {calls}")
+if not connected:
+    print("      (no USB drive plugged in: nothing mounted)")
+for hdc in connected:
+    drive = FileSystem.Mount(hdc)
+    check(drive.Name.startswith("/media/usb") and drive.Name.endswith("/") and drive.IsReady,
+          f"mounted on {drive.Name} ({drive.DriveFormat}, {drive.AvailableFreeSpace >> 20} MB free)")
+    check(FileSystem.Mount(hdc).Name == drive.Name, "a second Mount gives the same folder")
+    text = "Written by the Endpoint Python test"
+    with open(os.path.join(drive, "endpoint-python-test.txt"), "w") as f:
+        f.write(text)
+    FileSystem.Flush(hdc)
+    with open(drive.RootDirectory / "endpoint-python-test.txt") as f:
+        check(f.read() == text, "written, flushed and read back (DriveInfo works as a path)")
+    check(drive.TotalSize > 0 and drive.DriveType == DriveType.Fixed, "TotalSize and DriveType")
+check(DriveInfo("/data").DriveFormat == "ext4" and DriveInfo("/data").IsReady, 'DriveInfo("/data"): ext4')
+check(not DriveInfo("/no/such/folder").IsReady, "a folder that does not exist is not ready")
+usb.Dispose()
+raises(ObjectDisposedException, usb.Enable, "Enable after Dispose")
 
 print()
 print("ALL PASSED" if failures == 0 else f"{failures} FAILED")

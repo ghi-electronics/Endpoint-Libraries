@@ -6,8 +6,12 @@
 //   EPM815::I2c::Initialize(EPM815::I2c::I2c1);
 #pragma once
 
+#include <functional>
+#include <map>
+#include <mutex>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 #include "detail/CApi.h"
 
@@ -46,6 +50,54 @@ public:
 class TimeoutException : public std::runtime_error {
 public:
     using std::runtime_error::runtime_error;
+};
+
+// A .NET-style event: handlers are added with += and removed with -=.
+// C++ cannot compare functions, so += gives an id for -=:
+//
+//   int id = (usb.OnConnectionChangedEvent += handler);
+//   usb.OnConnectionChangedEvent -= id;
+//
+// The handlers run on the thread that raises the event (the library's).
+template <typename... Args>
+class Event {
+public:
+    using Handler = std::function<void(Args...)>;
+
+    Event() = default;
+    Event(const Event&) = delete;
+    Event& operator=(const Event&) = delete;
+
+    int operator+=(Handler handler) {
+        std::lock_guard lock(mutex_);
+        handlers_[++lastId_] = std::move(handler);
+        return lastId_;
+    }
+
+    Event& operator-=(int id) {
+        std::lock_guard lock(mutex_);
+        handlers_.erase(id);
+        return *this;
+    }
+
+    // Raises the event: every handler, in the order they were added (used by the library)
+    void operator()(Args... args) const {
+        std::vector<Handler> handlers;
+        {
+            std::lock_guard lock(mutex_);
+            for (const auto& [id, handler] : handlers_) {
+                handlers.push_back(handler);
+            }
+        }
+        for (const auto& handler : handlers) {
+            handler(args...);
+        }
+    }
+
+private:
+    mutable std::mutex mutex_;
+    std::map<int, Handler> handlers_;
+    int lastId_ = 0;
 };
 
 namespace detail {
@@ -234,6 +286,12 @@ struct EPM815 {
     // The watchdog, for Devices::Watchdog (the same API as TinyCLR)
     struct Watchdog {
         static constexpr const char* Id = "EPM815.Watchdog";
+    };
+
+    // SD cards and USB drives, for Devices::Storage
+    struct StorageController {
+        static constexpr const char* SdCard = "EPM815.StorageController.SdCard";
+        static constexpr const char* UsbHostMassStorage = "EPM815.StorageController.UsbHostMassStorage";
     };
 };
 

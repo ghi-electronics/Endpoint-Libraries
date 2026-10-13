@@ -413,3 +413,14 @@ class EPM815:
 
         Id = "EPM815.Watchdog"
         """The watchdog's name, for WatchdogController.FromName"""
+
+    class StorageController:
+        """SD cards and USB drives, for GHIElectronics.Endpoint.Devices.Storage:
+
+            usb = StorageController.FromName(EPM815.StorageController.UsbHostMassStorage)
+        """
+
+        SdCard = "EPM815.StorageController.SdCard"
+        """The SD card slot (mounted on /media/sd/)"""
+        UsbHostMassStorage = "EPM815.StorageController.UsbHostMassStorage"
+        """The USB drives (mounted on /media/usb0/, usb1, ...: the first free number)"""

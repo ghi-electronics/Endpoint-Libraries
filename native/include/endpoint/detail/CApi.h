@@ -107,6 +107,18 @@ int endpoint_canraw_write_frame(void* can, uint32_t id, const uint8_t* data, int
 int endpoint_canraw_read_frame(void* can, uint32_t* id, uint8_t* data, int capacity, int* length, int* ok);
 int endpoint_canraw_filter(void* can, uint32_t id);
 
+// SD cards and USB drives
+typedef void (*endpoint_storage_callback)(void* context, intptr_t hdc, int status, const char* volumeLabel);
+int endpoint_storage_create(const char* name, endpoint_storage_callback callback, void* context, void** controller);
+int endpoint_storage_dispose(void* controller);
+int endpoint_storage_enable(void* controller);
+int endpoint_storage_disable(void* controller);
+int endpoint_storage_mount(intptr_t hdc, char* name, int nameSize);
+int endpoint_storage_flush(intptr_t hdc);
+int endpoint_storage_unmount(intptr_t hdc);
+int endpoint_driveinfo_get(const char* path, char* format, int formatSize, int* driveType, int* isReady,
+                           int64_t* totalSize, int64_t* totalFreeSpace, int64_t* availableFreeSpace);
+
 #ifdef __cplusplus
 }
 #endif

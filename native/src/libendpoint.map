@@ -1,0 +1,9 @@
+/* What libendpoint.so exports: only its C functions (endpoint_*). Everything
+   else, the C++ runtime inside it too, stays private, so a program that also
+   loads the system's C++ library (.NET does) does not mix the two. */
+{
+    global:
+        endpoint_*;
+    local:
+        *;
+};

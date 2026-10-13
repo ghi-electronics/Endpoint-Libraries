@@ -3,9 +3,9 @@
   <Import Project="..\Endpoint.Libraries.props" />
 
   <PropertyGroup>
-    <PackageId>GHIElectronics.Endpoint.FileSystem</PackageId>
-    <Description>File system mounting for Endpoint.</Description>
-    <Nullable>disable</Nullable>
+    <PackageId>GHIElectronics.Endpoint.Devices.Storage</PackageId>
+    <Description>Endpoint's SD cards and USB drives: insert and remove events, mounting (System.IO's DriveInfo).</Description>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
