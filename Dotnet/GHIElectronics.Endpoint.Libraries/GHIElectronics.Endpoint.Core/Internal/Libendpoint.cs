@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 namespace GHIElectronics.Endpoint.Core.Internal {
     /// <summary>
     /// libendpoint, the board's library that .NET, Python and C++ share for the
-    /// features with real logic (storage). It comes in this package
+    /// features with real logic (storage, USB host). It comes in this package
     /// (runtimes/linux-arm/native). Every function returns 0, or the kind of
     /// error: <see cref="Check"/> throws the matching .NET exception.
     /// </summary>
@@ -53,5 +53,21 @@ namespace GHIElectronics.Endpoint.Core.Internal {
 
         [LibraryImport(Library, EntryPoint = "endpoint_storage_unmount")]
         public static partial int StorageUnmount(nint hdc);
+
+        // USB host: the callback (context, status, device id, type, vendor id, product id, device name,
+        // manufacturer, product, serial number) runs on the library's USB thread
+
+        [LibraryImport(Library, EntryPoint = "endpoint_usbhost_create")]
+        public static partial int UsbHostCreate(delegate* unmanaged<nint, int, uint, int, int, int, byte*, byte*, byte*, byte*, void> callback,
+                                                nint context, out nint controller);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_usbhost_dispose")]
+        public static partial int UsbHostDispose(nint controller);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_usbhost_enable")]
+        public static partial int UsbHostEnable(nint controller);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_usbhost_disable")]
+        public static partial int UsbHostDisable(nint controller);
     }
 }

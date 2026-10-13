@@ -119,6 +119,15 @@ int endpoint_storage_unmount(intptr_t hdc);
 int endpoint_driveinfo_get(const char* path, char* format, int formatSize, int* driveType, int* isReady,
                            int64_t* totalSize, int64_t* totalFreeSpace, int64_t* availableFreeSpace);
 
+// USB host: devices connected and disconnected
+typedef void (*endpoint_usbhost_callback)(void* context, int status, uint32_t id, int type, int vendorId,
+                                          int productId, const char* deviceName, const char* manufacturer,
+                                          const char* product, const char* serialNumber);
+int endpoint_usbhost_create(endpoint_usbhost_callback callback, void* context, void** controller);
+int endpoint_usbhost_dispose(void* controller);
+int endpoint_usbhost_enable(void* controller);
+int endpoint_usbhost_disable(void* controller);
+
 #ifdef __cplusplus
 }
 #endif

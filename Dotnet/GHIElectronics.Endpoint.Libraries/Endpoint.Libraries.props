@@ -5,7 +5,7 @@
 
   <PropertyGroup>
     <!-- One version for every library: change it here for a release -->
-    <EndpointLibrariesVersion>0.2.1-beta</EndpointLibrariesVersion>
+    <EndpointLibrariesVersion>0.2.2-beta</EndpointLibrariesVersion>
 
     <TargetFramework>net10.0</TargetFramework>
     <LangVersion>latest</LangVersion>

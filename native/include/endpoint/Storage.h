@@ -29,7 +29,8 @@
 
 namespace GHIElectronics::Endpoint::Devices::Storage {
 
-enum class DeviceConnectionStatus { Disconnected = 0, Connected = 1, Bad = 2 };  // Bad: no file system the board reads
+// Core::DeviceConnectionStatus (Bad: no file system the board reads)
+using DeviceConnectionStatus = Core::DeviceConnectionStatus;
 
 class DeviceConnectionEventArgs {
 public:

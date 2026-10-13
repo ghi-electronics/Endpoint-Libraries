@@ -100,6 +100,13 @@ private:
     int lastId_ = 0;
 };
 
+// A device connected or disconnected (StorageController, UsbHostController)
+enum class DeviceConnectionStatus {
+    Disconnected = 0,
+    Connected = 1,
+    Bad = 2,  // a drive with no file system the board reads (format it as FAT32 or exFAT)
+};
+
 namespace detail {
 
 // Throws the error libendpoint reported (its kind and message)

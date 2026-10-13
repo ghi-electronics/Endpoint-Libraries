@@ -5,6 +5,7 @@ GHIElectronics.Endpoint.Core.
     from GHIElectronics.Endpoint.Core import EPM815
 """
 
+from ._connection import DeviceConnectionStatus
 from ._epm815 import EPM815
 from ._errors import (
     ArgumentException,
@@ -18,6 +19,7 @@ from ._errors import (
 )
 
 __all__ = [
+    "DeviceConnectionStatus",
     "EPM815",
     "ArgumentException",
     "ArgumentOutOfRangeException",

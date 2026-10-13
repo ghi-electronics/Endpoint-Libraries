@@ -10,11 +10,13 @@
 #include <cmath>
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <functional>
 #include <mutex>
 #include <string>
 #include <thread>
+#include <type_traits>
 #include <vector>
 
 using namespace GHIElectronics::Endpoint::Core;
@@ -269,6 +271,37 @@ int main() {
         Check(!Storage::DriveInfo("/no/such/folder").IsReady(), "a folder that does not exist is not ready");
         usb.Dispose();
         Throws<ObjectDisposedException>([&] { usb.Enable(); }, "Enable after Dispose");
+        // Core's status is the one Storage uses
+        static_assert(std::is_same_v<Storage::DeviceConnectionStatus, DeviceConnectionStatus>);
+    }
+
+    std::printf("=== USB host (lists what is plugged in)\n");
+    {
+        using namespace UsbHost;
+        auto host = UsbHostController::GetDefault();
+        std::mutex mutex;
+        std::vector<UsbDeviceConnectionEventArgs> things;
+        host.OnConnectionChangedEvent += [&](UsbHostController&, const UsbDeviceConnectionEventArgs& e) {
+            std::lock_guard lock(mutex);
+            things.push_back(e);
+        };
+        host.Enable();
+        std::this_thread::sleep_for(1s);
+        std::lock_guard lock(mutex);
+        bool allConnected = !things.empty(), networksThere = true;
+        for (const auto& e : things) {
+            std::printf("      #%u type %d %-22s %04X:%04X '%s' '%s'\n", e.Id(), static_cast<int>(e.Type()),
+                        e.DeviceName().c_str(), e.VendorId(), e.ProductId(), e.Manufacturer().c_str(),
+                        e.Product().c_str());
+            allConnected = allConnected && e.DeviceStatus() == DeviceConnectionStatus::Connected && e.Id() > 0;
+            if (e.Type() == DeviceType::Network) {
+                networksThere = networksThere && std::filesystem::exists("/sys/class/net/" + e.DeviceName());
+            }
+        }
+        Check(allConnected, std::to_string(things.size()) + " USB things connected, each with an Id");
+        Check(networksThere, "network adapters are interfaces");
+        host.Dispose();
+        Throws<ObjectDisposedException>([&] { host.Enable(); }, "Enable after Dispose");
     }
 
     std::printf("\n%s\n", failures == 0 ? "ALL PASSED" : (std::to_string(failures) + " FAILED").c_str());

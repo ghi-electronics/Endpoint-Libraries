@@ -1,17 +1,15 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <Import Project="..\Endpoint.Libraries.props" />
 
   <PropertyGroup>
     <PackageId>GHIElectronics.Endpoint.Devices.UsbHost</PackageId>
-    <Description>The USB host driver for Endpoint.</Description>
-    <Nullable>disable</Nullable>
+    <Description>Endpoint's USB devices: connected and disconnected events, what each device is and its port or network interface.</Description>
+    <Nullable>enable</Nullable>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\GHIElectronics.Endpoint.Core\GHIElectronics.Endpoint.Core.csproj" />
-    <ProjectReference Include="..\GHIElectronics.Endpoint.Devices.Usb\GHIElectronics.Endpoint.Devices.Usb.csproj" />
-    <ProjectReference Include="..\GHIElectronics.Endpoint.Devices.Camera\GHIElectronics.Endpoint.Devices.Camera.csproj" />
   </ItemGroup>
 
 </Project>

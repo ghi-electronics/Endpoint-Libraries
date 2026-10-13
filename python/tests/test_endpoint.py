@@ -12,8 +12,8 @@ import threading
 import time
 
 from GHIElectronics.Endpoint.Core import (EPM815, ArgumentException, ArgumentOutOfRangeException,
-                                          InvalidOperationException, IOException, NotImplementedException,
-                                          NotSupportedException, ObjectDisposedException)
+                                          DeviceConnectionStatus, InvalidOperationException, IOException,
+                                          NotImplementedException, NotSupportedException, ObjectDisposedException)
 from GHIElectronics.Endpoint.Devices.Adc import AdcController
 from GHIElectronics.Endpoint.Devices.Dac import DacController
 from GHIElectronics.Endpoint.Devices.Gpio import GpioController, PinEventTypes, PinMode, PinValue
@@ -21,8 +21,9 @@ from GHIElectronics.Endpoint.Devices.I2c import I2cConnectionSettings, I2cDevice
 from GHIElectronics.Endpoint.Devices.Pwm import PwmChannel
 from GHIElectronics.Endpoint.Devices.Rtc import BatteryChargeMode, RtcController
 from GHIElectronics.Endpoint.Devices.Spi import SpiConnectionSettings, SpiDevice, SpiMode
-from GHIElectronics.Endpoint.Devices.Storage import (DeviceConnectionStatus, DriveInfo, DriveType, FileSystem,
-                                                StorageController)
+from GHIElectronics.Endpoint.Devices import Storage
+from GHIElectronics.Endpoint.Devices.Storage import DriveInfo, DriveType, FileSystem, StorageController
+from GHIElectronics.Endpoint.Devices.UsbHost import DeviceType, UsbHostController
 from GHIElectronics.Endpoint.Devices.Watchdog import WatchdogController
 
 failures = 0
@@ -241,6 +242,24 @@ check(DriveInfo("/data").DriveFormat == "ext4" and DriveInfo("/data").IsReady, '
 check(not DriveInfo("/no/such/folder").IsReady, "a folder that does not exist is not ready")
 usb.Dispose()
 raises(ObjectDisposedException, usb.Enable, "Enable after Dispose")
+check(Storage.DeviceConnectionStatus is DeviceConnectionStatus, "Storage's DeviceConnectionStatus is Core's")
+
+print("=== USB host (lists what is plugged in)")
+host = UsbHostController.GetDefault()
+things = []
+host.OnConnectionChangedEvent += lambda sender, e: things.append(e)
+host.Enable()
+time.sleep(1)
+for e in things:
+    print(f"      #{e.Id} {e.Type.name:<11} {e.DeviceName:<22} {e.VendorId:04X}:{e.ProductId:04X} "
+          f"{e.Manufacturer!r} {e.Product!r}")
+check(things and all(e.DeviceStatus == DeviceConnectionStatus.Connected for e in things),
+      f"{len(things)} USB things connected")
+check(all(isinstance(e.Type, DeviceType) and e.Id > 0 for e in things), "each has a DeviceType and an Id")
+nets = [e.DeviceName for e in things if e.Type == DeviceType.Network]
+check(all(os.path.exists(f"/sys/class/net/{name}") for name in nets), f"network adapters are interfaces: {nets}")
+host.Dispose()
+raises(ObjectDisposedException, host.Enable, "Enable after Dispose")
 
 print()
 print("ALL PASSED" if failures == 0 else f"{failures} FAILED")

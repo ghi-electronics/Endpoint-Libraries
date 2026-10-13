@@ -1,8 +1,8 @@
 """SD cards and USB drives of Endpoint, with the same API as .NET's
 GHIElectronics.Endpoint.Devices.Storage:
 
-    from GHIElectronics.Endpoint.Core import EPM815
-    from GHIElectronics.Endpoint.Devices.Storage import DeviceConnectionStatus, FileSystem, StorageController
+    from GHIElectronics.Endpoint.Core import EPM815, DeviceConnectionStatus
+    from GHIElectronics.Endpoint.Devices.Storage import FileSystem, StorageController
 
     usb = StorageController.FromName(EPM815.StorageController.UsbHostMassStorage)
 
@@ -25,19 +25,13 @@ import ctypes
 import pathlib
 from enum import IntEnum
 
+from GHIElectronics.Endpoint.Core import DeviceConnectionStatus
 from GHIElectronics.Endpoint.Core._errors import IOException
 from GHIElectronics.Endpoint.Core._event import Event
 from GHIElectronics.Endpoint.Core._native import StorageCallback, native
 
 __all__ = ["DeviceConnectionEventArgs", "DeviceConnectionStatus", "DriveInfo", "DriveType", "FileSystem",
            "StorageController"]
-
-
-class DeviceConnectionStatus(IntEnum):
-    Disconnected = 0
-    Connected = 1
-    Bad = 2
-    """Plugged in, but with no file system the board reads (format it as FAT32 or exFAT)"""
 
 
 class DriveType(IntEnum):

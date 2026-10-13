@@ -1,15 +1,8 @@
 using System.Runtime.InteropServices;
+using GHIElectronics.Endpoint.Core;
 using GHIElectronics.Endpoint.Core.Internal;
 
 namespace GHIElectronics.Endpoint.Devices.Storage {
-    public enum DeviceConnectionStatus {
-        Disconnected = 0,
-        Connected = 1,
-
-        /// <summary>Plugged in, but with no file system the board reads (format it as FAT32 or exFAT)</summary>
-        Bad = 2,
-    }
-
     public sealed class DeviceConnectionEventArgs : EventArgs {
         internal DeviceConnectionEventArgs(DeviceConnectionStatus deviceStatus, IntPtr hdc, string volumeLabel) {
             this.DeviceStatus = deviceStatus;

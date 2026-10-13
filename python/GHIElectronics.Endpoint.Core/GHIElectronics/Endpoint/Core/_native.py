@@ -23,6 +23,10 @@ GpioCallback = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_int, ctypes.c_in
 # Called on libendpoint's storage thread: (context, drive handle, status, volume label)
 StorageCallback = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_ssize_t, ctypes.c_int, ctypes.c_char_p)
 _hdc = ctypes.c_ssize_t
+# Called on libendpoint's USB thread: (context, status, device id, type, vendor id, product id,
+# device name, manufacturer, product, serial number)
+UsbHostCallback = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_int, ctypes.c_uint32, ctypes.c_int, ctypes.c_int,
+                                   ctypes.c_int, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p, ctypes.c_char_p)
 
 _FUNCTIONS = {
     "gpio_create": [_out_handle],
@@ -101,6 +105,10 @@ _FUNCTIONS = {
     "storage_flush": [_hdc],
     "storage_unmount": [_hdc],
     "driveinfo_get": [_text, _buffer, _int, _out_int, _out_int, _out_int64, _out_int64, _out_int64],
+    "usbhost_create": [UsbHostCallback, ctypes.c_void_p, _out_handle],
+    "usbhost_dispose": [_handle],
+    "usbhost_enable": [_handle],
+    "usbhost_disable": [_handle],
 }
 
 
