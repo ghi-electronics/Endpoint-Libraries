@@ -1,4 +1,4 @@
-"""Network on Endpoint, by type (Ethernet, WiFi, PcShared) instead of
+"""Network on Endpoint, by type (Ethernet, WiFi, UsbTethered) instead of
 system identifiers (eth0, wlan0, usb0) that change with plug order. Status
 - addresses, link state, DNS, speed - is the standard Python surface
 (``socket``, ``ipaddress``, parsing ``/proc/net/route`` or ``ip``). This
@@ -25,7 +25,7 @@ class NetworkType(IntEnum):
 
     Ethernet = 0
     Wifi = 1
-    PcShared = 2
+    UsbTethered = 2
 
 
 class NetworkController:

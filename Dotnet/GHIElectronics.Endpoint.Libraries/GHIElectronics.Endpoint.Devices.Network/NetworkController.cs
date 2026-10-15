@@ -45,7 +45,7 @@ namespace GHIElectronics.Endpoint.Devices.Network {
             this.sectionName = type switch {
                 NetworkType.Ethernet => "ethernet",
                 NetworkType.Wifi => "wifi",
-                NetworkType.PcShared => "pcShared",
+                NetworkType.UsbTethered => "usbTethered",
                 _ => throw new ArgumentOutOfRangeException(nameof(type)),
             };
         }

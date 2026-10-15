@@ -14,7 +14,7 @@
 // wpa_supplicant for WiFi, writes DNS to /etc/resolv.conf. Throws on failure.
 //
 // Disable() stops udhcpc and brings the interface down. Never touches the
-// board's USB gadget interface (usb0 / PcShared); that is owned by
+// board's USB gadget interface (usb0 / UsbTethered); that is owned by
 // S40network and sits at 192.168.82.2 for endpoint-cli / SSH to work.
 
 namespace GHIElectronics::Endpoint::Internal::Network {
@@ -22,7 +22,7 @@ namespace GHIElectronics::Endpoint::Internal::Network {
 enum class Type : int {
     Ethernet = 0,
     Wifi = 1,
-    PcShared = 2,
+    UsbTethered = 2,
     Ignore = -1,
 };
 
@@ -35,7 +35,7 @@ void Enable(Type type);
 
 // Stops udhcpc and brings the interface of the given type down. Safe to
 // call when not enabled or when no interface is present (no-op in those
-// cases). Refuses to touch PcShared (usb0) link state - that interface
+// cases). Refuses to touch UsbTethered (usb0) link state - that interface
 // is owned by the system's network scripts.
 void Disable(Type type);
 

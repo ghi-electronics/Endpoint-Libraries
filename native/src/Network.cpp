@@ -63,7 +63,7 @@ Type ClassifyInterface(const std::string& iface) {
     }
     std::string dev = DeviceLink(iface);
     if (std::strstr(dev.c_str(), "usb-ffs") || std::strstr(dev.c_str(), "/gadget")) {
-        return Type::PcShared;
+        return Type::UsbTethered;
     }
     std::ifstream typefile(base + "/type");
     int kernelType = 0;
@@ -293,21 +293,21 @@ const char* SectionKey(Type type) {
     switch (type) {
         case Type::Ethernet: return "ethernet";
         case Type::Wifi: return "wifi";
-        case Type::PcShared: return "pcShared";
+        case Type::UsbTethered: return "usbTethered";
         default: return "";
     }
 }
 
 // Default-route priority between kinds. Lowest metric wins when more than
 // one interface has a default route (standard Linux routing semantics):
-//   ethernet (100) < wifi (200) < pcShared (300)
+//   ethernet (100) < wifi (200) < usbTethered (300)
 // So when the user enables both ethernet and wifi, ethernet carries outbound
 // traffic. Promise from [[feedback-no-auto-network]] / usb-host-design docs.
 int MetricForType(Type type) {
     switch (type) {
         case Type::Ethernet: return 100;
         case Type::Wifi: return 200;
-        case Type::PcShared: return 300;
+        case Type::UsbTethered: return 300;
         default: return 1000;
     }
 }
@@ -380,10 +380,22 @@ void SetDefaultRouteMetric(const std::string& iface, int metric) {
 
 }  // namespace
 
-std::string GetInterfaceName(Type wanted) {
-    // Consult /config/network.json for a MAC filter: when the user has
-    // pinned the controller to a specific adapter (e.g. one of several
-    // ethernet adapters: built-in PHY vs USB adapter), honour that first.
+// Returns true if the interface currently has IFF_UP set (admin up). After
+// a successful `ip link set <iface> up`, this flag is set. A dead netdev
+// (e.g. STM32 ethernet whose PHY failed to attach) rejects "set up" and the
+// flag stays clear, so we can detect "can this interface actually be
+// enabled?" by trying and then checking.
+bool IsAdminUp(const std::string& iface) {
+    std::ifstream f("/sys/class/net/" + iface + "/flags");
+    unsigned flags = 0;
+    f >> std::hex >> flags;
+    return (flags & 0x1u) != 0;  // IFF_UP
+}
+
+// Returns every interface of the given type, in alphabetical order of their
+// system identifiers. Honours the MAC filter from /config/network.json if
+// set: only interfaces with that MAC are returned.
+std::vector<std::string> GetMatchingInterfaces(Type wanted) {
     std::string preferredMac;
     try {
         nlohmann::json config = ReadConfig();
@@ -392,79 +404,150 @@ std::string GetInterfaceName(Type wanted) {
         std::transform(preferredMac.begin(), preferredMac.end(),
                        preferredMac.begin(), ::tolower);
     } catch (...) {
-        // If config is unreadable we fall through to the first-match path.
     }
 
+    std::vector<std::string> all;
     DIR* dir = opendir("/sys/class/net");
-    if (dir == nullptr) return "";
-    std::string firstMatch;
-    std::string macMatch;
+    if (dir == nullptr) return all;
     while (dirent* entry = readdir(dir)) {
         std::string name = entry->d_name;
         if (name == "." || name == "..") continue;
         if (ClassifyInterface(name) != wanted) continue;
-        if (firstMatch.empty()) firstMatch = name;
-        if (!preferredMac.empty() && ReadMac(name) == preferredMac) {
-            macMatch = name;
-            break;
-        }
+        if (!preferredMac.empty() && ReadMac(name) != preferredMac) continue;
+        all.push_back(name);
     }
     closedir(dir);
+    std::sort(all.begin(), all.end());
+    return all;
+}
 
-    // Pinned by MAC and found it: use it. Pinned but not found: return
-    // empty (the user explicitly asked for that adapter and it is not
-    // present; Enable will then throw with a clear "not present" message).
-    if (!preferredMac.empty()) {
-        return macMatch;
+std::string GetInterfaceName(Type wanted) {
+    // Prefer an interface that is admin-UP (one Enable() previously
+    // succeeded on, or one some other process brought up). This keeps
+    // Name consistent with the interface Enable() actually chose when
+    // more than one netdev of this kind exists and the first one in
+    // alphabetical order could not be enabled (e.g. a dead built-in PHY
+    // on a board where a USB adapter is the real ethernet).
+    auto candidates = GetMatchingInterfaces(wanted);
+    for (const auto& iface : candidates) {
+        if (IsAdminUp(iface)) {
+            return iface;
+        }
     }
-    return firstMatch;
+    return candidates.empty() ? std::string{} : candidates.front();
+}
+
+// UsbTethered is route-only: the usb0 interface is owned by S40network (static
+// 192.168.82.2 for endpoint-cli / SSH), so the applier must never touch its
+// link state. "Enabling" UsbTethered just adds a default route via the host PC's
+// gateway (192.168.82.1 by convention, matching our board's static 192.168.82.2);
+// "Disabling" removes that route. The usb0 interface stays up either way.
+constexpr const char* kUsbTetheredGateway = "192.168.82.1";
+
+void EnableUsbTethered() {
+    std::string iface = GetInterfaceName(Type::UsbTethered);
+    if (iface.empty()) {
+        throw EndpointError(ErrorKind::InvalidOperation,
+                            "no usbTethered interface is currently present");
+    }
+    char iface_buf[IFNAMSIZ];
+    std::snprintf(iface_buf, sizeof iface_buf, "%s", iface.c_str());
+    char metric_buf[16];
+    std::snprintf(metric_buf, sizeof metric_buf, "%d", MetricForType(Type::UsbTethered));
+
+    // Clear any existing default via this interface so re-Enable is idempotent.
+    char* del_argv[] = {const_cast<char*>("ip"), const_cast<char*>("route"),
+                        const_cast<char*>("del"), const_cast<char*>("default"),
+                        const_cast<char*>("dev"), iface_buf, nullptr};
+    RunAndWait("/sbin/ip", del_argv);
+
+    char* add_argv[] = {const_cast<char*>("ip"), const_cast<char*>("route"),
+                        const_cast<char*>("add"), const_cast<char*>("default"),
+                        const_cast<char*>("via"), const_cast<char*>(kUsbTetheredGateway),
+                        const_cast<char*>("dev"), iface_buf,
+                        const_cast<char*>("metric"), metric_buf, nullptr};
+    RunAndWait("/sbin/ip", add_argv);
+
+    // UsbTethered has no DHCP, so no DNS is set up for us. Point /etc/resolv.conf
+    // at the PC (Windows ICS runs a DNS proxy there) with a public fallback
+    // in case the user is using a NAT setup without an on-host DNS proxy.
+    std::ofstream resolv("/etc/resolv.conf");
+    resolv << "nameserver " << kUsbTetheredGateway << '\n';
+    resolv << "nameserver 8.8.8.8\n";
+}
+
+void DisableUsbTethered() {
+    std::string iface = GetInterfaceName(Type::UsbTethered);
+    if (iface.empty()) return;
+    char iface_buf[IFNAMSIZ];
+    std::snprintf(iface_buf, sizeof iface_buf, "%s", iface.c_str());
+    char* argv[] = {const_cast<char*>("ip"), const_cast<char*>("route"),
+                    const_cast<char*>("del"), const_cast<char*>("default"),
+                    const_cast<char*>("via"), const_cast<char*>(kUsbTetheredGateway),
+                    const_cast<char*>("dev"), iface_buf, nullptr};
+    RunAndWait("/sbin/ip", argv);
+}
+
+bool UsbTetheredRouteExists() {
+    std::string iface = GetInterfaceName(Type::UsbTethered);
+    if (iface.empty()) return false;
+    std::string out = RunAndCapture("/sbin/ip -4 route show default dev " + iface);
+    return !out.empty();
 }
 
 void Enable(Type type) {
-    // The USB gadget interface (usb0 / PcShared) is owned by S40network with
-    // a static 192.168.82.2 so endpoint-cli / SSH work. Enabling it via us
-    // would mean tearing down and reconfiguring that link, which breaks
-    // every PC tool at once. Routing-only pcShared (default-route via the
-    // host PC's gateway) will be a separate feature later.
-    if (type == Type::PcShared) {
-        throw EndpointError(ErrorKind::NotSupported,
-                            "PcShared network control is not yet implemented");
+    if (type == Type::UsbTethered) {
+        EnableUsbTethered();
+        return;
     }
 
-    std::string iface = GetInterfaceName(type);
-    if (iface.empty()) {
+    // Candidates for this type, honouring the MAC pin from network.json
+    // if set. On a board with a dead built-in PHY and a working USB
+    // ethernet adapter plugged in, both netdevs exist; we try each in
+    // alphabetical order and use the first one `ip link set up` succeeds
+    // on, so the user does not need to pin a MAC just to work around a
+    // non-functional netdev.
+    auto candidates = GetMatchingInterfaces(type);
+    if (candidates.empty()) {
         throw EndpointError(ErrorKind::InvalidOperation,
                             std::string("no ") + SectionKey(type) +
                             " interface is currently present");
     }
+
     nlohmann::json config = ReadConfig();
     nlohmann::json section = JsonObject(config, SectionKey(type));
 
-    // MAC filter: if set, controller is for a specific adapter
-    std::string required_mac = JsonString(section, "mac");
-    if (!required_mac.empty()) {
-        std::transform(required_mac.begin(), required_mac.end(),
-                       required_mac.begin(), ::tolower);
-        if (ReadMac(iface) != required_mac) {
-            throw EndpointError(ErrorKind::InvalidOperation,
-                                "the present " + std::string(SectionKey(type)) +
-                                " interface does not match the mac in /config/network.json");
-        }
-    }
-
+    // For WiFi, wpa_supplicant must be started per interface. Needs ssid.
+    std::string ssid, password, security;
     if (type == Type::Wifi) {
-        std::string ssid = JsonString(section, "ssid");
+        ssid = JsonString(section, "ssid");
         if (ssid.empty()) {
             throw EndpointError(ErrorKind::InvalidOperation,
                                 "wifi ssid is empty in /config/network.json");
         }
-        std::string password = JsonString(section, "password");
-        std::string security = JsonString(section, "security");
+        password = JsonString(section, "password");
+        security = JsonString(section, "security");
         if (security.empty()) security = "wpa2";
-        StartWpaSupplicant(iface, ssid, password, security);
     }
 
-    LinkSet(iface, "up");
+    std::string iface;
+    for (const auto& candidate : candidates) {
+        if (type == Type::Wifi) {
+            StartWpaSupplicant(candidate, ssid, password, security);
+        }
+        LinkSet(candidate, "up");
+        usleep(100 * 1000);  // let the kernel update flags
+        if (IsAdminUp(candidate)) {
+            iface = candidate;
+            break;
+        }
+        // This candidate rejected admin-up (dead PHY etc.); try the next.
+    }
+    if (iface.empty()) {
+        throw EndpointError(ErrorKind::InvalidOperation,
+                            std::string("no ") + SectionKey(type) +
+                            " interface could be brought up");
+    }
 
     int metric = MetricForType(type);
     if (JsonBool(section, "dhcp", true)) {
@@ -484,8 +567,9 @@ void Enable(Type type) {
 }
 
 void Disable(Type type) {
-    if (type == Type::PcShared) {
-        return;  // never touch usb0; see Enable()
+    if (type == Type::UsbTethered) {
+        DisableUsbTethered();
+        return;
     }
     std::string iface = GetInterfaceName(type);
     if (iface.empty()) return;
@@ -494,6 +578,13 @@ void Disable(Type type) {
 }
 
 bool IsEnabled(Type type) {
+    // UsbTethered's usb0 is always admin-up (owned by S40network) regardless of
+    // whether we're routing through it. For UsbTethered, "enabled" means our
+    // default route exists; for ethernet / wifi, it means the interface is
+    // admin-up (what Enable() does to it).
+    if (type == Type::UsbTethered) {
+        return UsbTetheredRouteExists();
+    }
     std::string iface = GetInterfaceName(type);
     if (iface.empty()) return false;
     std::ifstream f("/sys/class/net/" + iface + "/flags");
@@ -505,6 +596,16 @@ bool IsEnabled(Type type) {
 bool IsConnected(Type type) {
     std::string iface = GetInterfaceName(type);
     if (iface.empty()) return false;
+
+    // Physical link must be up (cable plugged for ethernet, associated for
+    // WiFi). Without this, a stale DHCP lease would make us report
+    // "connected" after the cable is pulled.
+    std::ifstream cf("/sys/class/net/" + iface + "/carrier");
+    int carrier = 0;
+    cf >> carrier;
+    if (carrier != 1) return false;
+
+    // And must have an IPv4 address.
     ifaddrs* list = nullptr;
     if (getifaddrs(&list) != 0) return false;
     bool found = false;

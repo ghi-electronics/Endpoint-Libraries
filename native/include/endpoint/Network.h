@@ -1,4 +1,4 @@
-// Network on Endpoint, by type (Ethernet, WiFi, PcShared) instead of system
+// Network on Endpoint, by type (Ethernet, WiFi, UsbTethered) instead of system
 // identifiers (eth0, wlan0, usb0) that change with plug order. Status -
 // addresses, link state, DNS, speed - is the standard C/C++ surface
 // (getifaddrs, /proc/net/route, etc.). This header answers one question:
@@ -26,12 +26,12 @@ namespace GHIElectronics::Endpoint::Devices::Network {
 // What a network interface is, as the user sees it in network.json. The
 // driver takes care of the hardware: an Ethernet value matches the board's
 // built-in PHY or any USB Ethernet adapter; a WiFi value matches a built-in
-// WiFi module or any WiFi USB stick; PcShared matches the USB connection
+// WiFi module or any WiFi USB stick; UsbTethered matches the USB connection
 // the board exposes to its host PC (CDC/RNDIS).
 enum class NetworkType : int {
     Ethernet = 0,
     Wifi = 1,
-    PcShared = 2,
+    UsbTethered = 2,
 };
 
 class NetworkController {

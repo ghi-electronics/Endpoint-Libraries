@@ -10,7 +10,7 @@
 
 using namespace GHIElectronics::Endpoint::Internal;
 
-// type: 0 = Ethernet, 1 = WiFi, 2 = PcShared.
+// type: 0 = Ethernet, 1 = WiFi, 2 = UsbTethered.
 
 ENDPOINT_API int endpoint_network_get_interface_name(int type, char* out_buf, int out_size) {
     return Call([&] {
