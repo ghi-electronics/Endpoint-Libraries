@@ -221,5 +221,43 @@ namespace GHIElectronics.Endpoint.Core.Internal {
 
         [LibraryImport(Library, EntryPoint = "endpoint_camera_set_control")]
         public static partial int CameraSetControl(nint camera, int control, int value);
+
+        // NetworkController. type is 0=Ethernet, 1=WiFi, 2=PcShared.
+        // Enable reads /config/network.json and applies synchronously in the
+        // caller's process: ip link up, udhcpc, wpa_supplicant, etc. Errors
+        // come back through the normal return code / endpoint_last_error.
+
+        [LibraryImport(Library, EntryPoint = "endpoint_network_get_interface_name")]
+        public static partial int NetworkGetInterfaceName(int type, byte* buffer, int size);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_network_enable")]
+        public static partial int NetworkEnable(int type);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_network_disable")]
+        public static partial int NetworkDisable(int type);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_network_is_enabled")]
+        public static partial int NetworkIsEnabled(int type, out int result);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_network_is_connected")]
+        public static partial int NetworkIsConnected(int type, out int result);
+
+        // Touchscreens. Callback runs on the device's own thread:
+        //   (context, eventType 0=Pressed/1=Released/2=Moved, pointCount, ids, xs, ys)
+
+        [LibraryImport(Library, EntryPoint = "endpoint_touch_find_default")]
+        public static partial int TouchFindDefault(byte* buffer, int size);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_touch_open", StringMarshalling = StringMarshalling.Utf8)]
+        public static partial int TouchOpen(string deviceName,
+                                            delegate* unmanaged<nint, int, int, int*, int*, int*, void> callback,
+                                            nint context, out nint device);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_touch_close")]
+        public static partial int TouchClose(nint device);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_touch_info")]
+        public static partial int TouchInfo(nint device, out int vendorId, out int productId,
+                                            out int connected, out int width, out int height);
     }
 }

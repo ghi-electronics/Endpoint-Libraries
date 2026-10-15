@@ -5,7 +5,8 @@
   <PropertyGroup>
     <PackageId>GHIElectronics.Endpoint.Devices.Network</PackageId>
     <Description>The network driver for Endpoint.</Description>
-    <Nullable>disable</Nullable>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>

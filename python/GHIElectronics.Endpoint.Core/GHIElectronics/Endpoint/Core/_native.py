@@ -32,6 +32,11 @@ UsbHostCallback = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_int, ctypes.c
 InputCallback = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int,
                                  ctypes.c_int, ctypes.c_int)
 
+# Called on the touchscreen's own thread: (context, event 0/1/2, point count, ids*, xs*, ys*)
+_int_p = ctypes.POINTER(ctypes.c_int)
+TouchCallback = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.c_int, ctypes.c_int,
+                                 _int_p, _int_p, _int_p)
+
 # Called once, on the device's own thread, when it is unplugged: (context)
 UnpluggedCallback = ctypes.CFUNCTYPE(None, ctypes.c_void_p)
 
@@ -162,6 +167,11 @@ _FUNCTIONS = {
     "camera_stop_streaming": [_handle],
     "camera_get_control": [_handle, _int, _out_int, _out_int, _out_int, _out_int, _out_int, _out_int],
     "camera_set_control": [_handle, _int, _int],
+    "network_get_interface_name": [_int, _buffer, _int],
+    "touch_find_default": [_buffer, _int],
+    "touch_open": [_text, TouchCallback, ctypes.c_void_p, _out_handle],
+    "touch_close": [_handle],
+    "touch_info": [_handle, _out_int, _out_int, _out_int, _out_int, _out_int],
 }
 
 

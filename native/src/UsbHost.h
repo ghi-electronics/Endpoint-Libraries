@@ -36,6 +36,7 @@ enum Type : int {
     Audio = 10,
     Network = 11,
     Bluetooth = 12,
+    Touch = 13,
 };
 
 enum Status : int { Disconnected = 0, Connected = 1 };

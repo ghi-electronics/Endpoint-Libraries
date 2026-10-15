@@ -53,6 +53,7 @@ enum class DeviceType {
     Audio = 10,       // a sound card: speaker, microphone ("hw:1"), for Media::SoundDevice
     Network = 11,     // an Ethernet, WiFi or cellular adapter: the network interface ("eth1", "wlan1")
     Bluetooth = 12,   // "hci0"
+    Touch = 13,       // "/dev/input/eventN": open it with Touch (built-in or USB touchscreen)
 };
 
 class UsbDeviceConnectionEventArgs {

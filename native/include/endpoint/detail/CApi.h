@@ -203,6 +203,25 @@ int endpoint_camera_get_control(void* camera, int control, int* supported, int* 
                                 int* defaultValue, int* value);
 int endpoint_camera_set_control(void* camera, int control, int value);
 
+// Network: translates a type (0=Ethernet, 1=WiFi, 2=PcShared) into the
+// system identifier for its interface ("eth0", "wlan0", "usb0", ...).
+// Fills outBuf with an empty string if no interface of that type is
+// currently present.
+int endpoint_network_get_interface_name(int type, char* outBuf, int outSize);
+
+// Touchscreens (built-in via display.json or USB via UsbHostController).
+// The callback runs on the device's own thread:
+//   (context, eventType 0=Pressed/1=Released/2=Moved, pointCount, ids[], xs[], ys[])
+// id arrays are valid for the duration of the callback only.
+typedef void (*endpoint_touch_callback)(void* context, int eventType, int pointCount,
+                                        const int* ids, const int* xs, const int* ys);
+int endpoint_touch_find_default(char* outBuf, int outSize);
+int endpoint_touch_open(const char* deviceName, endpoint_touch_callback callback,
+                        void* context, void** device);
+int endpoint_touch_close(void* device);
+int endpoint_touch_info(void* device, int* vendorId, int* productId, int* connected,
+                        int* width, int* height);
+
 #ifdef __cplusplus
 }
 #endif

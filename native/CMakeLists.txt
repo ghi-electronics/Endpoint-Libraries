@@ -35,7 +35,7 @@ set_source_files_properties(third-party/minimp3/minimp3.c PROPERTIES COMPILE_OPT
 # JPEG encoding (third-party/stb, public domain), for Camera with cameras that send raw YUYV
 target_sources(endpoint_objects PRIVATE third-party/stb/stb_image_write.c)
 set_source_files_properties(third-party/stb/stb_image_write.c PROPERTIES COMPILE_OPTIONS "-w")
-target_include_directories(endpoint_objects PUBLIC include PRIVATE src)
+target_include_directories(endpoint_objects PUBLIC include PRIVATE src third-party)
 target_compile_options(endpoint_objects PRIVATE -Wall -Wextra)
 # Release: no debug information (libendpoint.a is linked into customers' programs)
 target_compile_options(endpoint_objects PRIVATE $<$<CONFIG:Release>:-g0>)

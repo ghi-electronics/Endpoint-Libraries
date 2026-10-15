@@ -10,6 +10,7 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("GHIElectronics.Endpoint.Devices.Adc")]
 [assembly: InternalsVisibleTo("GHIElectronics.Endpoint.Devices.Dac")]
 [assembly: InternalsVisibleTo("GHIElectronics.Endpoint.Devices.Watchdog")]
+[assembly: InternalsVisibleTo("GHIElectronics.Endpoint.Devices.Network")]
 
 namespace GHIElectronics.Endpoint.Core {
     public static partial class EPM815 {

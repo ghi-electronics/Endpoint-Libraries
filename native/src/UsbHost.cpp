@@ -141,6 +141,8 @@ std::optional<Type> InputType(const std::string& inputFolder) {
     constexpr int REL_X = 0x00, REL_Y = 0x01, ABS_X = 0x00, ABS_Y = 0x01;
     // Joystick buttons 0x120-0x12f, then gamepad buttons to 0x13e
     constexpr int BTN_MOUSE = 0x110, BTN_JOYSTICK = 0x120, BTN_GAMEPAD_LAST = 0x13e;
+    // BTN_TOUCH identifies a touchscreen (as opposed to a mouse or joystick)
+    constexpr int BTN_TOUCH = 0x14a;
     Bits ev(inputFolder + "/capabilities/ev");
     Bits key(inputFolder + "/capabilities/key");
     Bits rel(inputFolder + "/capabilities/rel");
@@ -151,6 +153,11 @@ std::optional<Type> InputType(const std::string& inputFolder) {
             if (key.Has(button)) {
                 return Joystick;
             }
+        }
+        // Touchscreens have ABS_X/Y and BTN_TOUCH but no joystick/gamepad buttons.
+        // Multi-touch panels also emit ABS_MT_* events through this same device.
+        if (key.Has(BTN_TOUCH)) {
+            return Touch;
         }
     }
     if (ev.Has(EV_REL) && rel.Has(REL_X) && rel.Has(REL_Y) && key.Has(BTN_MOUSE)) {

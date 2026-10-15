@@ -43,6 +43,9 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
 
         /// <summary>"hci0"</summary>
         Bluetooth = 12,
+
+        /// <summary>"/dev/input/eventN": open it with Touch (built-in or USB touchscreen)</summary>
+        Touch = 13,
     }
 
     public sealed class UsbDeviceConnectionEventArgs : EventArgs {
