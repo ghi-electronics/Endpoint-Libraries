@@ -206,8 +206,40 @@ int endpoint_camera_set_control(void* camera, int control, int value);
 // Network: translates a type (0=Ethernet, 1=WiFi, 2=UsbTethered) into the
 // system identifier for its interface ("eth0", "wlan0", "usb0", ...).
 // Fills outBuf with an empty string if no interface of that type is
-// currently present.
+// currently present. Enable reads /config/network.json fresh every time
+// and applies synchronously in the caller's process.
 int endpoint_network_get_interface_name(int type, char* outBuf, int outSize);
+int endpoint_network_enable(int type);
+int endpoint_network_disable(int type);
+int endpoint_network_is_enabled(int type, int* result);
+int endpoint_network_is_connected(int type, int* result);
+
+// Persistent interface settings carried across the C boundary as a POD
+// struct. Empty strings mean "not set" (null in JSON). WiFi-only fields
+// (ssid/password/security) are ignored for non-WiFi types. The C++ and
+// Python wrappers marshal this into their typed Settings classes.
+#define ENDPOINT_NETWORK_MAX_DNS 8
+#define ENDPOINT_NETWORK_IP_SIZE 64
+#define ENDPOINT_NETWORK_MAC_SIZE 32
+#define ENDPOINT_NETWORK_SSID_SIZE 64
+#define ENDPOINT_NETWORK_PASSWORD_SIZE 128
+
+typedef struct {
+    int is_dhcp_enabled;
+    char address[ENDPOINT_NETWORK_IP_SIZE];
+    char subnet_mask[ENDPOINT_NETWORK_IP_SIZE];
+    char gateway[ENDPOINT_NETWORK_IP_SIZE];
+    char dns[ENDPOINT_NETWORK_MAX_DNS][ENDPOINT_NETWORK_IP_SIZE];
+    int dns_count;
+    char mac[ENDPOINT_NETWORK_MAC_SIZE];
+    // WiFi only; ignored for other types.
+    char ssid[ENDPOINT_NETWORK_SSID_SIZE];
+    char password[ENDPOINT_NETWORK_PASSWORD_SIZE];
+    int security;  // 0=None, 1=Wpa, 2=Wpa2, 3=Wpa3
+} endpoint_network_settings_t;
+
+int endpoint_network_get_interface_settings(int type, endpoint_network_settings_t* out);
+int endpoint_network_set_interface_settings(int type, const endpoint_network_settings_t* in);
 
 // Touchscreens (built-in via display.json or USB via UsbHostController).
 // The callback runs on the device's own thread:
