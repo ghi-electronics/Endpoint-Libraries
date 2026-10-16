@@ -1,16 +1,15 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <Import Project="..\Endpoint.Libraries.props" />
 
   <PropertyGroup>
     <PackageId>GHIElectronics.Endpoint.Devices.Display</PackageId>
     <Description>The display driver for Endpoint.</Description>
-    <Nullable>disable</Nullable>
-    <NoWarn>$(NoWarn);CS8618;CS0169;CS0219</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\GHIElectronics.Endpoint.Core\GHIElectronics.Endpoint.Core.csproj" />
-    <PackageReference Include="SkiaSharp.NativeAssets.Linux" Version="2.88.9" />
+    <!-- For the standard System.Drawing.Imaging.PixelFormat enum used by Flush. -->
+    <PackageReference Include="System.Drawing.Common" Version="9.0.0" />
   </ItemGroup>
 </Project>

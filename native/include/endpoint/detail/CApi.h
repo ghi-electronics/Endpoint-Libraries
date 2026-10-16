@@ -241,6 +241,64 @@ typedef struct {
 int endpoint_network_get_interface_settings(int type, endpoint_network_settings_t* out);
 int endpoint_network_set_interface_settings(int type, const endpoint_network_settings_t* in);
 
+// Display: the built-in Parallel panel connected to the SoC's LCD controller.
+// Programs talk to it through the DisplayController abstract class in each
+// language; this C layer only drives the one concrete transport (parallel
+// RGB panel via /dev/fb0). SPI/I2C panels are the customer's own code - they
+// subclass DisplayController and own the chip-specific init / pixel path.
+//
+// Enable reads /config/display.json, loads the panel driver (panel-simple)
+// and raises the backlight. Disable lowers backlight and unloads.
+// IsConnected is true when a /dev/fbN exists.
+int endpoint_display_enable(void);
+int endpoint_display_disable(void);
+int endpoint_display_is_enabled(int* result);
+
+#define ENDPOINT_DISPLAY_LOGO_SIZE 128
+#define ENDPOINT_DISPLAY_NAME_SIZE 32
+
+typedef struct {
+    int enable_at_boot;
+    int type;  // 0=None, 1=Parallel. Custom panels use None here and
+               // instantiate their own DisplayController subclass.
+
+    // Backlight (nullable: has_backlight=0 means "no backlight is controlled
+    // by the display controller - either there is no backlight or the user's
+    // own code drives it").
+    int has_backlight;
+    char backlight_gpio_chip[ENDPOINT_DISPLAY_NAME_SIZE];
+    int backlight_gpio_pin;
+    int backlight_active_polarity;  // 0=ActiveHigh (ON when GPIO is high),
+                                    // 1=ActiveLow (ON when GPIO is low).
+
+    // Logo filename on the config partition (empty = none).
+    char logo[ENDPOINT_DISPLAY_LOGO_SIZE];
+
+    // Parallel (RGB parallel panel; honored when type == 1).
+    int parallel_width;
+    int parallel_height;
+    int parallel_pixel_clock_hz;
+    int parallel_h_front_porch;
+    int parallel_h_back_porch;
+    int parallel_h_sync;
+    int parallel_v_front_porch;
+    int parallel_v_back_porch;
+    int parallel_v_sync;
+    int parallel_bits_per_pixel;
+    // DE (Data Enable) polarity:
+    //   0 = ActiveHigh (DE high while valid pixel data is on the bus)
+    //   1 = ActiveLow  (DE low while valid pixel data is on the bus)
+    int parallel_de_polarity;
+    // Edge of the pixel clock on which the panel latches data:
+    //   0 = Rising  (default; the SoC drives data on the falling edge, panel
+    //                samples on the rising edge)
+    //   1 = Falling (inverted; SoC drives on rising, panel samples on falling)
+    int parallel_pixel_clock_edge;
+} endpoint_display_settings_t;
+
+int endpoint_display_get_settings(endpoint_display_settings_t* out);
+int endpoint_display_set_settings(const endpoint_display_settings_t* in);
+
 // Touchscreens (built-in via display.json or USB via UsbHostController).
 // The callback runs on the device's own thread:
 //   (context, eventType 0=Pressed/1=Released/2=Moved, pointCount, ids[], xs[], ys[])

@@ -501,6 +501,23 @@ void Enable(Type type) {
         return;
     }
 
+    // Load the kernel driver(s) for this interface type on demand. The
+    // drivers are kernel modules so that boards which do not use network
+    // pay zero boot time; the first Enable() modprobes what is needed.
+    //  - stmmac_platform: STM32 SoC's built-in GMAC (RMII ethernet)
+    //  - usbnet / cdc_ether / ax88179_178a: USB ethernet dongles
+    // modprobe auto-resolves dependencies, so pulling in stmmac_platform
+    // brings in stmmac and phylink as well.
+    if (type == Type::Ethernet) {
+        for (const char* mod : {"stmmac_platform", "usbnet", "cdc_ether"}) {
+            char* argv[] = {const_cast<char*>("modprobe"),
+                            const_cast<char*>(mod), nullptr};
+            RunAndWait("/sbin/modprobe", argv);
+        }
+    }
+    // (WiFi driver loading is handled by wpa_supplicant / udhcpc paths
+    // further down; USB WiFi dongles bring their own drivers.)
+
     // Candidates for this type, honouring the MAC pin from network.json
     // if set. On a board with a dead built-in PHY and a working USB
     // ethernet adapter plugged in, both netdevs exist; we try each in

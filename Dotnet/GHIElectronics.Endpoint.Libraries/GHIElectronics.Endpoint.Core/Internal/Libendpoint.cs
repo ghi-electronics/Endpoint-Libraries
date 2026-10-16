@@ -242,6 +242,20 @@ namespace GHIElectronics.Endpoint.Core.Internal {
         [LibraryImport(Library, EntryPoint = "endpoint_network_is_connected")]
         public static partial int NetworkIsConnected(int type, out int result);
 
+        // DisplayController. One display per board, chosen by "type" in
+        // /config/display.json (none, nativeLcd, spi, i2c). Enable reads the
+        // JSON and applies synchronously in the caller's process (modprobe
+        // panel-simple + gpioset backlight for nativeLcd).
+
+        [LibraryImport(Library, EntryPoint = "endpoint_display_enable")]
+        public static partial int DisplayEnable();
+
+        [LibraryImport(Library, EntryPoint = "endpoint_display_disable")]
+        public static partial int DisplayDisable();
+
+        [LibraryImport(Library, EntryPoint = "endpoint_display_is_enabled")]
+        public static partial int DisplayIsEnabled(out int result);
+
         // Touchscreens. Callback runs on the device's own thread:
         //   (context, eventType 0=Pressed/1=Released/2=Moved, pointCount, ids, xs, ys)
 

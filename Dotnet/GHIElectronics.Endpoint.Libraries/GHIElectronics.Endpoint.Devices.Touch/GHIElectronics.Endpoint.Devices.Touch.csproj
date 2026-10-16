@@ -1,0 +1,13 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="..\Endpoint.Libraries.props" />
+
+  <PropertyGroup>
+    <PackageId>GHIElectronics.Endpoint.Devices.Touch</PackageId>
+    <Description>Touchscreen support for Endpoint. The Touch class is abstract: subclass it for your panel's chip (I2C, SPI, custom). Ships one concrete subclass, InputTouch, that wraps a kernel /dev/input/eventN (used for USB touchscreens).</Description>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GHIElectronics.Endpoint.Core\GHIElectronics.Endpoint.Core.csproj" />
+  </ItemGroup>
+</Project>

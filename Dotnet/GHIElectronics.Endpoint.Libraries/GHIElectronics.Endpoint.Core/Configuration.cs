@@ -11,6 +11,8 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("GHIElectronics.Endpoint.Devices.Dac")]
 [assembly: InternalsVisibleTo("GHIElectronics.Endpoint.Devices.Watchdog")]
 [assembly: InternalsVisibleTo("GHIElectronics.Endpoint.Devices.Network")]
+[assembly: InternalsVisibleTo("GHIElectronics.Endpoint.Devices.Display")]
+[assembly: InternalsVisibleTo("GHIElectronics.Endpoint.Devices.Touch")]
 
 namespace GHIElectronics.Endpoint.Core {
     public static partial class EPM815 {

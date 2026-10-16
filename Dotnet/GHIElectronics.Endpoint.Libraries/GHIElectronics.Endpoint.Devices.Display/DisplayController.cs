@@ -1,234 +1,402 @@
+#nullable enable
+// System.Drawing.Imaging.PixelFormat lives in System.Drawing.Common and is
+// annotated as Windows-only, but we only read the enum values (ints) - we
+// never touch the GDI+ Bitmap types that actually need Windows. Silence the
+// lint for the whole file.
+#pragma warning disable CA1416
+using System;
+using System.IO;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+
+using GHIElectronics.Endpoint.Core.Internal;
+
 namespace GHIElectronics.Endpoint.Devices.Display {
-    public class DisplayConfiguration {
-        public int Width { get; set; }
-        public int Height { get; set; }
-    }
-    /**<example>
-        <code>
+    using PixelFormat = System.Drawing.Imaging.PixelFormat;
 
-    using System.Device.Gpio;
-    using System.Device.Gpio.Drivers;
-    using GHIElectronics.Endpoint.Core;
-    using GHIElectronics.Endpoint.Devices.Display;
-    using SkiaSharp;
-    using EndpointDisplayTest.Properties;
+    /// <summary>
+    /// A display on the board. This class is abstract: the library ships one
+    /// concrete subclass, <see cref="ParallelDisplayController"/>, for the
+    /// SoC's parallel RGB panel into <c>/dev/fb0</c>. Customers wiring any
+    /// other kind of panel (SPI, I2C, custom) subclass this directly and
+    /// drive the hardware through the Core Spi/I2c/Gpio APIs. The abstract
+    /// contract is: open the panel on <see cref="Enable"/>, close it on
+    /// <see cref="Disable"/>, push pixels on <see cref="Flush(ReadOnlySpan{byte})"/>.
+    ///
+    /// <code>
+    /// using var display = DisplayController.GetDefault();
+    /// if (display != null) {
+    ///     display.Enable();
+    ///     display.ShowLogo();                              // optional
+    ///     display.Flush(bitmapBytes, PixelFormat.Format32bppArgb);
+    /// }
+    /// </code>
+    /// </summary>
+    public abstract class DisplayController : IDisposable {
+        private const string ConfigPath = "/config/display.json";
 
-    var backlightPort = EPM815.Gpio.Pin.PD14 /16;
-    var backlightPin = EPM815.Gpio.Pin.PD14 % 16;
+        /// <summary>Visible width of the panel in pixels.</summary>
+        public abstract int Width { get; }
 
-    var gpioDriver = new LibGpiodDriver((int)backlightPort);
-    var gpioController = new GpioController(PinNumberingScheme.Logical, gpioDriver);
-    gpioController.OpenPin(backlightPin, PinMode.Output);
-    gpioController.Write(backlightPin, PinValue.High); 
-    var screenWidth = 480;
-    var screenHeight = 272;
-    
-    SKBitmap bitmap = new SKBitmap(screenWidth, screenHeight, SKImageInfo.PlatformColorType, SKAlphaType.Premul);
-    bitmap.Erase(SKColors.Transparent);
+        /// <summary>Visible height of the panel in pixels.</summary>
+        public abstract int Height { get; }
 
-    var configuration = new FBDisplay.Configuration(){
-        Clock = 10000,
-        Width = 480,
-        Hsync_start = 480 + 2,
-        Hsync_end = 480 + 2 + 41,
-        Htotal = 480 + 2 + 41 + 2,
-        Height = 272,
-        Vsync_start = 272 + 2,
-        Vsync_end = 272 + 2 + 10,
-        Vtotal = 272 + 2 + 10 + 2,
+        /// <summary>True once the panel driver / init path has run and the panel is ready to receive pixels.</summary>
+        public abstract bool IsEnabled { get; }
 
-    };
-    var fbDisplay = new FBDisplay(configuration);
-    var displayController = new DisplayController(fbDisplay);
-    var imageWidth = 100;
-    var imageHeight = 67;
+        /// <summary>
+        /// Loads the panel driver / runs the init sequence. Throws if the
+        /// apply fails.
+        /// </summary>
+        public abstract void Enable();
 
-    while (true){
-        //Initialize Screen
-        using (var screen = new SKCanvas(bitmap)){
-            //Create Black Screen 
-            screen.DrawColor(SKColors.Black);
-            screen.Clear(SKColors.Black); //same thing but also erases anything else on the canvas first
+        /// <summary>Reverse of <see cref="Enable"/>. Safe to call when nothing is enabled.</summary>
+        public abstract void Disable();
 
-            // Draw Logo from Resources
-            var logo = Resources.logo;
-            var info = new SKImageInfo(imageWidth, imageHeight);
-            var sk_img = SKBitmap.Decode(logo, info);
-            screen.DrawBitmap(sk_img, 0, 200);
+        /// <summary>
+        /// Push a full-screen frame. Pixel format defaults to
+        /// <see cref="PixelFormat.Format16bppRgb565"/>.
+        /// </summary>
+        public void Flush(ReadOnlySpan<byte> pixels) =>
+            Flush(pixels, PixelFormat.Format16bppRgb565);
 
-            // Draw circle
-            using (SKPaint circle = new SKPaint()){
-                circle.Color = SKColors.Blue;
-                circle.IsAntialias = true;
-                circle.StrokeWidth = 15;
-                circle.Style = SKPaintStyle.Stroke;
-                screen.DrawCircle(410, 220, 30, circle); //arguments are x position, y position, radius, and paint
-            }
+        /// <summary>Push a full-screen frame in the given format.</summary>
+        public void Flush(ReadOnlySpan<byte> pixels, PixelFormat format) =>
+            Flush(pixels, format, 0, 0, Width, Height);
 
-            // Draw Oval
-            using (SKPaint oval = new SKPaint()){
-                oval.Style = SKPaintStyle.Stroke;
-                oval.Color = SKColors.Blue;
-                oval.StrokeWidth = 10;
-                screen.DrawOval(300, 20, 60, 10, oval);
-                oval.Style = SKPaintStyle.Fill;
-                oval.Color = SKColors.SkyBlue;
-                screen.DrawOval(300, 20, 60, 10, oval);
-            }
+        /// <summary>Push a region of the panel. The subclass handles any pixel-format conversion.</summary>
+        public abstract void Flush(ReadOnlySpan<byte> pixels, PixelFormat format,
+                                    int x, int y, int width, int height);
 
-            // Draw Line
-            float[] intervals = [10, 20, 10, 20, 5, 40,];//sets the dash intervals
-            using (SKPaint line = new SKPaint()){
-                line.Color = SKColors.Red;
-                line.IsAntialias = true;
-                line.StrokeWidth = 20;
-                line.Style = SKPaintStyle.Stroke;
-
-                //Rounds the ends of the line
-                line.StrokeCap = SKStrokeCap.Round;
-
-                //Creates dashes in line based on intervals array
-                line.PathEffect = SKPathEffect.CreateDash(intervals, 25);
-
-                // Create linear gradient from upper-left to lower-right
-                line.Shader = SKShader.CreateLinearGradient(
-                new SKPoint(0, 0),
-                new SKPoint(screenWidth, screenHeight),
-                new SKColor[] { SKColors.Red, SKColors.Blue },
-                new float[] { 0, 1 },
-                SKShaderTileMode.Repeat);
-                screen.DrawLine(0, 0, 400, 200, line);
-            }
-
-            //Using SkiaTypeface
-            byte[] fontfile = Resources.OldeEnglish;
-            Stream stream = new MemoryStream(fontfile);
-
-            using (SKPaint textPaint = new SKPaint())
-            using (SKTypeface tf = SKTypeface.FromStream(stream)){
-                textPaint.Color = SKColors.White;
-                textPaint.IsAntialias = true;
-                textPaint.StrokeWidth = 2;
-                textPaint.Style = SKPaintStyle.Stroke;
-
-                //SKFont Text - 
-                SKFont font = new SKFont();
-                font.Size = 40;
-                font.ScaleX = 2;
-                font.Typeface = tf;
-                SKTextBlob textBlob = SKTextBlob.Create("D", font);
-                screen.DrawText(textBlob, 10, 150, textPaint);
-            }
-
-            // Draw Basic text
-            using (SKPaint text = new SKPaint()){
-                text.Color = SKColors.Yellow;
-                text.IsAntialias = true;
-                text.StrokeWidth = 2;
-                text.Style = SKPaintStyle.Stroke;
-                screen.DrawText("Hello World", 20, 20, text);
-            }
-
-            // Draw text
-            using (SKPaint text = new SKPaint()){
-                text.Color = SKColors.Yellow;
-                text.IsAntialias = true;
-                text.StrokeWidth = 2;
-                text.Style = SKPaintStyle.Stroke;
-
-                //SKFont Text - 
-                SKFont font = new SKFont();
-                font.Size = 22;
-                font.ScaleX = 2;
-                SKTextBlob textBlob = SKTextBlob.Create("I am Yellow", font);
-                screen.DrawText(textBlob, 50, 100, text);
-            }
-
-            // Character Outlines
-            using (SKPaint textPaint = new SKPaint()){
-            // Set Style for the character outlines
-            textPaint.Style = SKPaintStyle.Stroke;
-
-            // Set TextSize 100x100
-            textPaint.TextSize = Math.Min(100, 100);
-
-            // Measure the text
-            SKRect textBounds = new SKRect();
-            textPaint.MeasureText("@", ref textBounds);
-
-            // Coordinates to center text on screen
-            float xText = screenWidth / 2 - textBounds.MidX;
-            float yText = screenHeight / 2 - textBounds.MidY;
-
-            // Get the path for the character outlines
-            using (SKPath textPath = textPaint.GetTextPath("@", xText, yText)){
-                // Create a new path for the outlines of the path
-                using (SKPath outlinePath = new SKPath()){
-                    // Convert the path to the outlines of the stroked path
-                    textPaint.StrokeWidth = 1;
-                    textPaint.GetFillPath(textPath, outlinePath);
-
-                    // Stroke that new path
-                    using (SKPaint outlinePaint = new SKPaint()){
-                        outlinePaint.Style = SKPaintStyle.Stroke;
-                        outlinePaint.StrokeWidth = 1;
-                        outlinePaint.Color = SKColors.Red;
-                        screen.DrawPath(outlinePath, outlinePaint);
-                    }
-                }
-            }
-
-            //Text along a path
-            const string text = "SKIASHARP library ENDPOINT uses ";
-
-            using (SKPath circularPath = new SKPath()){
-                float radius = 0.35f * Math.Min(screenWidth, screenHeight);
-                circularPath.AddCircle(screenWidth / 2, screenHeight / 2, radius);
-
-                using (SKPaint textPaint2 = new SKPaint()){
-                    textPaint2.TextSize = 100;
-                    float textWidth = textPaint2.MeasureText(text);
-                    textPaint.TextSize *= 2 * 3.14f * radius / textWidth;
-                    textPaint.Color = SKColors.Green;
-
-                    screen.DrawTextOnPath(text, circularPath, 0, 0, textPaint);
-                }
-            }
-
-            // Draw Italic text
-            using (SKPaint italicText = new SKPaint()){
-                SKFontStyle fontStyle = new SKFontStyle();
-                italicText.Color = SKColors.Yellow;
-                italicText.IsAntialias = true;
-                italicText.StrokeWidth = 2;
-                italicText.Style = SKPaintStyle.Stroke;
-                SKFont font2 = new SKFont(SKTypeface.Default, 12, 1, 0);
-                font2.Size = 22;
-                SKTextBlob textBlob = SKTextBlob.Create("ItalicFonts", font2);
-                screen.DrawText(textBlob, 200, 200, italicText);
-            }
-
-            // Flush to screen
-            var data = bitmap.Copy(SKColorType.Rgb565).Bytes;
-            displayController.Flush(data);
-            Thread.Sleep(1);
+        /// <summary>
+        /// Reads the <c>logo</c> filename from <c>/config/display.json</c>,
+        /// decodes the 24-bit BMP file from <c>/config</c>, and calls
+        /// <see cref="Flush(ReadOnlySpan{byte},PixelFormat,int,int,int,int)"/>
+        /// with it. No-op if the file is missing or not a 24-bit uncompressed BMP.
+        /// Virtual so a subclass can replace the behaviour (e.g. pre-convert
+        /// to the panel's native format once instead of on every call).
+        /// </summary>
+        public virtual void ShowLogo() {
+            string? name = GetSettings().Logo;
+            if (string.IsNullOrEmpty(name)) return;
+            if (!BmpReader.TryRead24bppBgr(Path.Combine("/config", name),
+                                           out byte[] pixels, out int w, out int h)) return;
+            Flush(pixels, PixelFormat.Format24bppRgb, 0, 0, Math.Min(w, Width), Math.Min(h, Height));
         }
-      }
+
+        public abstract void Dispose();
+
+        /// <summary>
+        /// Reads the built-in display's settings from <c>/config/display.json</c>.
+        /// Changes to the returned object do nothing until passed back to
+        /// <see cref="SetSettings"/>.
+        /// </summary>
+        public static DisplaySettings GetSettings() {
+            var config = LoadConfig();
+            return new DisplaySettings {
+                Type = ParseType(config["type"]?.GetValue<string>()),
+                EnableAtBoot = config["enableAtBoot"]?.GetValue<bool>() ?? false,
+                Logo = config["logo"]?.GetValue<string>(),
+                Backlight = ReadBacklight(config["backlight"]?.AsObject()),
+                Parallel = ReadParallel(config["parallel"]?.AsObject()),
+            };
+        }
+
+        /// <summary>
+        /// Writes the settings to <c>/config/display.json</c> (persisted
+        /// across reboots). Does NOT apply them to the live panel - call
+        /// <see cref="Enable"/> for that.
+        /// </summary>
+        public static void SetSettings(DisplaySettings settings) {
+            ArgumentNullException.ThrowIfNull(settings);
+
+            var config = LoadConfig();
+            config["version"] = 1;
+            config["enableAtBoot"] = settings.EnableAtBoot;
+            config["type"] = TypeToString(settings.Type);
+            config["logo"] = settings.Logo;
+            config["backlight"] = WriteBacklight(settings.Backlight);
+            config["parallel"] = WriteParallel(settings.Parallel);
+
+            // Drop keys from older firmware schemas so the file stays tidy.
+            config.Remove("nativeLcd");
+            config.Remove("spi");
+            config.Remove("i2c");
+            config.Remove("touch");
+
+            SaveConfig(config);
+        }
+
+        /// <summary>
+        /// The built-in display controller for this board, or null if
+        /// <c>/config/display.json</c> says the type is <see cref="DisplayType.None"/>.
+        /// Customers using a custom (SPI/I2C/other) panel instantiate their
+        /// own subclass of <see cref="DisplayController"/> directly instead.
+        /// </summary>
+        public static DisplayController? GetDefault() {
+            var s = GetSettings();
+            return s.Type == DisplayType.Parallel ? new ParallelDisplayController() : null;
+        }
+
+        // ------- helpers -------
+
+        private static JsonObject LoadConfig() {
+            if (!File.Exists(ConfigPath)) {
+                return new JsonObject { ["version"] = 1 };
+            }
+            using var stream = File.OpenRead(ConfigPath);
+            var node = JsonNode.Parse(stream);
+            return node?.AsObject() ?? new JsonObject { ["version"] = 1 };
+        }
+
+        private static void SaveConfig(JsonObject config) {
+            var tmp = ConfigPath + ".tmp";
+            var options = new JsonSerializerOptions { WriteIndented = true };
+            File.WriteAllText(tmp, config.ToJsonString(options));
+            File.Move(tmp, ConfigPath, overwrite: true);
+        }
+
+        private static DisplayType ParseType(string? s) => s?.ToLowerInvariant() switch {
+            "parallel" => DisplayType.Parallel,
+            _ => DisplayType.None,
+        };
+
+        private static string TypeToString(DisplayType t) => t switch {
+            DisplayType.Parallel => "parallel",
+            _ => "none",
+        };
+
+        private static BacklightSettings? ReadBacklight(JsonObject? o) {
+            if (o == null) return null;
+            var chip = o["gpioChip"]?.GetValue<string>();
+            var pin = o["gpioPin"]?.GetValue<int?>();
+            if (chip == null && pin == null) return null;
+            return new BacklightSettings {
+                GpioChip = chip,
+                GpioPin = pin,
+                ActivePolarity = ParsePolarity(o["activePolarity"]?.GetValue<string>()),
+            };
+        }
+
+        private static JsonObject WriteBacklight(BacklightSettings? b) =>
+            new() {
+                ["gpioChip"] = b?.GpioChip,
+                ["gpioPin"] = b?.GpioPin,
+                ["activePolarity"] = PolarityToString(b?.ActivePolarity ?? SignalPolarity.ActiveHigh),
+            };
+
+        private static SignalPolarity ParsePolarity(string? s) =>
+            s?.ToLowerInvariant() == "activelow" ? SignalPolarity.ActiveLow : SignalPolarity.ActiveHigh;
+
+        private static string PolarityToString(SignalPolarity p) =>
+            p == SignalPolarity.ActiveLow ? "activeLow" : "activeHigh";
+
+        private static ParallelLcdSettings? ReadParallel(JsonObject? o) {
+            if (o == null) return null;
+            return new ParallelLcdSettings {
+                Width = o["width"]?.GetValue<int>() ?? 0,
+                Height = o["height"]?.GetValue<int>() ?? 0,
+                PixelClockHz = o["pixelClockHz"]?.GetValue<int>() ?? 0,
+                HFrontPorch = o["hFrontPorch"]?.GetValue<int>() ?? 0,
+                HBackPorch = o["hBackPorch"]?.GetValue<int>() ?? 0,
+                HSync = o["hSync"]?.GetValue<int>() ?? 0,
+                VFrontPorch = o["vFrontPorch"]?.GetValue<int>() ?? 0,
+                VBackPorch = o["vBackPorch"]?.GetValue<int>() ?? 0,
+                VSync = o["vSync"]?.GetValue<int>() ?? 0,
+                BitsPerPixel = o["bitsPerPixel"]?.GetValue<int>() ?? 16,
+                DataEnablePolarity = (o["deActiveLow"]?.GetValue<bool>() ?? false)
+                    ? SignalPolarity.ActiveLow : SignalPolarity.ActiveHigh,
+                PixelClockEdge = (o["pixelClockFalling"]?.GetValue<bool>() ?? false)
+                    ? ClockEdge.Falling : ClockEdge.Rising,
+            };
+        }
+
+        private static JsonObject WriteParallel(ParallelLcdSettings? p) {
+            p ??= new ParallelLcdSettings();
+            return new JsonObject {
+                ["width"] = p.Width,
+                ["height"] = p.Height,
+                ["pixelClockHz"] = p.PixelClockHz,
+                ["hFrontPorch"] = p.HFrontPorch,
+                ["hBackPorch"] = p.HBackPorch,
+                ["hSync"] = p.HSync,
+                ["vFrontPorch"] = p.VFrontPorch,
+                ["vBackPorch"] = p.VBackPorch,
+                ["vSync"] = p.VSync,
+                ["bitsPerPixel"] = p.BitsPerPixel,
+                ["deActiveLow"] = p.DataEnablePolarity == SignalPolarity.ActiveLow,
+                ["pixelClockFalling"] = p.PixelClockEdge == ClockEdge.Falling,
+            };
+        }
     }
-    </code>
-    </example>*/
 
-    public class DisplayController {
-        private IDisplayProvider iDisplay;
-        public DisplayController(IDisplayProvider display) => this.iDisplay = display;
+    /// <summary>
+    /// The built-in display driven by the SoC's parallel RGB LCD controller
+    /// (DRM "DPI" / parallel-RGB). Opens <c>/dev/fb0</c> inside
+    /// <see cref="Enable"/>, respects the real framebuffer stride, converts
+    /// source pixel formats to the panel's bit depth, and blits with
+    /// <see cref="Flush(System.ReadOnlySpan{byte},System.Drawing.Imaging.PixelFormat,int,int,int,int)"/>.
+    /// </summary>
+    public sealed class ParallelDisplayController : DisplayController {
+        private FileStream? framebuffer;
+        private int stride;
+        private int targetBpp = 16;
+        private int width;
+        private int height;
 
-        public DisplayConfiguration Configuration => this.iDisplay.Configuration;
+        public override int Width => this.width == 0
+            ? GetSettings().Parallel?.Width ?? 0 : this.width;
+        public override int Height => this.height == 0
+            ? GetSettings().Parallel?.Height ?? 0 : this.height;
 
-        public void Flush(byte[] data) => this.Flush(data, 0, data.Length);
-        public void Flush(byte[] data, int offset, int length) => this.iDisplay.Flush(data, offset, length);
+        public override bool IsEnabled {
+            get {
+                Libendpoint.Check(Libendpoint.DisplayIsEnabled(out int r));
+                return r != 0;
+            }
+        }
 
-        public void Flush(byte[] data, int offset, int length, int x, int y, int width, int height, int originalWidth) => this.iDisplay.Flush(data, offset, length, x, y, width, height, originalWidth);
+        public override void Enable() {
+            Libendpoint.Check(Libendpoint.DisplayEnable());
+            var p = GetSettings().Parallel ?? new ParallelLcdSettings();
+            this.width = p.Width;
+            this.height = p.Height;
+            this.targetBpp = p.BitsPerPixel == 0 ? 16 : p.BitsPerPixel;
+            this.framebuffer = new FileStream("/dev/fb0", FileMode.Open,
+                                              FileAccess.Write, FileShare.ReadWrite);
+            this.stride = this.width * (this.targetBpp / 8);
+            try {
+                var s = File.ReadAllText("/sys/class/graphics/fb0/stride").Trim();
+                if (int.TryParse(s, out int parsed) && parsed > 0) this.stride = parsed;
+            } catch { /* keep the fallback */ }
+        }
 
+        public override void Disable() {
+            this.framebuffer?.Dispose();
+            this.framebuffer = null;
+            Libendpoint.Check(Libendpoint.DisplayDisable());
+        }
 
+        public override void Flush(ReadOnlySpan<byte> pixels, PixelFormat format,
+                                    int x, int y, int width, int height) {
+            if (this.framebuffer == null) {
+                throw new InvalidOperationException("Flush called before Enable");
+            }
+            if (x < 0 || y < 0 || width <= 0 || height <= 0
+                || x + width > this.width || y + height > this.height) {
+                throw new ArgumentException("Flush region outside the panel");
+            }
+            int targetBytesPerPixel = this.targetBpp / 8;
+            int sourceStride = format switch {
+                PixelFormat.Format16bppRgb565 => width * 2,
+                PixelFormat.Format24bppRgb    => width * 3,
+                PixelFormat.Format32bppRgb or PixelFormat.Format32bppArgb => width * 4,
+                _ => throw new NotSupportedException($"Unsupported source pixel format: {format}"),
+            };
+            if (pixels.Length < sourceStride * height) {
+                throw new ArgumentException("Pixel buffer is smaller than the region");
+            }
+
+            Span<byte> row = stackalloc byte[0];
+            byte[]? rowRented = null;
+            int rowBytes = width * targetBytesPerPixel;
+            if (rowBytes <= 8192) {
+                row = stackalloc byte[rowBytes];
+            } else {
+                rowRented = System.Buffers.ArrayPool<byte>.Shared.Rent(rowBytes);
+                row = rowRented.AsSpan(0, rowBytes);
+            }
+            try {
+                for (int r = 0; r < height; r++) {
+                    var src = pixels.Slice(r * sourceStride, sourceStride);
+                    ConvertRow(src, row, format, this.targetBpp, width);
+                    this.framebuffer.Seek((y + r) * this.stride + x * targetBytesPerPixel,
+                                          SeekOrigin.Begin);
+                    this.framebuffer.Write(row);
+                }
+                this.framebuffer.Flush();
+            } finally {
+                if (rowRented != null) System.Buffers.ArrayPool<byte>.Shared.Return(rowRented);
+            }
+        }
+
+        public override void Dispose() {
+            try { Disable(); } catch { /* best effort */ }
+        }
+
+        private static void ConvertRow(ReadOnlySpan<byte> src, Span<byte> dst,
+                                       PixelFormat format, int targetBpp, int pixels) {
+            if (format == PixelFormat.Format16bppRgb565 && targetBpp == 16) {
+                src.Slice(0, pixels * 2).CopyTo(dst);
+                return;
+            }
+            if (targetBpp == 16) {
+                int srcBpp = format switch {
+                    PixelFormat.Format24bppRgb => 3,
+                    PixelFormat.Format32bppRgb or PixelFormat.Format32bppArgb => 4,
+                    _ => throw new NotSupportedException($"Cannot convert {format} to RGB565"),
+                };
+                for (int p = 0; p < pixels; p++) {
+                    byte b = src[p * srcBpp + 0];
+                    byte g = src[p * srcBpp + 1];
+                    byte re = src[p * srcBpp + 2];
+                    ushort v = (ushort)(((re >> 3) << 11) | ((g >> 2) << 5) | (b >> 3));
+                    dst[p * 2 + 0] = (byte)(v & 0xFF);
+                    dst[p * 2 + 1] = (byte)(v >> 8);
+                }
+                return;
+            }
+            if (targetBpp == 24) {
+                if (format == PixelFormat.Format24bppRgb) {
+                    src.Slice(0, pixels * 3).CopyTo(dst);
+                    return;
+                }
+                if (format is PixelFormat.Format32bppRgb or PixelFormat.Format32bppArgb) {
+                    for (int p = 0; p < pixels; p++) {
+                        dst[p * 3 + 0] = src[p * 4 + 0];
+                        dst[p * 3 + 1] = src[p * 4 + 1];
+                        dst[p * 3 + 2] = src[p * 4 + 2];
+                    }
+                    return;
+                }
+            }
+            throw new NotSupportedException($"Cannot convert {format} to {targetBpp}bpp");
+        }
+    }
+
+    /// <summary>Minimal 24-bit uncompressed BMP reader for ShowLogo.</summary>
+    internal static class BmpReader {
+        public static bool TryRead24bppBgr(string path, out byte[] pixels, out int width, out int height) {
+            pixels = Array.Empty<byte>();
+            width = height = 0;
+            if (!File.Exists(path)) return false;
+            using var f = File.OpenRead(path);
+            Span<byte> header = stackalloc byte[54];
+            if (f.Read(header) != 54) return false;
+            if (header[0] != (byte)'B' || header[1] != (byte)'M') return false;
+            uint dataOffset = BitConverter.ToUInt32(header[10..14]);
+            int w = BitConverter.ToInt32(header[18..22]);
+            int h = BitConverter.ToInt32(header[22..26]);
+            ushort bpp = BitConverter.ToUInt16(header[28..30]);
+            uint compression = BitConverter.ToUInt32(header[30..34]);
+            if (bpp != 24 || compression != 0 || w <= 0) return false;
+
+            bool flipY = h > 0;
+            int absHeight = flipY ? h : -h;
+            int rowBytes = w * 3;
+            int rowPad = (4 - (rowBytes & 3)) & 3;
+
+            f.Seek(dataOffset, SeekOrigin.Begin);
+            pixels = new byte[rowBytes * absHeight];
+            Span<byte> pad = stackalloc byte[4];
+            for (int r = 0; r < absHeight; r++) {
+                int destRow = flipY ? absHeight - 1 - r : r;
+                if (f.Read(pixels, destRow * rowBytes, rowBytes) != rowBytes) return false;
+                if (rowPad > 0) f.Read(pad.Slice(0, rowPad));
+            }
+            width = w;
+            height = absHeight;
+            return true;
+        }
     }
 }

@@ -20,6 +20,7 @@
 #include "endpoint/Can.h"
 #include "endpoint/Core.h"
 #include "endpoint/Dac.h"
+#include "endpoint/Display.h"
 #include "endpoint/Gpio.h"
 #include "endpoint/I2c.h"
 #include "endpoint/Media.h"
