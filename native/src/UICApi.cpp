@@ -1,0 +1,372 @@
+// C API for the UI subsystem — the layer the language bindings call into.
+// Hides LVGL from customers: handles are opaque void* (actually lv_obj_t*),
+// colors are uint32_t (0xRRGGBB), events are plain function pointers plus a
+// context pointer owned by the caller.
+//
+// Font size → LVGL built-in font. We support the three sizes the designer
+// palette exposes: 14, 20, 32. Any other size is coerced to the closest
+// supported one; the designer validates on input anyway.
+
+#include <cstdint>
+#include <cstdio>
+#include <cstring>
+#include <new>
+
+#include "lvgl.h"
+
+#include "CApi.h"
+#include "UI.h"
+#include "Errors.h"
+#include "endpoint/detail/CApi.h"
+
+using namespace GHIElectronics::Endpoint::Internal;
+
+namespace {
+
+lv_obj_t* AsObj(void* handle) {
+    return static_cast<lv_obj_t*>(handle);
+}
+
+lv_color_t ColorFromRgb(uint32_t rgb) {
+    return lv_color_hex(rgb & 0x00FFFFFF);
+}
+
+const lv_font_t* FontForSize(int size) {
+    switch (size) {
+        case 32: return &lv_font_montserrat_32;
+        case 20: return &lv_font_montserrat_20;
+        default: return &lv_font_montserrat_14;
+    }
+}
+
+// --- Event trampoline ---
+// Each subscription allocates a Record on the heap. The pointer is passed as
+// LVGL's user_data; the trampoline casts back and invokes cb(context). Not
+// freed on unsubscribe (unsubscribe isn't exposed yet) — leaked at process
+// exit, bounded by the number of subscribe calls over the UI's lifetime.
+struct SubRecord {
+    endpoint_ui_event_callback cb;
+    void* context;
+};
+
+void EventTrampoline(lv_event_t* e) {
+    auto* rec = static_cast<SubRecord*>(lv_event_get_user_data(e));
+    if (rec && rec->cb) rec->cb(rec->context);
+}
+
+int Subscribe(void* widget, lv_event_code_t code,
+              endpoint_ui_event_callback cb, void* context) {
+    return Call([&] {
+        if (!widget) ThrowInvalidOperation("widget is null");
+        if (!cb) ThrowInvalidOperation("callback is null");
+        auto* rec = new SubRecord{cb, context};
+        lv_obj_add_event_cb(AsObj(widget), EventTrampoline, code, rec);
+    });
+}
+
+}  // namespace
+
+// =========================================================================
+// Lifecycle
+// =========================================================================
+
+ENDPOINT_API int endpoint_ui_initialize(void) {
+    return Call([] { UI::Initialize(); });
+}
+
+ENDPOINT_API int endpoint_ui_run(void) {
+    return Call([] { UI::Run(); });
+}
+
+ENDPOINT_API int endpoint_ui_stop(void) {
+    return Call([] { UI::Stop(); });
+}
+
+// =========================================================================
+// Common widget operations
+// =========================================================================
+
+ENDPOINT_API int endpoint_ui_widget_destroy(void* widget) {
+    return Call([&] {
+        if (widget) lv_obj_delete(AsObj(widget));
+    });
+}
+
+ENDPOINT_API int endpoint_ui_widget_set_pos(void* widget, int x, int y) {
+    return Call([&] { lv_obj_set_pos(AsObj(widget), x, y); });
+}
+
+ENDPOINT_API int endpoint_ui_widget_get_pos(void* widget, int* x, int* y) {
+    return Call([&] {
+        if (x) *x = lv_obj_get_x(AsObj(widget));
+        if (y) *y = lv_obj_get_y(AsObj(widget));
+    });
+}
+
+ENDPOINT_API int endpoint_ui_widget_set_size(void* widget, int width, int height) {
+    return Call([&] { lv_obj_set_size(AsObj(widget), width, height); });
+}
+
+ENDPOINT_API int endpoint_ui_widget_get_size(void* widget, int* width, int* height) {
+    return Call([&] {
+        if (width)  *width  = lv_obj_get_width(AsObj(widget));
+        if (height) *height = lv_obj_get_height(AsObj(widget));
+    });
+}
+
+ENDPOINT_API int endpoint_ui_widget_set_visible(void* widget, int visible) {
+    return Call([&] {
+        if (visible) lv_obj_remove_flag(AsObj(widget), LV_OBJ_FLAG_HIDDEN);
+        else         lv_obj_add_flag(AsObj(widget), LV_OBJ_FLAG_HIDDEN);
+    });
+}
+
+ENDPOINT_API int endpoint_ui_widget_get_visible(void* widget, int* visible) {
+    return Call([&] {
+        if (visible) *visible = !lv_obj_has_flag(AsObj(widget), LV_OBJ_FLAG_HIDDEN);
+    });
+}
+
+// =========================================================================
+// Events
+// =========================================================================
+
+ENDPOINT_API int endpoint_ui_subscribe_clicked(void* widget,
+                                               endpoint_ui_event_callback cb, void* context) {
+    return Subscribe(widget, LV_EVENT_CLICKED, cb, context);
+}
+
+ENDPOINT_API int endpoint_ui_subscribe_value_changed(void* widget,
+                                                     endpoint_ui_event_callback cb, void* context) {
+    return Subscribe(widget, LV_EVENT_VALUE_CHANGED, cb, context);
+}
+
+// =========================================================================
+// Screen
+// =========================================================================
+
+ENDPOINT_API int endpoint_ui_screen_create(void** out) {
+    return Call([&] {
+        if (!out) ThrowInvalidOperation("out is null");
+        *out = lv_obj_create(nullptr);
+    });
+}
+
+ENDPOINT_API int endpoint_ui_screen_load(void* screen) {
+    return Call([&] { lv_screen_load(AsObj(screen)); });
+}
+
+ENDPOINT_API int endpoint_ui_screen_active(void** out) {
+    return Call([&] {
+        if (!out) ThrowInvalidOperation("out is null");
+        *out = lv_screen_active();
+    });
+}
+
+// =========================================================================
+// Container
+// =========================================================================
+
+ENDPOINT_API int endpoint_ui_container_create(void* parent, void** out) {
+    return Call([&] {
+        if (!parent || !out) ThrowInvalidOperation("parent or out is null");
+        auto* obj = lv_obj_create(AsObj(parent));
+        lv_obj_set_scrollbar_mode(obj, LV_SCROLLBAR_MODE_OFF);
+        lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
+        lv_obj_set_style_pad_all(obj, 0, LV_PART_MAIN);
+        *out = obj;
+    });
+}
+
+// =========================================================================
+// Button
+// =========================================================================
+
+namespace {
+// A Button is an lv_button_create() object with a child lv_label for its
+// text. We stash the label pointer in the button's user_data so text/font
+// operations find it quickly without walking children each call.
+}
+
+ENDPOINT_API int endpoint_ui_button_create(void* parent, void** out) {
+    return Call([&] {
+        if (!parent || !out) ThrowInvalidOperation("parent or out is null");
+        auto* btn = lv_button_create(AsObj(parent));
+        lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
+        auto* label = lv_label_create(btn);
+        lv_label_set_text(label, "");
+        lv_obj_center(label);
+        lv_obj_set_user_data(btn, label);
+        *out = btn;
+    });
+}
+
+ENDPOINT_API int endpoint_ui_button_set_text(void* button, const char* text) {
+    return Call([&] {
+        auto* label = static_cast<lv_obj_t*>(lv_obj_get_user_data(AsObj(button)));
+        if (label) lv_label_set_text(label, text ? text : "");
+    });
+}
+
+ENDPOINT_API int endpoint_ui_button_set_bg_color(void* button, uint32_t rgb) {
+    return Call([&] {
+        lv_obj_set_style_bg_color(AsObj(button), ColorFromRgb(rgb), LV_PART_MAIN);
+    });
+}
+
+ENDPOINT_API int endpoint_ui_button_set_text_color(void* button, uint32_t rgb) {
+    return Call([&] {
+        auto* label = static_cast<lv_obj_t*>(lv_obj_get_user_data(AsObj(button)));
+        if (label) lv_obj_set_style_text_color(label, ColorFromRgb(rgb), LV_PART_MAIN);
+    });
+}
+
+ENDPOINT_API int endpoint_ui_button_set_font_size(void* button, int size) {
+    return Call([&] {
+        auto* label = static_cast<lv_obj_t*>(lv_obj_get_user_data(AsObj(button)));
+        if (label) lv_obj_set_style_text_font(label, FontForSize(size), LV_PART_MAIN);
+    });
+}
+
+// =========================================================================
+// Label
+// =========================================================================
+
+ENDPOINT_API int endpoint_ui_label_create(void* parent, void** out) {
+    return Call([&] {
+        if (!parent || !out) ThrowInvalidOperation("parent or out is null");
+        *out = lv_label_create(AsObj(parent));
+    });
+}
+
+ENDPOINT_API int endpoint_ui_label_set_text(void* label, const char* text) {
+    return Call([&] { lv_label_set_text(AsObj(label), text ? text : ""); });
+}
+
+ENDPOINT_API int endpoint_ui_label_set_color(void* label, uint32_t rgb) {
+    return Call([&] { lv_obj_set_style_text_color(AsObj(label), ColorFromRgb(rgb), LV_PART_MAIN); });
+}
+
+ENDPOINT_API int endpoint_ui_label_set_font_size(void* label, int size) {
+    return Call([&] { lv_obj_set_style_text_font(AsObj(label), FontForSize(size), LV_PART_MAIN); });
+}
+
+// =========================================================================
+// Image
+// =========================================================================
+
+namespace {
+// Caller-provided pixels become part of a per-widget lv_image_dsc_t allocated
+// on the heap. We stash it in user_data so subsequent SetSource calls can
+// free the old one before replacing. Caller still owns the pixel buffer.
+}
+
+ENDPOINT_API int endpoint_ui_image_create(void* parent, void** out) {
+    return Call([&] {
+        if (!parent || !out) ThrowInvalidOperation("parent or out is null");
+        *out = lv_image_create(AsObj(parent));
+    });
+}
+
+ENDPOINT_API int endpoint_ui_image_set_source(void* image, const uint8_t* rgb565Pixels,
+                                              int byteCount, int width, int height) {
+    return Call([&] {
+        if (!image || !rgb565Pixels) ThrowInvalidOperation("image or pixels is null");
+        auto* img = AsObj(image);
+        auto* old = static_cast<lv_image_dsc_t*>(lv_obj_get_user_data(img));
+        auto* dsc = new lv_image_dsc_t{};
+        dsc->header.magic = LV_IMAGE_HEADER_MAGIC;
+        dsc->header.cf = LV_COLOR_FORMAT_RGB565;
+        dsc->header.flags = 0;
+        dsc->header.w = width;
+        dsc->header.h = height;
+        dsc->header.stride = width * 2;
+        dsc->data_size = (uint32_t)byteCount;
+        dsc->data = rgb565Pixels;
+        lv_image_set_src(img, dsc);
+        lv_obj_set_user_data(img, dsc);
+        delete old;
+    });
+}
+
+// =========================================================================
+// TextBox
+// =========================================================================
+
+ENDPOINT_API int endpoint_ui_textbox_create(void* parent, void** out) {
+    return Call([&] {
+        if (!parent || !out) ThrowInvalidOperation("parent or out is null");
+        auto* ta = lv_textarea_create(AsObj(parent));
+        lv_textarea_set_one_line(ta, true);
+        *out = ta;
+    });
+}
+
+ENDPOINT_API int endpoint_ui_textbox_set_text(void* textbox, const char* text) {
+    return Call([&] { lv_textarea_set_text(AsObj(textbox), text ? text : ""); });
+}
+
+ENDPOINT_API int endpoint_ui_textbox_get_text(void* textbox, char* outBuf, int outSize) {
+    return Call([&] {
+        if (!outBuf || outSize <= 0) ThrowInvalidOperation("outBuf is null or size is invalid");
+        const char* text = lv_textarea_get_text(AsObj(textbox));
+        std::snprintf(outBuf, outSize, "%s", text ? text : "");
+    });
+}
+
+ENDPOINT_API int endpoint_ui_textbox_set_placeholder(void* textbox, const char* placeholder) {
+    return Call([&] { lv_textarea_set_placeholder_text(AsObj(textbox), placeholder ? placeholder : ""); });
+}
+
+// =========================================================================
+// Slider
+// =========================================================================
+
+ENDPOINT_API int endpoint_ui_slider_create(void* parent, void** out) {
+    return Call([&] {
+        if (!parent || !out) ThrowInvalidOperation("parent or out is null");
+        *out = lv_slider_create(AsObj(parent));
+    });
+}
+
+ENDPOINT_API int endpoint_ui_slider_set_range(void* slider, int min, int max) {
+    return Call([&] { lv_slider_set_range(AsObj(slider), min, max); });
+}
+
+ENDPOINT_API int endpoint_ui_slider_set_value(void* slider, int value) {
+    return Call([&] { lv_slider_set_value(AsObj(slider), value, LV_ANIM_OFF); });
+}
+
+ENDPOINT_API int endpoint_ui_slider_get_value(void* slider, int* value) {
+    return Call([&] {
+        if (value) *value = (int)lv_slider_get_value(AsObj(slider));
+    });
+}
+
+// =========================================================================
+// CheckBox
+// =========================================================================
+
+ENDPOINT_API int endpoint_ui_checkbox_create(void* parent, void** out) {
+    return Call([&] {
+        if (!parent || !out) ThrowInvalidOperation("parent or out is null");
+        *out = lv_checkbox_create(AsObj(parent));
+    });
+}
+
+ENDPOINT_API int endpoint_ui_checkbox_set_text(void* checkbox, const char* text) {
+    return Call([&] { lv_checkbox_set_text(AsObj(checkbox), text ? text : ""); });
+}
+
+ENDPOINT_API int endpoint_ui_checkbox_set_checked(void* checkbox, int checked) {
+    return Call([&] {
+        if (checked) lv_obj_add_state(AsObj(checkbox), LV_STATE_CHECKED);
+        else         lv_obj_remove_state(AsObj(checkbox), LV_STATE_CHECKED);
+    });
+}
+
+ENDPOINT_API int endpoint_ui_checkbox_get_checked(void* checkbox, int* checked) {
+    return Call([&] {
+        if (checked) *checked = lv_obj_has_state(AsObj(checkbox), LV_STATE_CHECKED) ? 1 : 0;
+    });
+}

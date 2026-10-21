@@ -312,6 +312,78 @@ int endpoint_touch_close(void* device);
 int endpoint_touch_info(void* device, int* vendorId, int* productId, int* connected,
                         int* width, int* height);
 
+// ---- UI (LVGL under the hood) ----
+// Lifecycle. Initialize once after the display is enabled; Run blocks until
+// Stop is called (safe from a signal handler).
+int endpoint_ui_initialize(void);
+int endpoint_ui_run(void);
+int endpoint_ui_stop(void);
+
+// Common widget operations. `widget` is a handle returned by one of the
+// *_create functions (internally an lv_obj_t*). Destroy frees the widget
+// and all its children.
+int endpoint_ui_widget_destroy(void* widget);
+int endpoint_ui_widget_set_pos(void* widget, int x, int y);
+int endpoint_ui_widget_get_pos(void* widget, int* x, int* y);
+int endpoint_ui_widget_set_size(void* widget, int width, int height);
+int endpoint_ui_widget_get_size(void* widget, int* width, int* height);
+int endpoint_ui_widget_set_visible(void* widget, int visible);
+int endpoint_ui_widget_get_visible(void* widget, int* visible);
+
+// Event subscription. The callback runs on the UI thread (the one calling
+// endpoint_ui_run). `context` is passed back untouched. Not currently
+// unsubscribeable; subscriptions live until the widget is destroyed.
+typedef void (*endpoint_ui_event_callback)(void* context);
+int endpoint_ui_subscribe_clicked(void* widget, endpoint_ui_event_callback cb, void* context);
+int endpoint_ui_subscribe_value_changed(void* widget, endpoint_ui_event_callback cb, void* context);
+
+// Screen: a top-level container with no parent. Multiple screens can exist;
+// only one is active at a time (endpoint_ui_screen_load makes it active).
+int endpoint_ui_screen_create(void** out);
+int endpoint_ui_screen_load(void* screen);
+int endpoint_ui_screen_active(void** out);
+
+// Container: groups children; positions them relative to itself.
+int endpoint_ui_container_create(void* parent, void** out);
+
+// Button: Clicked event via endpoint_ui_subscribe_clicked.
+int endpoint_ui_button_create(void* parent, void** out);
+int endpoint_ui_button_set_text(void* button, const char* text);
+int endpoint_ui_button_set_bg_color(void* button, uint32_t rgb);
+int endpoint_ui_button_set_text_color(void* button, uint32_t rgb);
+int endpoint_ui_button_set_font_size(void* button, int size);
+
+// Label.
+int endpoint_ui_label_create(void* parent, void** out);
+int endpoint_ui_label_set_text(void* label, const char* text);
+int endpoint_ui_label_set_color(void* label, uint32_t rgb);
+int endpoint_ui_label_set_font_size(void* label, int size);
+
+// Image: raw RGB565 pixels (little-endian). The caller keeps the pixel
+// buffer alive for the lifetime of the widget; libendpoint does not copy.
+int endpoint_ui_image_create(void* parent, void** out);
+int endpoint_ui_image_set_source(void* image, const uint8_t* rgb565Pixels,
+                                 int byteCount, int width, int height);
+
+// TextBox: single-line text input. ValueChanged event via
+// endpoint_ui_subscribe_value_changed.
+int endpoint_ui_textbox_create(void* parent, void** out);
+int endpoint_ui_textbox_set_text(void* textbox, const char* text);
+int endpoint_ui_textbox_get_text(void* textbox, char* outBuf, int outSize);
+int endpoint_ui_textbox_set_placeholder(void* textbox, const char* placeholder);
+
+// Slider.
+int endpoint_ui_slider_create(void* parent, void** out);
+int endpoint_ui_slider_set_range(void* slider, int min, int max);
+int endpoint_ui_slider_set_value(void* slider, int value);
+int endpoint_ui_slider_get_value(void* slider, int* value);
+
+// CheckBox.
+int endpoint_ui_checkbox_create(void* parent, void** out);
+int endpoint_ui_checkbox_set_text(void* checkbox, const char* text);
+int endpoint_ui_checkbox_set_checked(void* checkbox, int checked);
+int endpoint_ui_checkbox_get_checked(void* checkbox, int* checked);
+
 #ifdef __cplusplus
 }
 #endif
