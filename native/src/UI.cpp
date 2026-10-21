@@ -2,7 +2,9 @@
 
 #include <atomic>
 #include <chrono>
+#include <fcntl.h>
 #include <thread>
+#include <unistd.h>
 
 #include "lvgl.h"
 #include "src/drivers/display/fb/lv_linux_fbdev.h"
@@ -23,11 +25,24 @@ uint32_t TickNowMs() {
     return (uint32_t)duration_cast<milliseconds>(steady_clock::now() - g_start).count();
 }
 
+// Hide the Linux framebuffer console cursor (the small black block in the
+// top-left corner from the kernel's text terminal that also lives on
+// /dev/fb0). Silent on error — the sysfs node is only present when fbcon is
+// enabled in the kernel; absence just means no cursor to hide.
+void HideFbconCursor() {
+    int fd = open("/sys/class/graphics/fbcon/cursor_blink", O_WRONLY);
+    if (fd >= 0) {
+        (void)!write(fd, "0", 1);
+        close(fd);
+    }
+}
+
 }  // namespace
 
 void Initialize() {
     if (g_initialized.exchange(true)) return;
 
+    HideFbconCursor();
     lv_init();
     lv_tick_set_cb(TickNowMs);
 

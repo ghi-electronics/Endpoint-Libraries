@@ -15,24 +15,27 @@ public abstract class Widget : IDisposable {
         this.Native = native;
     }
 
+    // Setters forward to the single-axis C API: LVGL's getters return 0 until
+    // the first layout pass, so a read-then-write-both would zero out the
+    // untouched axis.
     public int X {
         get { Libendpoint.Check(Libendpoint.UiWidgetGetPos(this.Native, out var x, out _)); return x; }
-        set { Libendpoint.Check(Libendpoint.UiWidgetSetPos(this.Native, value, this.Y)); }
+        set { Libendpoint.Check(Libendpoint.UiWidgetSetX(this.Native, value)); }
     }
 
     public int Y {
         get { Libendpoint.Check(Libendpoint.UiWidgetGetPos(this.Native, out _, out var y)); return y; }
-        set { Libendpoint.Check(Libendpoint.UiWidgetSetPos(this.Native, this.X, value)); }
+        set { Libendpoint.Check(Libendpoint.UiWidgetSetY(this.Native, value)); }
     }
 
     public int Width {
         get { Libendpoint.Check(Libendpoint.UiWidgetGetSize(this.Native, out var w, out _)); return w; }
-        set { Libendpoint.Check(Libendpoint.UiWidgetSetSize(this.Native, value, this.Height)); }
+        set { Libendpoint.Check(Libendpoint.UiWidgetSetWidth(this.Native, value)); }
     }
 
     public int Height {
         get { Libendpoint.Check(Libendpoint.UiWidgetGetSize(this.Native, out _, out var h)); return h; }
-        set { Libendpoint.Check(Libendpoint.UiWidgetSetSize(this.Native, this.Width, value)); }
+        set { Libendpoint.Check(Libendpoint.UiWidgetSetHeight(this.Native, value)); }
     }
 
     public bool Visible {

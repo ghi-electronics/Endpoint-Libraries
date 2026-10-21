@@ -36,14 +36,13 @@ namespace detail {
     }
 }
 
-/// UI subsystem lifecycle. Call Initialize() once after the display is
-/// enabled; call Run() to drive the event loop; Stop() to exit.
-class UI {
-public:
-    static void Initialize() { Core::detail::Check(endpoint_ui_initialize()); }
-    static void Run()        { Core::detail::Check(endpoint_ui_run()); }
-    static void Stop()       { Core::detail::Check(endpoint_ui_stop()); }
-};
+// UI subsystem lifecycle. Call Initialize() once after the display is
+// enabled; call Run() to drive the event loop; Stop() to exit. Free
+// functions (not a class) so that `UI::Initialize()` looks like
+// namespace-qualified call rather than `UI::UI::Initialize()`.
+inline void Initialize() { Core::detail::Check(endpoint_ui_initialize()); }
+inline void Run()        { Core::detail::Check(endpoint_ui_run()); }
+inline void Stop()       { Core::detail::Check(endpoint_ui_stop()); }
 
 /// Base class for every widget. Holds the native handle; destructor releases
 /// the underlying LVGL object. Not copyable (widgets own their handle).
@@ -59,10 +58,13 @@ public:
     int Height() const  { int v = 0; Core::detail::Check(endpoint_ui_widget_get_size(this->_native, nullptr, &v)); return v; }
     bool Visible() const { int v = 0; Core::detail::Check(endpoint_ui_widget_get_visible(this->_native, &v)); return v != 0; }
 
-    void X(int value)       { Core::detail::Check(endpoint_ui_widget_set_pos(this->_native, value, Y())); }
-    void Y(int value)       { Core::detail::Check(endpoint_ui_widget_set_pos(this->_native, X(), value)); }
-    void Width(int value)   { Core::detail::Check(endpoint_ui_widget_set_size(this->_native, value, Height())); }
-    void Height(int value)  { Core::detail::Check(endpoint_ui_widget_set_size(this->_native, Width(), value)); }
+    // Single-axis set: LVGL's getters return 0 until the first layout pass,
+    // so a read-then-write-both would zero out the untouched axis. These
+    // forward to lv_obj_set_x/y/width/height which only touch one axis.
+    void X(int value)       { Core::detail::Check(endpoint_ui_widget_set_x(this->_native, value)); }
+    void Y(int value)       { Core::detail::Check(endpoint_ui_widget_set_y(this->_native, value)); }
+    void Width(int value)   { Core::detail::Check(endpoint_ui_widget_set_width(this->_native, value)); }
+    void Height(int value)  { Core::detail::Check(endpoint_ui_widget_set_height(this->_native, value)); }
     void Visible(bool value) { Core::detail::Check(endpoint_ui_widget_set_visible(this->_native, value ? 1 : 0)); }
 
     NativeHandle Native() const { return this->_native; }

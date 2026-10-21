@@ -96,7 +96,9 @@ class Widget:
 
     @X.setter
     def X(self, value):
-        native.ui_widget_set_pos(self._native, value, self.Y)
+        # Single-axis set: LVGL's getters return 0 until first layout pass,
+        # so read-then-write-both would zero out the untouched axis.
+        native.ui_widget_set_x(self._native, value)
 
     @property
     def Y(self):
@@ -106,7 +108,7 @@ class Widget:
 
     @Y.setter
     def Y(self, value):
-        native.ui_widget_set_pos(self._native, self.X, value)
+        native.ui_widget_set_y(self._native, value)
 
     @property
     def Width(self):
@@ -116,7 +118,7 @@ class Widget:
 
     @Width.setter
     def Width(self, value):
-        native.ui_widget_set_size(self._native, value, self.Height)
+        native.ui_widget_set_width(self._native, value)
 
     @property
     def Height(self):
@@ -126,7 +128,7 @@ class Widget:
 
     @Height.setter
     def Height(self, value):
-        native.ui_widget_set_size(self._native, self.Width, value)
+        native.ui_widget_set_height(self._native, value)
 
     @property
     def Visible(self):

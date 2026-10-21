@@ -96,6 +96,22 @@ ENDPOINT_API int endpoint_ui_widget_set_pos(void* widget, int x, int y) {
     return Call([&] { lv_obj_set_pos(AsObj(widget), x, y); });
 }
 
+ENDPOINT_API int endpoint_ui_widget_set_x(void* widget, int x) {
+    return Call([&] { lv_obj_set_x(AsObj(widget), x); });
+}
+
+ENDPOINT_API int endpoint_ui_widget_set_y(void* widget, int y) {
+    return Call([&] { lv_obj_set_y(AsObj(widget), y); });
+}
+
+ENDPOINT_API int endpoint_ui_widget_set_width(void* widget, int width) {
+    return Call([&] { lv_obj_set_width(AsObj(widget), width); });
+}
+
+ENDPOINT_API int endpoint_ui_widget_set_height(void* widget, int height) {
+    return Call([&] { lv_obj_set_height(AsObj(widget), height); });
+}
+
 ENDPOINT_API int endpoint_ui_widget_get_pos(void* widget, int* x, int* y) {
     return Call([&] {
         if (x) *x = lv_obj_get_x(AsObj(widget));
@@ -185,26 +201,35 @@ ENDPOINT_API int endpoint_ui_container_create(void* parent, void** out) {
 namespace {
 // A Button is an lv_button_create() object with a child lv_label for its
 // text. We stash the label pointer in the button's user_data so text/font
-// operations find it quickly without walking children each call.
+// operations find it quickly without walking children each call. The label
+// is created lazily (not at button_create time) because adding a child to
+// a freshly-created button before the caller sets its size would trigger
+// LVGL's content-size layout and lock the button at 0x0.
+lv_obj_t* ButtonLabel(lv_obj_t* btn) {
+    auto* label = static_cast<lv_obj_t*>(lv_obj_get_user_data(btn));
+    if (!label) {
+        label = lv_label_create(btn);
+        lv_obj_center(label);
+        lv_obj_set_user_data(btn, label);
+    }
+    return label;
+}
 }
 
 ENDPOINT_API int endpoint_ui_button_create(void* parent, void** out) {
     return Call([&] {
         if (!parent || !out) ThrowInvalidOperation("parent or out is null");
         auto* btn = lv_button_create(AsObj(parent));
+        // Default LVGL button has a drop shadow that leaves a visible gap at
+        // the bottom. Our customers expect a flat button; opt out of it.
         lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
-        auto* label = lv_label_create(btn);
-        lv_label_set_text(label, "");
-        lv_obj_center(label);
-        lv_obj_set_user_data(btn, label);
         *out = btn;
     });
 }
 
 ENDPOINT_API int endpoint_ui_button_set_text(void* button, const char* text) {
     return Call([&] {
-        auto* label = static_cast<lv_obj_t*>(lv_obj_get_user_data(AsObj(button)));
-        if (label) lv_label_set_text(label, text ? text : "");
+        lv_label_set_text(ButtonLabel(AsObj(button)), text ? text : "");
     });
 }
 
@@ -216,15 +241,13 @@ ENDPOINT_API int endpoint_ui_button_set_bg_color(void* button, uint32_t rgb) {
 
 ENDPOINT_API int endpoint_ui_button_set_text_color(void* button, uint32_t rgb) {
     return Call([&] {
-        auto* label = static_cast<lv_obj_t*>(lv_obj_get_user_data(AsObj(button)));
-        if (label) lv_obj_set_style_text_color(label, ColorFromRgb(rgb), LV_PART_MAIN);
+        lv_obj_set_style_text_color(ButtonLabel(AsObj(button)), ColorFromRgb(rgb), LV_PART_MAIN);
     });
 }
 
 ENDPOINT_API int endpoint_ui_button_set_font_size(void* button, int size) {
     return Call([&] {
-        auto* label = static_cast<lv_obj_t*>(lv_obj_get_user_data(AsObj(button)));
-        if (label) lv_obj_set_style_text_font(label, FontForSize(size), LV_PART_MAIN);
+        lv_obj_set_style_text_font(ButtonLabel(AsObj(button)), FontForSize(size), LV_PART_MAIN);
     });
 }
 

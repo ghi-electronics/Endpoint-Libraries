@@ -324,8 +324,12 @@ int endpoint_ui_stop(void);
 // and all its children.
 int endpoint_ui_widget_destroy(void* widget);
 int endpoint_ui_widget_set_pos(void* widget, int x, int y);
+int endpoint_ui_widget_set_x(void* widget, int x);
+int endpoint_ui_widget_set_y(void* widget, int y);
 int endpoint_ui_widget_get_pos(void* widget, int* x, int* y);
 int endpoint_ui_widget_set_size(void* widget, int width, int height);
+int endpoint_ui_widget_set_width(void* widget, int width);
+int endpoint_ui_widget_set_height(void* widget, int height);
 int endpoint_ui_widget_get_size(void* widget, int* width, int* height);
 int endpoint_ui_widget_set_visible(void* widget, int visible);
 int endpoint_ui_widget_get_visible(void* widget, int* visible);

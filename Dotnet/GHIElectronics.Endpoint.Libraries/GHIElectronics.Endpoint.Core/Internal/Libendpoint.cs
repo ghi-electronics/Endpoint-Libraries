@@ -293,11 +293,23 @@ namespace GHIElectronics.Endpoint.Core.Internal {
         [LibraryImport(Library, EntryPoint = "endpoint_ui_widget_set_pos")]
         public static partial int UiWidgetSetPos(nint widget, int x, int y);
 
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_widget_set_x")]
+        public static partial int UiWidgetSetX(nint widget, int x);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_widget_set_y")]
+        public static partial int UiWidgetSetY(nint widget, int y);
+
         [LibraryImport(Library, EntryPoint = "endpoint_ui_widget_get_pos")]
         public static partial int UiWidgetGetPos(nint widget, out int x, out int y);
 
         [LibraryImport(Library, EntryPoint = "endpoint_ui_widget_set_size")]
         public static partial int UiWidgetSetSize(nint widget, int width, int height);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_widget_set_width")]
+        public static partial int UiWidgetSetWidth(nint widget, int width);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_widget_set_height")]
+        public static partial int UiWidgetSetHeight(nint widget, int height);
 
         [LibraryImport(Library, EntryPoint = "endpoint_ui_widget_get_size")]
         public static partial int UiWidgetGetSize(nint widget, out int width, out int height);
