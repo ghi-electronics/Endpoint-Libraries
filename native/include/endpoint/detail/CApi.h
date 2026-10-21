@@ -395,6 +395,31 @@ int endpoint_ui_checkbox_set_text(void* checkbox, const char* text);
 int endpoint_ui_checkbox_set_checked(void* checkbox, int checked);
 int endpoint_ui_checkbox_get_checked(void* checkbox, int* checked);
 
+// Keyboard. Pass a TextBox handle to set_textbox so the keyboard's keys
+// write into it; pass null to detach.
+int endpoint_ui_keyboard_create(void* parent, void** out);
+int endpoint_ui_keyboard_set_textbox(void* keyboard, void* textbox);
+
+// Switch — binary on/off toggle. ValueChanged event fires via the shared
+// endpoint_ui_subscribe_value_changed.
+int endpoint_ui_switch_create(void* parent, void** out);
+int endpoint_ui_switch_set_checked(void* sw, int checked);
+int endpoint_ui_switch_get_checked(void* sw, int* checked);
+
+// ProgressBar — horizontal bar. No events; the user drives it.
+int endpoint_ui_progressbar_create(void* parent, void** out);
+int endpoint_ui_progressbar_set_range(void* bar, int min, int max);
+int endpoint_ui_progressbar_set_value(void* bar, int value);
+int endpoint_ui_progressbar_get_value(void* bar, int* value);
+
+// Dropdown — select one item from a list. Options passed as a newline-
+// separated string ("Apple\nBanana\nCherry"). ValueChanged event fires
+// via the shared endpoint_ui_subscribe_value_changed.
+int endpoint_ui_dropdown_create(void* parent, void** out);
+int endpoint_ui_dropdown_set_options(void* dd, const char* nlSeparated);
+int endpoint_ui_dropdown_set_selected(void* dd, int index);
+int endpoint_ui_dropdown_get_selected(void* dd, int* index);
+
 #ifdef __cplusplus
 }
 #endif

@@ -401,3 +401,116 @@ ENDPOINT_API int endpoint_ui_checkbox_get_checked(void* checkbox, int* checked) 
         if (checked) *checked = lv_obj_has_state(AsObj(checkbox), LV_STATE_CHECKED) ? 1 : 0;
     });
 }
+
+// =========================================================================
+// Keyboard — LVGL's built-in virtual keyboard. Attach to a TextBox and it
+// pops rendered chars into the TextBox when keys are tapped; Enter / clear
+// are routed by LVGL for free. Position/size defaults to the display's
+// bottom half; the caller can override via widget_set_x/y/width/height.
+// =========================================================================
+
+namespace {
+// Auto-hide on Enter (LV_EVENT_READY) and Close (LV_EVENT_CANCEL). This is
+// the natural UX for text input: user taps textbox, types, hits Enter, the
+// keyboard tucks away. To show again, flip Visible back on.
+void KeyboardHideOnReadyOrCancel(lv_event_t* e) {
+    lv_obj_add_flag(lv_event_get_target_obj(e), LV_OBJ_FLAG_HIDDEN);
+}
+}
+
+ENDPOINT_API int endpoint_ui_keyboard_create(void* parent, void** out) {
+    return Call([&] {
+        if (!parent || !out) ThrowInvalidOperation("parent or out is null");
+        auto* kb = lv_keyboard_create(AsObj(parent));
+        lv_obj_add_event_cb(kb, KeyboardHideOnReadyOrCancel, LV_EVENT_READY, nullptr);
+        lv_obj_add_event_cb(kb, KeyboardHideOnReadyOrCancel, LV_EVENT_CANCEL, nullptr);
+        *out = kb;
+    });
+}
+
+ENDPOINT_API int endpoint_ui_keyboard_set_textbox(void* keyboard, void* textbox) {
+    return Call([&] {
+        if (!keyboard) ThrowInvalidOperation("keyboard is null");
+        lv_keyboard_set_textarea(AsObj(keyboard), textbox ? AsObj(textbox) : nullptr);
+    });
+}
+
+// =========================================================================
+// Switch — binary on/off toggle. ValueChanged event fires on each flip.
+// =========================================================================
+
+ENDPOINT_API int endpoint_ui_switch_create(void* parent, void** out) {
+    return Call([&] {
+        if (!parent || !out) ThrowInvalidOperation("parent or out is null");
+        *out = lv_switch_create(AsObj(parent));
+    });
+}
+
+ENDPOINT_API int endpoint_ui_switch_set_checked(void* sw, int checked) {
+    return Call([&] {
+        if (checked) lv_obj_add_state(AsObj(sw), LV_STATE_CHECKED);
+        else         lv_obj_remove_state(AsObj(sw), LV_STATE_CHECKED);
+    });
+}
+
+ENDPOINT_API int endpoint_ui_switch_get_checked(void* sw, int* checked) {
+    return Call([&] {
+        if (checked) *checked = lv_obj_has_state(AsObj(sw), LV_STATE_CHECKED) ? 1 : 0;
+    });
+}
+
+// =========================================================================
+// ProgressBar — horizontal bar showing a value in [min, max]. No events.
+// =========================================================================
+
+ENDPOINT_API int endpoint_ui_progressbar_create(void* parent, void** out) {
+    return Call([&] {
+        if (!parent || !out) ThrowInvalidOperation("parent or out is null");
+        auto* bar = lv_bar_create(AsObj(parent));
+        *out = bar;
+    });
+}
+
+ENDPOINT_API int endpoint_ui_progressbar_set_range(void* bar, int min, int max) {
+    return Call([&] { lv_bar_set_range(AsObj(bar), min, max); });
+}
+
+ENDPOINT_API int endpoint_ui_progressbar_set_value(void* bar, int value) {
+    return Call([&] { lv_bar_set_value(AsObj(bar), value, LV_ANIM_OFF); });
+}
+
+ENDPOINT_API int endpoint_ui_progressbar_get_value(void* bar, int* value) {
+    return Call([&] {
+        if (value) *value = (int)lv_bar_get_value(AsObj(bar));
+    });
+}
+
+// =========================================================================
+// Dropdown — select one item from a list. Options are newline-separated.
+// Fires ValueChanged when the selection changes.
+// =========================================================================
+
+ENDPOINT_API int endpoint_ui_dropdown_create(void* parent, void** out) {
+    return Call([&] {
+        if (!parent || !out) ThrowInvalidOperation("parent or out is null");
+        *out = lv_dropdown_create(AsObj(parent));
+    });
+}
+
+ENDPOINT_API int endpoint_ui_dropdown_set_options(void* dd, const char* nlSeparated) {
+    return Call([&] {
+        lv_dropdown_set_options(AsObj(dd), nlSeparated ? nlSeparated : "");
+    });
+}
+
+ENDPOINT_API int endpoint_ui_dropdown_set_selected(void* dd, int index) {
+    return Call([&] {
+        lv_dropdown_set_selected(AsObj(dd), (uint16_t)index);
+    });
+}
+
+ENDPOINT_API int endpoint_ui_dropdown_get_selected(void* dd, int* index) {
+    return Call([&] {
+        if (index) *index = (int)lv_dropdown_get_selected(AsObj(dd));
+    });
+}

@@ -233,6 +233,19 @@ _FUNCTIONS = {
     "ui_checkbox_set_text": [_handle, _text],
     "ui_checkbox_set_checked": [_handle, _int],
     "ui_checkbox_get_checked": [_handle, _out_int],
+    "ui_keyboard_create": [_handle, _out_handle],
+    "ui_keyboard_set_textbox": [_handle, _handle],
+    "ui_switch_create": [_handle, _out_handle],
+    "ui_switch_set_checked": [_handle, _int],
+    "ui_switch_get_checked": [_handle, _out_int],
+    "ui_progressbar_create": [_handle, _out_handle],
+    "ui_progressbar_set_range": [_handle, _int, _int],
+    "ui_progressbar_set_value": [_handle, _int],
+    "ui_progressbar_get_value": [_handle, _out_int],
+    "ui_dropdown_create": [_handle, _out_handle],
+    "ui_dropdown_set_options": [_handle, _text],
+    "ui_dropdown_set_selected": [_handle, _int],
+    "ui_dropdown_get_selected": [_handle, _out_int],
 }
 
 

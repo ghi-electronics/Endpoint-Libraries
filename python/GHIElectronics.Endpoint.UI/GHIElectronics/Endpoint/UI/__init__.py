@@ -360,3 +360,102 @@ class CheckBox(Widget):
     @IsChecked.setter
     def IsChecked(self, value):
         native.ui_checkbox_set_checked(self._native, 1 if value else 0)
+
+
+class Dropdown(Widget):
+    """Select one item from a list. ValueChanged fires on selection change."""
+
+    def __init__(self, parent):
+        h = native.out_handle()
+        native.ui_dropdown_create(parent._native, native.ref(h))
+        super().__init__(h.value)
+        self.ValueChanged = _Event()
+        _subscribe(self, native.ui_subscribe_value_changed, self.ValueChanged)
+
+    def SetOptions(self, options):
+        """Set items; iterable of strings, joined with newline internally."""
+        joined = "\n".join(options)
+        native.ui_dropdown_set_options(self._native, joined.encode("utf-8"))
+
+    @property
+    def Selected(self):
+        v = native.out_int()
+        native.ui_dropdown_get_selected(self._native, native.ref(v))
+        return v.value
+
+    @Selected.setter
+    def Selected(self, value):
+        native.ui_dropdown_set_selected(self._native, value)
+
+
+class ProgressBar(Widget):
+    """Horizontal progress bar. No events; owner drives it via Value."""
+
+    def __init__(self, parent):
+        h = native.out_handle()
+        native.ui_progressbar_create(parent._native, native.ref(h))
+        super().__init__(h.value)
+        self._min = 0
+        self._max = 100
+
+    @property
+    def Minimum(self): return self._min
+    @Minimum.setter
+    def Minimum(self, value):
+        self._min = value
+        native.ui_progressbar_set_range(self._native, self._min, self._max)
+
+    @property
+    def Maximum(self): return self._max
+    @Maximum.setter
+    def Maximum(self, value):
+        self._max = value
+        native.ui_progressbar_set_range(self._native, self._min, self._max)
+
+    @property
+    def Value(self):
+        v = native.out_int()
+        native.ui_progressbar_get_value(self._native, native.ref(v))
+        return v.value
+
+    @Value.setter
+    def Value(self, value):
+        native.ui_progressbar_set_value(self._native, value)
+
+
+class Switch(Widget):
+    """Binary on/off toggle. ValueChanged fires on each flip."""
+
+    def __init__(self, parent):
+        h = native.out_handle()
+        native.ui_switch_create(parent._native, native.ref(h))
+        super().__init__(h.value)
+        self.ValueChanged = _Event()
+        _subscribe(self, native.ui_subscribe_value_changed, self.ValueChanged)
+
+    @property
+    def IsChecked(self):
+        v = native.out_int()
+        native.ui_switch_get_checked(self._native, native.ref(v))
+        return v.value != 0
+
+    @IsChecked.setter
+    def IsChecked(self, value):
+        native.ui_switch_set_checked(self._native, 1 if value else 0)
+
+
+class Keyboard(Widget):
+    """Virtual on-screen keyboard. Attach to a TextBox via SetTarget so taps
+    on keys type into it. Positions itself at the bottom half of the display
+    by default; override via inherited X / Y / Width / Height."""
+
+    def __init__(self, parent):
+        h = native.out_handle()
+        native.ui_keyboard_create(parent._native, native.ref(h))
+        super().__init__(h.value)
+
+    def SetTarget(self, textbox):
+        native.ui_keyboard_set_textbox(self._native, textbox._native)
+
+    def ClearTarget(self):
+        native.ui_keyboard_set_textbox(self._native, None)

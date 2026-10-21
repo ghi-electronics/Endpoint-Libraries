@@ -15,6 +15,7 @@
 #include <cstdint>
 #include <functional>
 #include <string>
+#include <vector>
 
 #include "Core.h"                 // detail::Check
 #include "detail/CApi.h"          // endpoint_ui_* C API
@@ -211,6 +212,79 @@ public:
     void ValueChanged(ValueChangedHandler handler) {
         auto* fn = new ValueChangedHandler(std::move(handler));
         Core::detail::Check(endpoint_ui_subscribe_value_changed(this->_native, &detail::EventTrampoline, fn));
+    }
+};
+
+/// Select one item from a list. ValueChanged fires when the selection changes.
+class Dropdown : public Widget {
+public:
+    explicit Dropdown(const Widget& parent) : Widget(nullptr) {
+        Core::detail::Check(endpoint_ui_dropdown_create(parent.Native(), &this->_native));
+    }
+
+    /// Options passed as a vector of strings; internally joined with '\n'.
+    void SetOptions(const std::vector<std::string>& options) {
+        std::string joined;
+        for (size_t i = 0; i < options.size(); ++i) {
+            if (i) joined += '\n';
+            joined += options[i];
+        }
+        Core::detail::Check(endpoint_ui_dropdown_set_options(this->_native, joined.c_str()));
+    }
+
+    void Selected(int index)  { Core::detail::Check(endpoint_ui_dropdown_set_selected(this->_native, index)); }
+    int Selected() const      { int v = 0; Core::detail::Check(endpoint_ui_dropdown_get_selected(this->_native, &v)); return v; }
+
+    using ValueChangedHandler = std::function<void()>;
+    void ValueChanged(ValueChangedHandler handler) {
+        auto* fn = new ValueChangedHandler(std::move(handler));
+        Core::detail::Check(endpoint_ui_subscribe_value_changed(this->_native, &detail::EventTrampoline, fn));
+    }
+};
+
+/// Horizontal progress bar. No events; the owner drives it via SetValue().
+class ProgressBar : public Widget {
+public:
+    explicit ProgressBar(const Widget& parent) : Widget(nullptr) {
+        Core::detail::Check(endpoint_ui_progressbar_create(parent.Native(), &this->_native));
+    }
+
+    void SetRange(int min, int max) { Core::detail::Check(endpoint_ui_progressbar_set_range(this->_native, min, max)); }
+    void Value(int value)           { Core::detail::Check(endpoint_ui_progressbar_set_value(this->_native, value)); }
+    int Value() const               { int v = 0; Core::detail::Check(endpoint_ui_progressbar_get_value(this->_native, &v)); return v; }
+};
+
+/// Binary on/off toggle. ValueChanged fires on each flip.
+class Switch : public Widget {
+public:
+    explicit Switch(const Widget& parent) : Widget(nullptr) {
+        Core::detail::Check(endpoint_ui_switch_create(parent.Native(), &this->_native));
+    }
+
+    void IsChecked(bool value) { Core::detail::Check(endpoint_ui_switch_set_checked(this->_native, value ? 1 : 0)); }
+    bool IsChecked() const     { int v = 0; Core::detail::Check(endpoint_ui_switch_get_checked(this->_native, &v)); return v != 0; }
+
+    using ValueChangedHandler = std::function<void()>;
+    void ValueChanged(ValueChangedHandler handler) {
+        auto* fn = new ValueChangedHandler(std::move(handler));
+        Core::detail::Check(endpoint_ui_subscribe_value_changed(this->_native, &detail::EventTrampoline, fn));
+    }
+};
+
+/// Virtual on-screen keyboard. Attach to a TextBox so taps on keys type
+/// into it. Positions itself at the bottom half of the display by default;
+/// use the inherited geometry setters to override.
+class Keyboard : public Widget {
+public:
+    explicit Keyboard(const Widget& parent) : Widget(nullptr) {
+        Core::detail::Check(endpoint_ui_keyboard_create(parent.Native(), &this->_native));
+    }
+
+    void SetTarget(const TextBox& textbox) {
+        Core::detail::Check(endpoint_ui_keyboard_set_textbox(this->_native, textbox.Native()));
+    }
+    void ClearTarget() {
+        Core::detail::Check(endpoint_ui_keyboard_set_textbox(this->_native, nullptr));
     }
 };
 

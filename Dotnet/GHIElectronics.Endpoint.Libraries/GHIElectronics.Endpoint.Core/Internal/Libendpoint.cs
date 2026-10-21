@@ -412,5 +412,44 @@ namespace GHIElectronics.Endpoint.Core.Internal {
 
         [LibraryImport(Library, EntryPoint = "endpoint_ui_checkbox_get_checked")]
         public static partial int UiCheckBoxGetChecked(nint checkbox, out int checked_);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_keyboard_create")]
+        public static partial int UiKeyboardCreate(nint parent, out nint keyboard);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_keyboard_set_textbox")]
+        public static partial int UiKeyboardSetTextBox(nint keyboard, nint textbox);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_switch_create")]
+        public static partial int UiSwitchCreate(nint parent, out nint sw);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_switch_set_checked")]
+        public static partial int UiSwitchSetChecked(nint sw, int checked_);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_switch_get_checked")]
+        public static partial int UiSwitchGetChecked(nint sw, out int checked_);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_progressbar_create")]
+        public static partial int UiProgressBarCreate(nint parent, out nint bar);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_progressbar_set_range")]
+        public static partial int UiProgressBarSetRange(nint bar, int min, int max);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_progressbar_set_value")]
+        public static partial int UiProgressBarSetValue(nint bar, int value);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_progressbar_get_value")]
+        public static partial int UiProgressBarGetValue(nint bar, out int value);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_dropdown_create")]
+        public static partial int UiDropdownCreate(nint parent, out nint dd);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_dropdown_set_options", StringMarshalling = StringMarshalling.Utf8)]
+        public static partial int UiDropdownSetOptions(nint dd, string nlSeparated);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_dropdown_set_selected")]
+        public static partial int UiDropdownSetSelected(nint dd, int index);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_dropdown_get_selected")]
+        public static partial int UiDropdownGetSelected(nint dd, out int index);
     }
 }
