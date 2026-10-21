@@ -44,6 +44,11 @@ UnpluggedCallback = ctypes.CFUNCTYPE(None, ctypes.c_void_p)
 CameraFrameCallback = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint8), ctypes.c_int, ctypes.c_int,
                                        ctypes.c_int)
 
+# UI widget event (Clicked / ValueChanged), on the UI thread: (context)
+UiEventCallback = ctypes.CFUNCTYPE(None, ctypes.c_void_p)
+_uint32 = ctypes.c_uint32
+_bytes_ptr = ctypes.POINTER(ctypes.c_uint8)
+
 _FUNCTIONS = {
     "gpio_create": [_out_handle],
     "gpio_dispose": [_handle],
@@ -179,6 +184,49 @@ _FUNCTIONS = {
     "touch_open": [_text, TouchCallback, ctypes.c_void_p, _out_handle],
     "touch_close": [_handle],
     "touch_info": [_handle, _out_int, _out_int, _out_int, _out_int, _out_int],
+
+    # UI (LVGL under the hood). Lifecycle first, then shared widget ops, then
+    # per-type functions. Events pass (callback, context) — the Python side
+    # keeps a reference to the callback so ctypes doesn't collect it.
+    "ui_initialize": [],
+    "ui_run": [],
+    "ui_stop": [],
+    "ui_widget_destroy": [_handle],
+    "ui_widget_set_pos": [_handle, _int, _int],
+    "ui_widget_get_pos": [_handle, _out_int, _out_int],
+    "ui_widget_set_size": [_handle, _int, _int],
+    "ui_widget_get_size": [_handle, _out_int, _out_int],
+    "ui_widget_set_visible": [_handle, _int],
+    "ui_widget_get_visible": [_handle, _out_int],
+    "ui_subscribe_clicked": [_handle, UiEventCallback, ctypes.c_void_p],
+    "ui_subscribe_value_changed": [_handle, UiEventCallback, ctypes.c_void_p],
+    "ui_screen_create": [_out_handle],
+    "ui_screen_load": [_handle],
+    "ui_screen_active": [_out_handle],
+    "ui_container_create": [_handle, _out_handle],
+    "ui_button_create": [_handle, _out_handle],
+    "ui_button_set_text": [_handle, _text],
+    "ui_button_set_bg_color": [_handle, _uint32],
+    "ui_button_set_text_color": [_handle, _uint32],
+    "ui_button_set_font_size": [_handle, _int],
+    "ui_label_create": [_handle, _out_handle],
+    "ui_label_set_text": [_handle, _text],
+    "ui_label_set_color": [_handle, _uint32],
+    "ui_label_set_font_size": [_handle, _int],
+    "ui_image_create": [_handle, _out_handle],
+    "ui_image_set_source": [_handle, _bytes_ptr, _int, _int, _int],
+    "ui_textbox_create": [_handle, _out_handle],
+    "ui_textbox_set_text": [_handle, _text],
+    "ui_textbox_get_text": [_handle, _buffer, _int],
+    "ui_textbox_set_placeholder": [_handle, _text],
+    "ui_slider_create": [_handle, _out_handle],
+    "ui_slider_set_range": [_handle, _int, _int],
+    "ui_slider_set_value": [_handle, _int],
+    "ui_slider_get_value": [_handle, _out_int],
+    "ui_checkbox_create": [_handle, _out_handle],
+    "ui_checkbox_set_text": [_handle, _text],
+    "ui_checkbox_set_checked": [_handle, _int],
+    "ui_checkbox_get_checked": [_handle, _out_int],
 }
 
 
