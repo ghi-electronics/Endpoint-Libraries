@@ -10,14 +10,14 @@
 //   button.Clicked([]{ std::puts("clicked"); });
 //   screen.Load();
 //   UI::Run();                                   // blocks until Stop()
-//
-// This header declares the public surface; M4 wires it to the libendpoint
-// C API (lv_* internals stay private). Implementation lands in M5.
 #pragma once
 
 #include <cstdint>
 #include <functional>
 #include <string>
+
+#include "Core.h"                 // detail::Check
+#include "detail/CApi.h"          // endpoint_ui_* C API
 
 namespace GHIElectronics {
 namespace Endpoint {
@@ -26,35 +26,51 @@ namespace UI {
 /// Opaque handle to a native widget (internally an lv_obj_t*).
 using NativeHandle = void*;
 
+namespace detail {
+    // Event trampoline: the C API passes back context as void*. We allocate a
+    // std::function on the heap at subscribe time and reconstruct it here.
+    // Lives until process exit (unsubscribe isn't exposed yet).
+    inline void EventTrampoline(void* context) {
+        auto* fn = static_cast<std::function<void()>*>(context);
+        if (fn) (*fn)();
+    }
+}
+
 /// UI subsystem lifecycle. Call Initialize() once after the display is
 /// enabled; call Run() to drive the event loop; Stop() to exit.
 class UI {
 public:
-    static void Initialize();
-    static void Run();
-    static void Stop();
+    static void Initialize() { Core::detail::Check(endpoint_ui_initialize()); }
+    static void Run()        { Core::detail::Check(endpoint_ui_run()); }
+    static void Stop()       { Core::detail::Check(endpoint_ui_stop()); }
 };
 
-/// Base class for every widget. Not instantiable directly; use Screen,
-/// Button, Label, etc. Holds the native handle; destructor releases the
-/// underlying LVGL object.
+/// Base class for every widget. Holds the native handle; destructor releases
+/// the underlying LVGL object. Not copyable (widgets own their handle).
 class Widget {
 public:
-    virtual ~Widget();
+    virtual ~Widget() {
+        if (this->_native) endpoint_ui_widget_destroy(this->_native);
+    }
 
-    int X() const;        void X(int value);
-    int Y() const;        void Y(int value);
-    int Width() const;    void Width(int value);
-    int Height() const;   void Height(int value);
-    bool Visible() const; void Visible(bool value);
+    int X() const       { int v = 0; Core::detail::Check(endpoint_ui_widget_get_pos(this->_native, &v, nullptr)); return v; }
+    int Y() const       { int v = 0; Core::detail::Check(endpoint_ui_widget_get_pos(this->_native, nullptr, &v)); return v; }
+    int Width() const   { int v = 0; Core::detail::Check(endpoint_ui_widget_get_size(this->_native, &v, nullptr)); return v; }
+    int Height() const  { int v = 0; Core::detail::Check(endpoint_ui_widget_get_size(this->_native, nullptr, &v)); return v; }
+    bool Visible() const { int v = 0; Core::detail::Check(endpoint_ui_widget_get_visible(this->_native, &v)); return v != 0; }
+
+    void X(int value)       { Core::detail::Check(endpoint_ui_widget_set_pos(this->_native, value, Y())); }
+    void Y(int value)       { Core::detail::Check(endpoint_ui_widget_set_pos(this->_native, X(), value)); }
+    void Width(int value)   { Core::detail::Check(endpoint_ui_widget_set_size(this->_native, value, Height())); }
+    void Height(int value)  { Core::detail::Check(endpoint_ui_widget_set_size(this->_native, Width(), value)); }
+    void Visible(bool value) { Core::detail::Check(endpoint_ui_widget_set_visible(this->_native, value ? 1 : 0)); }
 
     NativeHandle Native() const { return this->_native; }
 
 protected:
-    explicit Widget(NativeHandle native);
+    explicit Widget(NativeHandle native) : _native(native) {}
     NativeHandle _native;
 
-    // Not copyable (widgets own their native handle).
     Widget(const Widget&) = delete;
     Widget& operator=(const Widget&) = delete;
 };
@@ -63,81 +79,128 @@ protected:
 /// only one is active. Call Load() to make this the displayed screen.
 class Screen : public Widget {
 public:
-    Screen();
-    void Load();
-    static Screen& Active();
+    Screen() : Widget(nullptr) {
+        Core::detail::Check(endpoint_ui_screen_create(&this->_native));
+    }
+
+    void Load() { Core::detail::Check(endpoint_ui_screen_load(this->_native)); }
+
+    /// The screen currently displayed on the panel. Never destroyed by this
+    /// wrapper (owned by LVGL). The returned reference is static storage.
+    static Screen& Active() {
+        static Screen instance{SentinelActive{}};
+        Core::detail::Check(endpoint_ui_screen_active(&instance._native));
+        return instance;
+    }
+
+private:
+    struct SentinelActive {};
+    explicit Screen(SentinelActive) : Widget(nullptr) {}
 };
 
 class Container : public Widget {
 public:
-    explicit Container(const Widget& parent);
+    explicit Container(const Widget& parent) : Widget(nullptr) {
+        Core::detail::Check(endpoint_ui_container_create(parent.Native(), &this->_native));
+    }
 };
 
 class Button : public Widget {
 public:
-    explicit Button(const Widget& parent);
+    explicit Button(const Widget& parent) : Widget(nullptr) {
+        Core::detail::Check(endpoint_ui_button_create(parent.Native(), &this->_native));
+    }
 
-    std::string Text() const;     void Text(const std::string& value);
-    uint32_t BackgroundColor() const; void BackgroundColor(uint32_t rgb);
-    uint32_t TextColor() const;   void TextColor(uint32_t rgb);
-    int FontSize() const;         void FontSize(int value);
+    void Text(const std::string& value)        { Core::detail::Check(endpoint_ui_button_set_text(this->_native, value.c_str())); }
+    void BackgroundColor(uint32_t rgb)         { Core::detail::Check(endpoint_ui_button_set_bg_color(this->_native, rgb)); }
+    void TextColor(uint32_t rgb)               { Core::detail::Check(endpoint_ui_button_set_text_color(this->_native, rgb)); }
+    void FontSize(int size)                    { Core::detail::Check(endpoint_ui_button_set_font_size(this->_native, size)); }
 
     using ClickedHandler = std::function<void()>;
-    void Clicked(ClickedHandler handler);
+    void Clicked(ClickedHandler handler) {
+        auto* fn = new ClickedHandler(std::move(handler));
+        Core::detail::Check(endpoint_ui_subscribe_clicked(this->_native, &detail::EventTrampoline, fn));
+    }
 };
 
 class Label : public Widget {
 public:
-    explicit Label(const Widget& parent);
+    explicit Label(const Widget& parent) : Widget(nullptr) {
+        Core::detail::Check(endpoint_ui_label_create(parent.Native(), &this->_native));
+    }
 
-    std::string Text() const; void Text(const std::string& value);
-    uint32_t Color() const;   void Color(uint32_t rgb);
-    int FontSize() const;     void FontSize(int value);
+    void Text(const std::string& value) { Core::detail::Check(endpoint_ui_label_set_text(this->_native, value.c_str())); }
+    void Color(uint32_t rgb)            { Core::detail::Check(endpoint_ui_label_set_color(this->_native, rgb)); }
+    void FontSize(int size)             { Core::detail::Check(endpoint_ui_label_set_font_size(this->_native, size)); }
 };
 
 class Image : public Widget {
 public:
-    explicit Image(const Widget& parent);
+    explicit Image(const Widget& parent) : Widget(nullptr) {
+        Core::detail::Check(endpoint_ui_image_create(parent.Native(), &this->_native));
+    }
 
-    /// Set the image from RGB565 pixel bytes (little-endian, matches
-    /// Display::PixelFormat::Format16bppRgb565). Width/Height describe the
-    /// source bitmap; use the inherited Width/Height setters for display
-    /// size (LVGL scales).
-    void SetSource(const uint8_t* rgb565Pixels, size_t byteCount, int width, int height);
+    /// Caller keeps `pixels` alive for the lifetime of the widget (not copied).
+    void SetSource(const uint8_t* pixels, size_t byteCount, int width, int height) {
+        Core::detail::Check(endpoint_ui_image_set_source(this->_native, pixels, (int)byteCount, width, height));
+    }
 };
 
 class TextBox : public Widget {
 public:
-    explicit TextBox(const Widget& parent);
+    explicit TextBox(const Widget& parent) : Widget(nullptr) {
+        Core::detail::Check(endpoint_ui_textbox_create(parent.Native(), &this->_native));
+    }
 
-    std::string Text() const;        void Text(const std::string& value);
-    std::string Placeholder() const; void Placeholder(const std::string& value);
+    void Text(const std::string& value)        { Core::detail::Check(endpoint_ui_textbox_set_text(this->_native, value.c_str())); }
+    void Placeholder(const std::string& value) { Core::detail::Check(endpoint_ui_textbox_set_placeholder(this->_native, value.c_str())); }
+
+    std::string Text() const {
+        char buf[256];
+        Core::detail::Check(endpoint_ui_textbox_get_text(this->_native, buf, sizeof(buf)));
+        return std::string(buf);
+    }
 
     using ValueChangedHandler = std::function<void()>;
-    void ValueChanged(ValueChangedHandler handler);
+    void ValueChanged(ValueChangedHandler handler) {
+        auto* fn = new ValueChangedHandler(std::move(handler));
+        Core::detail::Check(endpoint_ui_subscribe_value_changed(this->_native, &detail::EventTrampoline, fn));
+    }
 };
 
 class Slider : public Widget {
 public:
-    explicit Slider(const Widget& parent);
+    explicit Slider(const Widget& parent) : Widget(nullptr) {
+        Core::detail::Check(endpoint_ui_slider_create(parent.Native(), &this->_native));
+    }
 
-    int Minimum() const; void Minimum(int value);
-    int Maximum() const; void Maximum(int value);
-    int Value() const;   void Value(int value);
+    // Minimum and Maximum are set together via SetRange (LVGL stores them as a pair).
+    void SetRange(int min, int max) { Core::detail::Check(endpoint_ui_slider_set_range(this->_native, min, max)); }
+    void Value(int value)           { Core::detail::Check(endpoint_ui_slider_set_value(this->_native, value)); }
+    int Value() const               { int v = 0; Core::detail::Check(endpoint_ui_slider_get_value(this->_native, &v)); return v; }
 
     using ValueChangedHandler = std::function<void()>;
-    void ValueChanged(ValueChangedHandler handler);
+    void ValueChanged(ValueChangedHandler handler) {
+        auto* fn = new ValueChangedHandler(std::move(handler));
+        Core::detail::Check(endpoint_ui_subscribe_value_changed(this->_native, &detail::EventTrampoline, fn));
+    }
 };
 
 class CheckBox : public Widget {
 public:
-    explicit CheckBox(const Widget& parent);
+    explicit CheckBox(const Widget& parent) : Widget(nullptr) {
+        Core::detail::Check(endpoint_ui_checkbox_create(parent.Native(), &this->_native));
+    }
 
-    std::string Text() const; void Text(const std::string& value);
-    bool IsChecked() const;   void IsChecked(bool value);
+    void Text(const std::string& value) { Core::detail::Check(endpoint_ui_checkbox_set_text(this->_native, value.c_str())); }
+    void IsChecked(bool value)          { Core::detail::Check(endpoint_ui_checkbox_set_checked(this->_native, value ? 1 : 0)); }
+    bool IsChecked() const              { int v = 0; Core::detail::Check(endpoint_ui_checkbox_get_checked(this->_native, &v)); return v != 0; }
 
     using ValueChangedHandler = std::function<void()>;
-    void ValueChanged(ValueChangedHandler handler);
+    void ValueChanged(ValueChangedHandler handler) {
+        auto* fn = new ValueChangedHandler(std::move(handler));
+        Core::detail::Check(endpoint_ui_subscribe_value_changed(this->_native, &detail::EventTrampoline, fn));
+    }
 };
 
 }  // namespace UI
