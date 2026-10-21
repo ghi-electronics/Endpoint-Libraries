@@ -31,6 +31,7 @@
 #include "endpoint/Spi.h"
 #include "endpoint/Storage.h"
 #include "endpoint/Touch.h"
+#include "endpoint/UI.h"
 #include "endpoint/UsbHost.h"
 #include "endpoint/Version.h"
 #include "endpoint/Watchdog.h"
