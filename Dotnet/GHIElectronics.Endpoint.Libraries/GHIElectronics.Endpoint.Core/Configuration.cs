@@ -13,6 +13,7 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("GHIElectronics.Endpoint.Devices.Network")]
 [assembly: InternalsVisibleTo("GHIElectronics.Endpoint.Devices.Display")]
 [assembly: InternalsVisibleTo("GHIElectronics.Endpoint.Devices.Touch")]
+[assembly: InternalsVisibleTo("GHIElectronics.Endpoint.UI")]
 
 namespace GHIElectronics.Endpoint.Core {
     public static partial class EPM815 {

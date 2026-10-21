@@ -1,3 +1,5 @@
+using GHIElectronics.Endpoint.Core.Internal;
+
 namespace GHIElectronics.Endpoint.UI;
 
 /// <summary>
@@ -7,17 +9,25 @@ namespace GHIElectronics.Endpoint.UI;
 /// </summary>
 public class Screen : Widget {
     /// <summary>Create a new standalone screen (invisible until Load()).</summary>
-    public Screen() : base(IntPtr.Zero) {
-        throw new NotImplementedException();  // M4
+    public Screen() : base(0) {
+        Libendpoint.Check(Libendpoint.UiScreenCreate(out var n));
+        this.Native = n;
     }
+
+    // Internal ctor used by Active (which doesn't own the handle).
+    private Screen(nint existing) : base(existing) { }
 
     /// <summary>Make this the currently-displayed screen.</summary>
-    public void Load() {
-        throw new NotImplementedException();  // M4
-    }
+    public void Load() => Libendpoint.Check(Libendpoint.UiScreenLoad(this.Native));
 
-    /// <summary>The screen currently displayed on the panel.</summary>
+    /// <summary>
+    /// The screen currently displayed on the panel. The returned instance
+    /// does not own its handle and should not be disposed.
+    /// </summary>
     public static Screen Active {
-        get => throw new NotImplementedException();  // M4
+        get {
+            Libendpoint.Check(Libendpoint.UiScreenActive(out var n));
+            return new Screen(n);
+        }
     }
 }

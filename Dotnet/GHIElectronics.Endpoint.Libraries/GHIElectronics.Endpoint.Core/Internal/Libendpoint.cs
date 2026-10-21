@@ -273,5 +273,126 @@ namespace GHIElectronics.Endpoint.Core.Internal {
         [LibraryImport(Library, EntryPoint = "endpoint_touch_info")]
         public static partial int TouchInfo(nint device, out int vendorId, out int productId,
                                             out int connected, out int width, out int height);
+
+        // UI (LVGL under the hood). Lifecycle, then shared widget ops, then
+        // per-widget-type functions. Events pass a function pointer + context;
+        // the context is owned by the caller for the subscription's lifetime.
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_initialize")]
+        public static partial int UiInitialize();
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_run")]
+        public static partial int UiRun();
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_stop")]
+        public static partial int UiStop();
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_widget_destroy")]
+        public static partial int UiWidgetDestroy(nint widget);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_widget_set_pos")]
+        public static partial int UiWidgetSetPos(nint widget, int x, int y);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_widget_get_pos")]
+        public static partial int UiWidgetGetPos(nint widget, out int x, out int y);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_widget_set_size")]
+        public static partial int UiWidgetSetSize(nint widget, int width, int height);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_widget_get_size")]
+        public static partial int UiWidgetGetSize(nint widget, out int width, out int height);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_widget_set_visible")]
+        public static partial int UiWidgetSetVisible(nint widget, int visible);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_widget_get_visible")]
+        public static partial int UiWidgetGetVisible(nint widget, out int visible);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_subscribe_clicked")]
+        public static partial int UiSubscribeClicked(nint widget, delegate* unmanaged<nint, void> cb, nint context);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_subscribe_value_changed")]
+        public static partial int UiSubscribeValueChanged(nint widget, delegate* unmanaged<nint, void> cb, nint context);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_screen_create")]
+        public static partial int UiScreenCreate(out nint screen);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_screen_load")]
+        public static partial int UiScreenLoad(nint screen);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_screen_active")]
+        public static partial int UiScreenActive(out nint screen);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_container_create")]
+        public static partial int UiContainerCreate(nint parent, out nint container);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_button_create")]
+        public static partial int UiButtonCreate(nint parent, out nint button);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_button_set_text", StringMarshalling = StringMarshalling.Utf8)]
+        public static partial int UiButtonSetText(nint button, string text);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_button_set_bg_color")]
+        public static partial int UiButtonSetBgColor(nint button, uint rgb);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_button_set_text_color")]
+        public static partial int UiButtonSetTextColor(nint button, uint rgb);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_button_set_font_size")]
+        public static partial int UiButtonSetFontSize(nint button, int size);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_label_create")]
+        public static partial int UiLabelCreate(nint parent, out nint label);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_label_set_text", StringMarshalling = StringMarshalling.Utf8)]
+        public static partial int UiLabelSetText(nint label, string text);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_label_set_color")]
+        public static partial int UiLabelSetColor(nint label, uint rgb);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_label_set_font_size")]
+        public static partial int UiLabelSetFontSize(nint label, int size);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_image_create")]
+        public static partial int UiImageCreate(nint parent, out nint image);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_image_set_source")]
+        public static partial int UiImageSetSource(nint image, byte* rgb565Pixels, int byteCount, int width, int height);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_textbox_create")]
+        public static partial int UiTextBoxCreate(nint parent, out nint textbox);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_textbox_set_text", StringMarshalling = StringMarshalling.Utf8)]
+        public static partial int UiTextBoxSetText(nint textbox, string text);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_textbox_get_text")]
+        public static partial int UiTextBoxGetText(nint textbox, byte* outBuf, int outSize);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_textbox_set_placeholder", StringMarshalling = StringMarshalling.Utf8)]
+        public static partial int UiTextBoxSetPlaceholder(nint textbox, string placeholder);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_slider_create")]
+        public static partial int UiSliderCreate(nint parent, out nint slider);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_slider_set_range")]
+        public static partial int UiSliderSetRange(nint slider, int min, int max);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_slider_set_value")]
+        public static partial int UiSliderSetValue(nint slider, int value);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_slider_get_value")]
+        public static partial int UiSliderGetValue(nint slider, out int value);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_checkbox_create")]
+        public static partial int UiCheckBoxCreate(nint parent, out nint checkbox);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_checkbox_set_text", StringMarshalling = StringMarshalling.Utf8)]
+        public static partial int UiCheckBoxSetText(nint checkbox, string text);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_checkbox_set_checked")]
+        public static partial int UiCheckBoxSetChecked(nint checkbox, int checked_);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_checkbox_get_checked")]
+        public static partial int UiCheckBoxGetChecked(nint checkbox, out int checked_);
     }
 }
