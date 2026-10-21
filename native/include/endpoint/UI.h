@@ -44,6 +44,15 @@ inline void Initialize() { Core::detail::Check(endpoint_ui_initialize()); }
 inline void Run()        { Core::detail::Check(endpoint_ui_run()); }
 inline void Stop()       { Core::detail::Check(endpoint_ui_stop()); }
 
+/// Touch input bridge. Call TouchAttach() once after Initialize(), then
+/// call TouchFeed(x, y, pressed) from your touch chip's event handler.
+namespace Touch {
+    inline void Attach() { Core::detail::Check(endpoint_ui_touch_attach()); }
+    inline void Feed(int x, int y, bool pressed) {
+        Core::detail::Check(endpoint_ui_touch_feed(x, y, pressed ? 1 : 0));
+    }
+}
+
 /// Base class for every widget. Holds the native handle; destructor releases
 /// the underlying LVGL object. Not copyable (widgets own their handle).
 class Widget {

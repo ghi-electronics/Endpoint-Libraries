@@ -18,6 +18,14 @@ namespace {
 std::atomic<bool> g_initialized{false};
 std::atomic<bool> g_running{false};
 
+// Touch state. The read_cb snapshots these on each LVGL tick; the touch
+// chip's own event thread writes them via TouchFeed(). lv_indev_t is set
+// up once by TouchAttach().
+std::atomic<int32_t> g_touch_x{0};
+std::atomic<int32_t> g_touch_y{0};
+std::atomic<bool>    g_touch_pressed{false};
+lv_indev_t*          g_touch_indev = nullptr;
+
 const auto g_start = std::chrono::steady_clock::now();
 
 uint32_t TickNowMs() {
@@ -68,6 +76,27 @@ void Run() {
 
 void Stop() {
     g_running = false;
+}
+
+namespace {
+void TouchReadCb(lv_indev_t*, lv_indev_data_t* data) {
+    data->point.x = g_touch_x.load();
+    data->point.y = g_touch_y.load();
+    data->state   = g_touch_pressed.load() ? LV_INDEV_STATE_PRESSED : LV_INDEV_STATE_RELEASED;
+}
+}
+
+void TouchAttach() {
+    if (g_touch_indev) return;
+    g_touch_indev = lv_indev_create();
+    lv_indev_set_type(g_touch_indev, LV_INDEV_TYPE_POINTER);
+    lv_indev_set_read_cb(g_touch_indev, TouchReadCb);
+}
+
+void TouchFeed(int x, int y, bool pressed) {
+    g_touch_x = x;
+    g_touch_y = y;
+    g_touch_pressed = pressed;
 }
 
 }  // namespace GHIElectronics::Endpoint::Internal::UI

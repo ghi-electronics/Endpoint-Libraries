@@ -287,6 +287,12 @@ namespace GHIElectronics.Endpoint.Core.Internal {
         [LibraryImport(Library, EntryPoint = "endpoint_ui_stop")]
         public static partial int UiStop();
 
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_touch_attach")]
+        public static partial int UiTouchAttach();
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_touch_feed")]
+        public static partial int UiTouchFeed(int x, int y, int pressed);
+
         [LibraryImport(Library, EntryPoint = "endpoint_ui_widget_destroy")]
         public static partial int UiWidgetDestroy(nint widget);
 

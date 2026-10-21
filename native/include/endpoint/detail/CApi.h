@@ -319,6 +319,13 @@ int endpoint_ui_initialize(void);
 int endpoint_ui_run(void);
 int endpoint_ui_stop(void);
 
+// Touch input bridge. Call touch_attach once after Initialize to register
+// an LVGL pointer input device. Then call touch_feed(x, y, pressed) from
+// your touch chip's event handler — LVGL's event loop will pick it up on
+// the next tick and dispatch Clicked / ValueChanged accordingly.
+int endpoint_ui_touch_attach(void);
+int endpoint_ui_touch_feed(int x, int y, int pressed);
+
 // Common widget operations. `widget` is a handle returned by one of the
 // *_create functions (internally an lv_obj_t*). Destroy frees the widget
 // and all its children.

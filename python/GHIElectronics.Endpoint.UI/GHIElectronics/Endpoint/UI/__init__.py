@@ -74,6 +74,20 @@ class UI:
         native.ui_stop()
 
 
+class TouchBridge:
+    """Touch input bridge. Call Attach() once after UI.Initialize(), then
+    call Feed(x, y, pressed) from your touch chip's event handler. LVGL will
+    dispatch Clicked / ValueChanged accordingly on its event loop."""
+
+    @staticmethod
+    def Attach():
+        native.ui_touch_attach()
+
+    @staticmethod
+    def Feed(x, y, pressed):
+        native.ui_touch_feed(x, y, 1 if pressed else 0)
+
+
 # ------------------------------------------------------------------
 # Base + widgets
 # ------------------------------------------------------------------

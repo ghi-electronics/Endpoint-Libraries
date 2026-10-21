@@ -18,4 +18,11 @@ void Run();
 // Flips the Run() loop's exit flag. Safe to call from signal handlers.
 void Stop();
 
+// Registers an LVGL pointer input device backed by TouchFeed(). Idempotent.
+void TouchAttach();
+
+// Pushes the latest touch point into the atomic state the pointer indev
+// reads. Safe from any thread (touch chip drivers run on their own thread).
+void TouchFeed(int x, int y, bool pressed);
+
 }  // namespace GHIElectronics::Endpoint::Internal::UI

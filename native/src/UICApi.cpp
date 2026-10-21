@@ -82,6 +82,14 @@ ENDPOINT_API int endpoint_ui_stop(void) {
     return Call([] { UI::Stop(); });
 }
 
+ENDPOINT_API int endpoint_ui_touch_attach(void) {
+    return Call([] { UI::TouchAttach(); });
+}
+
+ENDPOINT_API int endpoint_ui_touch_feed(int x, int y, int pressed) {
+    return Call([&] { UI::TouchFeed(x, y, pressed != 0); });
+}
+
 // =========================================================================
 // Common widget operations
 // =========================================================================

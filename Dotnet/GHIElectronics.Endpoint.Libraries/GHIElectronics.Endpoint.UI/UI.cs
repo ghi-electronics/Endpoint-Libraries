@@ -22,3 +22,15 @@ public static class UI {
     /// <summary>Request the event loop to exit at the next tick.</summary>
     public static void Stop() => Libendpoint.Check(Libendpoint.UiStop());
 }
+
+/// <summary>
+/// Touch input bridge. Call <see cref="Attach"/> once after
+/// <see cref="UI.Initialize"/>, then call <see cref="Feed"/> from your
+/// touch chip's event handler. LVGL will dispatch Clicked / ValueChanged
+/// accordingly on its event loop.
+/// </summary>
+public static class TouchBridge {
+    public static void Attach() => Libendpoint.Check(Libendpoint.UiTouchAttach());
+    public static void Feed(int x, int y, bool pressed) =>
+        Libendpoint.Check(Libendpoint.UiTouchFeed(x, y, pressed ? 1 : 0));
+}

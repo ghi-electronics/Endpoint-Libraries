@@ -45,3 +45,31 @@ class Event:
 
     def __len__(self):
         return len(self._handlers)
+
+
+class _EventProperty:
+    """Descriptor that gives each instance its own Event under the named
+    attribute. Used as a class attribute by widgets / controllers:
+
+        class Touch:
+            OnChangedEvent = _EventProperty("OnChangedEvent")
+
+    Then `touch.OnChangedEvent += handler` works per-instance and `+=` /
+    `-=` both go through to the underlying Event.
+    """
+    def __init__(self, name):
+        self._storage = "_evt_" + name
+
+    def __get__(self, obj, cls=None):
+        if obj is None:
+            return self
+        evt = obj.__dict__.get(self._storage)
+        if evt is None:
+            evt = Event()
+            obj.__dict__[self._storage] = evt
+        return evt
+
+    def __set__(self, obj, value):
+        # Needed so `obj.OnXxx += handler` works: Python computes the
+        # right-hand side via __get__ + __iadd__ and then assigns it back.
+        obj.__dict__[self._storage] = value

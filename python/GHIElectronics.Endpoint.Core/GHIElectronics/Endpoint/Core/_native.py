@@ -191,6 +191,8 @@ _FUNCTIONS = {
     "ui_initialize": [],
     "ui_run": [],
     "ui_stop": [],
+    "ui_touch_attach": [],
+    "ui_touch_feed": [_int, _int, _int],
     "ui_widget_destroy": [_handle],
     "ui_widget_set_pos": [_handle, _int, _int],
     "ui_widget_set_x": [_handle, _int],
