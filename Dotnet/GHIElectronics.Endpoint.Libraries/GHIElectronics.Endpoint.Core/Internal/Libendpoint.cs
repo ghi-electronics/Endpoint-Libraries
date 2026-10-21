@@ -326,6 +326,15 @@ namespace GHIElectronics.Endpoint.Core.Internal {
         [LibraryImport(Library, EntryPoint = "endpoint_ui_widget_get_visible")]
         public static partial int UiWidgetGetVisible(nint widget, out int visible);
 
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_widget_set_bg_color")]
+        public static partial int UiWidgetSetBgColor(nint widget, uint rgb);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_widget_set_bg_gradient")]
+        public static partial int UiWidgetSetBgGradient(nint widget, uint rgbStart, uint rgbEnd, int direction);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_widget_set_bg_image")]
+        public static partial int UiWidgetSetBgImage(nint widget, byte* data, int dataLen, int width, int height);
+
         [LibraryImport(Library, EntryPoint = "endpoint_ui_subscribe_clicked")]
         public static partial int UiSubscribeClicked(nint widget, delegate* unmanaged<nint, void> cb, nint context);
 

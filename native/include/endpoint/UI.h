@@ -77,6 +77,20 @@ public:
     void Height(int value)  { Core::detail::Check(endpoint_ui_widget_set_height(this->_native, value)); }
     void Visible(bool value) { Core::detail::Check(endpoint_ui_widget_set_visible(this->_native, value ? 1 : 0)); }
 
+    // Solid background color (0x00RRGGBB).
+    void SetBackgroundColor(uint32_t rgb) {
+        Core::detail::Check(endpoint_ui_widget_set_bg_color(this->_native, rgb));
+    }
+    // Linear gradient from start to end. direction: 0=vertical (top->bottom), 1=horizontal (left->right).
+    void SetBackgroundGradient(uint32_t rgb_start, uint32_t rgb_end, int direction = 0) {
+        Core::detail::Check(endpoint_ui_widget_set_bg_gradient(this->_native, rgb_start, rgb_end, direction));
+    }
+    // Tiled background from raw RGB565 pixels (little-endian). The byte buffer
+    // must outlive the widget.
+    void SetBackgroundImage(const uint8_t* data, int data_len, int width, int height) {
+        Core::detail::Check(endpoint_ui_widget_set_bg_image(this->_native, data, data_len, width, height));
+    }
+
     NativeHandle Native() const { return this->_native; }
 
 protected:
@@ -220,16 +234,21 @@ public:
 /// event and call Hide() to dismiss.
 class MessageBox;
 
-class MessageBoxButton : public Widget {
+/// Handle to a button inside a MessageBox. Does NOT own the native widget
+/// (the MessageBox does), so copies are safe and the button survives after
+/// AddButton() returns.
+class MessageBoxButton {
 public:
     using ClickedHandler = std::function<void()>;
     void Clicked(ClickedHandler handler) {
         auto* fn = new ClickedHandler(std::move(handler));
         Core::detail::Check(endpoint_ui_subscribe_clicked(this->_native, &detail::EventTrampoline, fn));
     }
+    NativeHandle Native() const { return this->_native; }
 private:
     friend class MessageBox;
-    explicit MessageBoxButton(NativeHandle h) : Widget(h) {}
+    explicit MessageBoxButton(NativeHandle h) : _native(h) {}
+    NativeHandle _native;
 };
 
 class MessageBox : public Widget {
@@ -254,16 +273,21 @@ public:
 /// Clicked event you subscribe to.
 class ListBox;
 
-class ListBoxItem : public Widget {
+/// Handle to an item inside a ListBox. Does NOT own the native widget
+/// (the ListBox does), so AddItem() can be a fire-and-forget call for
+/// static lists, and copies are safe.
+class ListBoxItem {
 public:
     using ClickedHandler = std::function<void()>;
     void Clicked(ClickedHandler handler) {
         auto* fn = new ClickedHandler(std::move(handler));
         Core::detail::Check(endpoint_ui_subscribe_clicked(this->_native, &detail::EventTrampoline, fn));
     }
+    NativeHandle Native() const { return this->_native; }
 private:
     friend class ListBox;
-    explicit ListBoxItem(NativeHandle h) : Widget(h) {}
+    explicit ListBoxItem(NativeHandle h) : _native(h) {}
+    NativeHandle _native;
 };
 
 class ListBox : public Widget {

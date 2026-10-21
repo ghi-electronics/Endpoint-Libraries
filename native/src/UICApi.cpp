@@ -151,6 +151,54 @@ ENDPOINT_API int endpoint_ui_widget_get_visible(void* widget, int* visible) {
     });
 }
 
+// Solid background color (opaque). 0x00RRGGBB.
+ENDPOINT_API int endpoint_ui_widget_set_bg_color(void* widget, uint32_t rgb) {
+    return Call([&] {
+        auto* obj = AsObj(widget);
+        lv_obj_set_style_bg_color(obj, ColorFromRgb(rgb), LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, LV_PART_MAIN);
+        lv_obj_set_style_bg_grad_dir(obj, LV_GRAD_DIR_NONE, LV_PART_MAIN);
+    });
+}
+
+// Linear gradient background from start to end color. direction: 0=vertical
+// (top=start, bottom=end), 1=horizontal (left=start, right=end).
+ENDPOINT_API int endpoint_ui_widget_set_bg_gradient(void* widget,
+                                                    uint32_t rgb_start, uint32_t rgb_end,
+                                                    int direction) {
+    return Call([&] {
+        auto* obj = AsObj(widget);
+        lv_obj_set_style_bg_color(obj, ColorFromRgb(rgb_start), LV_PART_MAIN);
+        lv_obj_set_style_bg_grad_color(obj, ColorFromRgb(rgb_end), LV_PART_MAIN);
+        lv_obj_set_style_bg_grad_dir(obj, direction == 1 ? LV_GRAD_DIR_HOR : LV_GRAD_DIR_VER, LV_PART_MAIN);
+        lv_obj_set_style_bg_opa(obj, LV_OPA_COVER, LV_PART_MAIN);
+    });
+}
+
+// Background image from raw RGB565 pixels (little-endian).
+ENDPOINT_API int endpoint_ui_widget_set_bg_image(void* widget,
+                                                 const uint8_t* data, int data_len,
+                                                 int width, int height) {
+    return Call([&] {
+        if (!data || data_len <= 0) ThrowInvalidOperation("data is null or empty");
+        if (data_len != width * height * 2) ThrowInvalidOperation("data_len does not match width*height*2 (RGB565)");
+        auto* obj = AsObj(widget);
+        // LVGL needs an lv_image_dsc_t that outlives the widget. Store it on
+        // the widget itself (user data), freeing any previous one.
+        auto* prev = reinterpret_cast<lv_image_dsc_t*>(lv_obj_get_user_data(obj));
+        if (prev) { delete prev; }
+        auto* desc = new lv_image_dsc_t{};
+        desc->header.cf = LV_COLOR_FORMAT_RGB565;
+        desc->header.w = width;
+        desc->header.h = height;
+        desc->data_size = data_len;
+        desc->data = data;
+        lv_obj_set_user_data(obj, desc);
+        lv_obj_set_style_bg_image_src(obj, desc, LV_PART_MAIN);
+        lv_obj_set_style_bg_image_tiled(obj, true, LV_PART_MAIN);
+    });
+}
+
 // =========================================================================
 // Events
 // =========================================================================

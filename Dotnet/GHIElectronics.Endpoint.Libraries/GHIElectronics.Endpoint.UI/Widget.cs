@@ -6,6 +6,8 @@ using GHIElectronics.Endpoint.Core.Internal;
 
 namespace GHIElectronics.Endpoint.UI;
 
+public enum GradientDirection { Vertical = 0, Horizontal = 1 }
+
 public abstract class Widget : IDisposable {
     internal nint Native;
     private readonly List<GCHandle> _eventHandles = new();
@@ -41,6 +43,26 @@ public abstract class Widget : IDisposable {
     public bool Visible {
         get { Libendpoint.Check(Libendpoint.UiWidgetGetVisible(this.Native, out var v)); return v != 0; }
         set { Libendpoint.Check(Libendpoint.UiWidgetSetVisible(this.Native, value ? 1 : 0)); }
+    }
+
+    // Solid background color (0x00RRGGBB).
+    public uint BackgroundColor {
+        set => Libendpoint.Check(Libendpoint.UiWidgetSetBgColor(this.Native, value));
+    }
+
+    /// <summary>Linear gradient background. direction: Vertical = top->bottom, Horizontal = left->right.</summary>
+    public void SetBackgroundGradient(uint rgbStart, uint rgbEnd, GradientDirection direction = GradientDirection.Vertical) {
+        Libendpoint.Check(Libendpoint.UiWidgetSetBgGradient(this.Native, rgbStart, rgbEnd, (int)direction));
+    }
+
+    /// <summary>Tiled background from raw RGB565 pixel bytes (little-endian).</summary>
+    public unsafe void SetBackgroundImage(byte[] rgb565Pixels, int width, int height) {
+        // Keep the managed buffer alive for the widget's lifetime (LVGL holds
+        // a pointer into it). The GCHandle is freed in Dispose.
+        var handle = GCHandle.Alloc(rgb565Pixels, GCHandleType.Pinned);
+        this.TrackEventHandle(handle);  // reuse the handle list so Dispose frees it
+        var p = (byte*)handle.AddrOfPinnedObject();
+        Libendpoint.Check(Libendpoint.UiWidgetSetBgImage(this.Native, p, rgb565Pixels.Length, width, height));
     }
 
     public virtual void Dispose() {

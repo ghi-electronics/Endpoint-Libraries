@@ -340,6 +340,9 @@ int endpoint_ui_widget_set_height(void* widget, int height);
 int endpoint_ui_widget_get_size(void* widget, int* width, int* height);
 int endpoint_ui_widget_set_visible(void* widget, int visible);
 int endpoint_ui_widget_get_visible(void* widget, int* visible);
+int endpoint_ui_widget_set_bg_color(void* widget, uint32_t rgb);
+int endpoint_ui_widget_set_bg_gradient(void* widget, uint32_t rgb_start, uint32_t rgb_end, int direction);
+int endpoint_ui_widget_set_bg_image(void* widget, const uint8_t* data, int data_len, int width, int height);
 
 // Event subscription. The callback runs on the UI thread (the one calling
 // endpoint_ui_run). `context` is passed back untouched. Not currently

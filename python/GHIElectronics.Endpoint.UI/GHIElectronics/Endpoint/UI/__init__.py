@@ -154,6 +154,30 @@ class Widget:
     def Visible(self, value):
         native.ui_widget_set_visible(self._native, 1 if value else 0)
 
+    @property
+    def BackgroundColor(self):
+        raise AttributeError("BackgroundColor is write-only")
+
+    @BackgroundColor.setter
+    def BackgroundColor(self, rgb):
+        """Solid background color (0x00RRGGBB)."""
+        native.ui_widget_set_bg_color(self._native, int(rgb))
+
+    def SetBackgroundGradient(self, rgb_start, rgb_end, direction=0):
+        """Linear gradient background. direction: 0 = vertical (top->bottom), 1 = horizontal (left->right)."""
+        native.ui_widget_set_bg_gradient(self._native, int(rgb_start), int(rgb_end), int(direction))
+
+    def SetBackgroundImage(self, rgb565_bytes, width, height):
+        """Tiled background from raw RGB565 pixel bytes (little-endian).
+        The bytes buffer is pinned on the widget so LVGL can hold a pointer
+        into it."""
+        if not hasattr(self, "_bg_pixels"):
+            self._bg_pixels = None
+        self._bg_pixels = bytes(rgb565_bytes)  # keep alive for the widget's life
+        buf = (ctypes.c_ubyte * len(self._bg_pixels)).from_buffer_copy(self._bg_pixels)
+        self._bg_pixels_buf = buf  # also keep the ctypes buffer alive
+        native.ui_widget_set_bg_image(self._native, buf, len(self._bg_pixels), width, height)
+
     def Dispose(self):
         if self._native:
             native.ui_widget_destroy(self._native)
