@@ -246,6 +246,18 @@ _FUNCTIONS = {
     "ui_dropdown_set_options": [_handle, _text],
     "ui_dropdown_set_selected": [_handle, _int],
     "ui_dropdown_get_selected": [_handle, _out_int],
+    "ui_radiobutton_create": [_handle, _out_handle],
+    "ui_radiobutton_set_text": [_handle, _text],
+    "ui_radiobutton_set_checked": [_handle, _int],
+    "ui_radiobutton_get_checked": [_handle, _out_int],
+    "ui_messagebox_create": [_handle, _out_handle],
+    "ui_messagebox_set_title": [_handle, _text],
+    "ui_messagebox_set_body": [_handle, _text],
+    "ui_messagebox_add_button": [_handle, _text, _out_handle],
+    "ui_messagebox_hide": [_handle],
+    "ui_listbox_create": [_handle, _out_handle],
+    "ui_listbox_add_item": [_handle, _text, _out_handle],
+    "ui_listbox_clear": [_handle],
 }
 
 

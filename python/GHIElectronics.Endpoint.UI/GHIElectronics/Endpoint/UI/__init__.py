@@ -362,6 +362,105 @@ class CheckBox(Widget):
         native.ui_checkbox_set_checked(self._native, 1 if value else 0)
 
 
+class MessageBoxButton:
+    """A button inside a MessageBox. Subscribe to Clicked (an _Event)."""
+
+    def __init__(self, native_handle):
+        self._native = native_handle
+        self.Clicked = _Event()
+        cb = UiEventCallback(lambda _ctx: self.Clicked._fire())
+        self._cb = cb  # keep alive
+        native.ui_subscribe_clicked(self._native, cb, None)
+
+
+class MessageBox(Widget):
+    """Modal dialog with title, body, and footer buttons. AddButton returns
+    a handle whose Clicked event you subscribe to. Hide dismisses."""
+
+    def __init__(self, parent):
+        h = native.out_handle()
+        native.ui_messagebox_create(parent._native, native.ref(h))
+        super().__init__(h.value)
+        self._buttons = []  # keep MessageBoxButton refs alive
+
+    def SetTitle(self, title):
+        native.ui_messagebox_set_title(self._native, title.encode("utf-8"))
+
+    def SetBody(self, body):
+        native.ui_messagebox_set_body(self._native, body.encode("utf-8"))
+
+    def AddButton(self, text):
+        out = native.out_handle()
+        native.ui_messagebox_add_button(self._native, text.encode("utf-8"), native.ref(out))
+        btn = MessageBoxButton(out.value)
+        self._buttons.append(btn)
+        return btn
+
+    def Hide(self):
+        native.ui_messagebox_hide(self._native)
+
+
+class ListBoxItem:
+    """An item inside a ListBox. Subscribe to Clicked (an _Event)."""
+
+    def __init__(self, native_handle):
+        self._native = native_handle
+        self.Clicked = _Event()
+        cb = UiEventCallback(lambda _ctx: self.Clicked._fire())
+        self._cb = cb
+        native.ui_subscribe_clicked(self._native, cb, None)
+
+
+class ListBox(Widget):
+    """Vertical scrollable list. AddItem returns a handle whose Clicked
+    event you subscribe to. Clear drops all items."""
+
+    def __init__(self, parent):
+        h = native.out_handle()
+        native.ui_listbox_create(parent._native, native.ref(h))
+        super().__init__(h.value)
+        self._items = []
+
+    def AddItem(self, text):
+        out = native.out_handle()
+        native.ui_listbox_add_item(self._native, text.encode("utf-8"), native.ref(out))
+        item = ListBoxItem(out.value)
+        self._items.append(item)
+        return item
+
+    def Clear(self):
+        native.ui_listbox_clear(self._native)
+        self._items.clear()
+
+
+class RadioButton(Widget):
+    """Circular-indicator CheckBox. Grouping (mutual exclusion) is up to the
+    caller — subscribe to ValueChanged on each and clear the others on select."""
+
+    def __init__(self, parent):
+        h = native.out_handle()
+        native.ui_radiobutton_create(parent._native, native.ref(h))
+        super().__init__(h.value)
+        self.ValueChanged = _Event()
+        _subscribe(self, native.ui_subscribe_value_changed, self.ValueChanged)
+
+    @property
+    def Text(self): raise AttributeError("Text is write-only")
+    @Text.setter
+    def Text(self, value):
+        native.ui_radiobutton_set_text(self._native, value.encode("utf-8"))
+
+    @property
+    def IsChecked(self):
+        v = native.out_int()
+        native.ui_radiobutton_get_checked(self._native, native.ref(v))
+        return v.value != 0
+
+    @IsChecked.setter
+    def IsChecked(self, value):
+        native.ui_radiobutton_set_checked(self._native, 1 if value else 0)
+
+
 class Dropdown(Widget):
     """Select one item from a list. ValueChanged fires on selection change."""
 

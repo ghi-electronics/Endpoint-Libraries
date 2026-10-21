@@ -451,5 +451,41 @@ namespace GHIElectronics.Endpoint.Core.Internal {
 
         [LibraryImport(Library, EntryPoint = "endpoint_ui_dropdown_get_selected")]
         public static partial int UiDropdownGetSelected(nint dd, out int index);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_radiobutton_create")]
+        public static partial int UiRadioButtonCreate(nint parent, out nint rb);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_radiobutton_set_text", StringMarshalling = StringMarshalling.Utf8)]
+        public static partial int UiRadioButtonSetText(nint rb, string text);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_radiobutton_set_checked")]
+        public static partial int UiRadioButtonSetChecked(nint rb, int checked_);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_radiobutton_get_checked")]
+        public static partial int UiRadioButtonGetChecked(nint rb, out int checked_);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_messagebox_create")]
+        public static partial int UiMessageBoxCreate(nint parent, out nint mb);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_messagebox_set_title", StringMarshalling = StringMarshalling.Utf8)]
+        public static partial int UiMessageBoxSetTitle(nint mb, string title);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_messagebox_set_body", StringMarshalling = StringMarshalling.Utf8)]
+        public static partial int UiMessageBoxSetBody(nint mb, string body);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_messagebox_add_button", StringMarshalling = StringMarshalling.Utf8)]
+        public static partial int UiMessageBoxAddButton(nint mb, string text, out nint outButton);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_messagebox_hide")]
+        public static partial int UiMessageBoxHide(nint mb);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_listbox_create")]
+        public static partial int UiListBoxCreate(nint parent, out nint lb);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_listbox_add_item", StringMarshalling = StringMarshalling.Utf8)]
+        public static partial int UiListBoxAddItem(nint lb, string text, out nint outItem);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_listbox_clear")]
+        public static partial int UiListBoxClear(nint lb);
     }
 }

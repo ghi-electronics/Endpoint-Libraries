@@ -420,6 +420,27 @@ int endpoint_ui_dropdown_set_options(void* dd, const char* nlSeparated);
 int endpoint_ui_dropdown_set_selected(void* dd, int index);
 int endpoint_ui_dropdown_get_selected(void* dd, int* index);
 
+// RadioButton — circular-indicator CheckBox. Grouping (mutual exclusion)
+// is up to the caller. ValueChanged event via shared subscribe.
+int endpoint_ui_radiobutton_create(void* parent, void** out);
+int endpoint_ui_radiobutton_set_text(void* rb, const char* text);
+int endpoint_ui_radiobutton_set_checked(void* rb, int checked);
+int endpoint_ui_radiobutton_get_checked(void* rb, int* checked);
+
+// MessageBox — modal dialog. Add buttons; wire Clicked on each handle via
+// endpoint_ui_subscribe_clicked. Hide dismisses the dialog.
+int endpoint_ui_messagebox_create(void* parent, void** out);
+int endpoint_ui_messagebox_set_title(void* mb, const char* title);
+int endpoint_ui_messagebox_set_body(void* mb, const char* body);
+int endpoint_ui_messagebox_add_button(void* mb, const char* text, void** outButton);
+int endpoint_ui_messagebox_hide(void* mb);
+
+// ListBox — vertical scrollable list. Add items; wire Clicked on each item
+// handle via endpoint_ui_subscribe_clicked. Clear drops all items.
+int endpoint_ui_listbox_create(void* parent, void** out);
+int endpoint_ui_listbox_add_item(void* lb, const char* text, void** outItem);
+int endpoint_ui_listbox_clear(void* lb);
+
 #ifdef __cplusplus
 }
 #endif

@@ -215,6 +215,92 @@ public:
     }
 };
 
+/// Modal dialog with title, body text, and footer buttons. AddButton
+/// returns a Button-like handle (wrapped Widget); subscribe its Clicked
+/// event and call Hide() to dismiss.
+class MessageBox;
+
+class MessageBoxButton : public Widget {
+public:
+    using ClickedHandler = std::function<void()>;
+    void Clicked(ClickedHandler handler) {
+        auto* fn = new ClickedHandler(std::move(handler));
+        Core::detail::Check(endpoint_ui_subscribe_clicked(this->_native, &detail::EventTrampoline, fn));
+    }
+private:
+    friend class MessageBox;
+    explicit MessageBoxButton(NativeHandle h) : Widget(h) {}
+};
+
+class MessageBox : public Widget {
+public:
+    explicit MessageBox(const Widget& parent) : Widget(nullptr) {
+        Core::detail::Check(endpoint_ui_messagebox_create(parent.Native(), &this->_native));
+    }
+
+    void SetTitle(const std::string& t) { Core::detail::Check(endpoint_ui_messagebox_set_title(this->_native, t.c_str())); }
+    void SetBody(const std::string& t)  { Core::detail::Check(endpoint_ui_messagebox_set_body(this->_native, t.c_str())); }
+
+    MessageBoxButton AddButton(const std::string& text) {
+        NativeHandle btn = nullptr;
+        Core::detail::Check(endpoint_ui_messagebox_add_button(this->_native, text.c_str(), &btn));
+        return MessageBoxButton(btn);
+    }
+
+    void Hide() { Core::detail::Check(endpoint_ui_messagebox_hide(this->_native)); }
+};
+
+/// Vertical scrollable list. AddItem returns a Button-like handle whose
+/// Clicked event you subscribe to.
+class ListBox;
+
+class ListBoxItem : public Widget {
+public:
+    using ClickedHandler = std::function<void()>;
+    void Clicked(ClickedHandler handler) {
+        auto* fn = new ClickedHandler(std::move(handler));
+        Core::detail::Check(endpoint_ui_subscribe_clicked(this->_native, &detail::EventTrampoline, fn));
+    }
+private:
+    friend class ListBox;
+    explicit ListBoxItem(NativeHandle h) : Widget(h) {}
+};
+
+class ListBox : public Widget {
+public:
+    explicit ListBox(const Widget& parent) : Widget(nullptr) {
+        Core::detail::Check(endpoint_ui_listbox_create(parent.Native(), &this->_native));
+    }
+
+    ListBoxItem AddItem(const std::string& text) {
+        NativeHandle item = nullptr;
+        Core::detail::Check(endpoint_ui_listbox_add_item(this->_native, text.c_str(), &item));
+        return ListBoxItem(item);
+    }
+
+    void Clear() { Core::detail::Check(endpoint_ui_listbox_clear(this->_native)); }
+};
+
+/// Circular-indicator CheckBox. Grouping (mutual exclusion) is up to the
+/// caller: register ValueChanged on each, uncheck the others when one is
+/// selected.
+class RadioButton : public Widget {
+public:
+    explicit RadioButton(const Widget& parent) : Widget(nullptr) {
+        Core::detail::Check(endpoint_ui_radiobutton_create(parent.Native(), &this->_native));
+    }
+
+    void Text(const std::string& value) { Core::detail::Check(endpoint_ui_radiobutton_set_text(this->_native, value.c_str())); }
+    void IsChecked(bool value)          { Core::detail::Check(endpoint_ui_radiobutton_set_checked(this->_native, value ? 1 : 0)); }
+    bool IsChecked() const              { int v = 0; Core::detail::Check(endpoint_ui_radiobutton_get_checked(this->_native, &v)); return v != 0; }
+
+    using ValueChangedHandler = std::function<void()>;
+    void ValueChanged(ValueChangedHandler handler) {
+        auto* fn = new ValueChangedHandler(std::move(handler));
+        Core::detail::Check(endpoint_ui_subscribe_value_changed(this->_native, &detail::EventTrampoline, fn));
+    }
+};
+
 /// Select one item from a list. ValueChanged fires when the selection changes.
 class Dropdown : public Widget {
 public:

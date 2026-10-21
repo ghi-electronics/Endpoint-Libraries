@@ -514,3 +514,95 @@ ENDPOINT_API int endpoint_ui_dropdown_get_selected(void* dd, int* index) {
         if (index) *index = (int)lv_dropdown_get_selected(AsObj(dd));
     });
 }
+
+// =========================================================================
+// RadioButton — styled lv_checkbox with a circular indicator. Same event
+// surface as CheckBox (ValueChanged). Grouping is the caller's job: wire
+// up each radio's event and clear the others when one is set.
+// =========================================================================
+
+ENDPOINT_API int endpoint_ui_radiobutton_create(void* parent, void** out) {
+    return Call([&] {
+        if (!parent || !out) ThrowInvalidOperation("parent or out is null");
+        auto* rb = lv_checkbox_create(AsObj(parent));
+        // Make the indicator a circle instead of a square.
+        lv_obj_set_style_radius(rb, LV_RADIUS_CIRCLE, LV_PART_INDICATOR);
+        *out = rb;
+    });
+}
+
+ENDPOINT_API int endpoint_ui_radiobutton_set_text(void* rb, const char* text) {
+    return Call([&] { lv_checkbox_set_text(AsObj(rb), text ? text : ""); });
+}
+
+ENDPOINT_API int endpoint_ui_radiobutton_set_checked(void* rb, int checked) {
+    return Call([&] {
+        if (checked) lv_obj_add_state(AsObj(rb), LV_STATE_CHECKED);
+        else         lv_obj_remove_state(AsObj(rb), LV_STATE_CHECKED);
+    });
+}
+
+ENDPOINT_API int endpoint_ui_radiobutton_get_checked(void* rb, int* checked) {
+    return Call([&] {
+        if (checked) *checked = lv_obj_has_state(AsObj(rb), LV_STATE_CHECKED) ? 1 : 0;
+    });
+}
+
+// =========================================================================
+// MessageBox — modal dialog with title, body, and up to two footer buttons.
+// Shared the Clicked event via the primary/secondary button handles the
+// caller receives from AddButton.
+// =========================================================================
+
+ENDPOINT_API int endpoint_ui_messagebox_create(void* parent, void** out) {
+    return Call([&] {
+        if (!parent || !out) ThrowInvalidOperation("parent or out is null");
+        *out = lv_msgbox_create(AsObj(parent));
+    });
+}
+
+ENDPOINT_API int endpoint_ui_messagebox_set_title(void* mb, const char* title) {
+    return Call([&] { lv_msgbox_add_title(AsObj(mb), title ? title : ""); });
+}
+
+ENDPOINT_API int endpoint_ui_messagebox_set_body(void* mb, const char* body) {
+    return Call([&] { lv_msgbox_add_text(AsObj(mb), body ? body : ""); });
+}
+
+// Adds a footer button; returns its handle so the caller can wire a Clicked
+// callback via endpoint_ui_subscribe_clicked. Call Hide() in the handler to
+// dismiss the dialog.
+ENDPOINT_API int endpoint_ui_messagebox_add_button(void* mb, const char* text, void** outButton) {
+    return Call([&] {
+        if (!outButton) ThrowInvalidOperation("outButton is null");
+        *outButton = lv_msgbox_add_footer_button(AsObj(mb), text ? text : "");
+    });
+}
+
+ENDPOINT_API int endpoint_ui_messagebox_hide(void* mb) {
+    return Call([&] { lv_msgbox_close(AsObj(mb)); });
+}
+
+// =========================================================================
+// ListBox — vertical scrollable list of text items.
+// =========================================================================
+
+ENDPOINT_API int endpoint_ui_listbox_create(void* parent, void** out) {
+    return Call([&] {
+        if (!parent || !out) ThrowInvalidOperation("parent or out is null");
+        *out = lv_list_create(AsObj(parent));
+    });
+}
+
+// Adds a text-only item; returns its handle so the caller can wire per-item
+// Clicked callbacks via endpoint_ui_subscribe_clicked.
+ENDPOINT_API int endpoint_ui_listbox_add_item(void* lb, const char* text, void** outItem) {
+    return Call([&] {
+        if (!outItem) ThrowInvalidOperation("outItem is null");
+        *outItem = lv_list_add_button(AsObj(lb), nullptr, text ? text : "");
+    });
+}
+
+ENDPOINT_API int endpoint_ui_listbox_clear(void* lb) {
+    return Call([&] { lv_obj_clean(AsObj(lb)); });
+}
