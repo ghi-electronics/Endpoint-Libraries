@@ -7,13 +7,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "GHIElectronics.Endpoint.UI"
-version = "0.2.6"
+version = "0.3.0"
 description = "UI widgets for Endpoint: Button, Label, Container, Image, TextBox, Slider, CheckBox on top of the embedded LVGL in libendpoint. Pair with the GHI UI designer."
 authors = [{ name = "GHI Electronics, LLC", email = "support@ghielectronics.com" }]
 requires-python = ">=3.9"
 dependencies = [
-    "GHIElectronics.Endpoint.Core>=0.2.6,<0.3",
-    "GHIElectronics.Endpoint.Devices.Display>=0.2.6,<0.3",
+    "GHIElectronics.Endpoint.Core>=0.3.0,<0.4",
+    "GHIElectronics.Endpoint.Devices.Display>=0.3.0,<0.4",
 ]
 classifiers = ["Programming Language :: Python :: 3", "Operating System :: POSIX :: Linux"]
 

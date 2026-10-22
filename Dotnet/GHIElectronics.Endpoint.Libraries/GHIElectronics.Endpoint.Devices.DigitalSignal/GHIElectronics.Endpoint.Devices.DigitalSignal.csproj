@@ -6,6 +6,9 @@
     <PackageId>GHIElectronics.Endpoint.Devices.DigitalSignal</PackageId>
     <Description>The digital signal driver for Endpoint.</Description>
     <Nullable>disable</Nullable>
+    <!-- Not shipped in 0.3.0: too chip-specific; a general replacement is
+         planned. Source stays in-tree so it compiles; EndpointPack skips it. -->
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>

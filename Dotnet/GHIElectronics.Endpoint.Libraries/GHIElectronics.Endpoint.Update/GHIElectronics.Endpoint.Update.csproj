@@ -6,6 +6,9 @@
     <PackageId>GHIElectronics.Endpoint.Update</PackageId>
     <Description>The update driver for Endpoint.</Description>
     <Nullable>disable</Nullable>
+    <!-- Not shipped in 0.3.0: no design yet. Still compiles so the source
+         doesn't rot; the EndpointPack target skips packing when this is false. -->
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>

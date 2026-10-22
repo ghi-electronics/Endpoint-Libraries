@@ -6,6 +6,9 @@
     <PackageId>GHIElectronics.Endpoint.Devices.Usb</PackageId>
     <Description>USB device types for Endpoint.</Description>
     <Nullable>disable</Nullable>
+    <!-- Not shipped in 0.3.0: no users; Devices.UsbHost owns host-side types
+         and USB client/gadget is not designed yet. EndpointPack skips it. -->
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
 
   <ItemGroup>

@@ -5,7 +5,7 @@
 
   <PropertyGroup>
     <!-- One version for every library: change it here for a release -->
-    <EndpointLibrariesVersion>0.2.6-beta</EndpointLibrariesVersion>
+    <EndpointLibrariesVersion>0.3.0</EndpointLibrariesVersion>
 
     <TargetFramework>net10.0</TargetFramework>
     <LangVersion>latest</LangVersion>
@@ -59,7 +59,9 @@
        with -p:EndpointSign=true to sign the DLLs with GHI's certificate first
        (VsixSignerCertificatePath, VsixSignerCertificatePassword,
        AssemblySignerCertificateSha1). -->
-  <Target Name="EndpointPack" AfterTargets="Build" Condition="'$(Configuration)' == 'Release'">
+  <!-- IsPackable=false opts a project out of 0.3.0 (Update, Devices.DigitalSignal,
+       Devices.Usb). Build still runs so the source doesn't rot; Pack is skipped. -->
+  <Target Name="EndpointPack" AfterTargets="Build" Condition="'$(Configuration)' == 'Release' AND '$(IsPackable)' != 'false'">
     <Exec Condition="'$(EndpointSign)' == 'true'" Command="signtool.exe sign /fd sha512 /f &quot;$(VsixSignerCertificatePath)&quot; /p &quot;$(VsixSignerCertificatePassword)&quot; /t &quot;http://timestamp.digicert.com&quot; /sha1 &quot;$(AssemblySignerCertificateSha1)&quot; &quot;$(TargetPath)&quot;" />
     <MSBuild Projects="$(MSBuildProjectFullPath)" Targets="Pack"
              Properties="NoBuild=true;Configuration=$(Configuration);PackageOutputPath=$(MSBuildThisFileDirectory)output\" />

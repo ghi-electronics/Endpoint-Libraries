@@ -8,12 +8,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "GHIElectronics.Endpoint.Devices.I2c"
-version = "0.2.0"
+version = "0.3.0"
 description = "I2C for GHI Electronics Endpoint, with the API of .NET's System.Device.I2c."
 authors = [{ name = "GHI Electronics, LLC", email = "support@ghielectronics.com" }]
 requires-python = ">=3.9"
 dependencies = [
-    "GHIElectronics.Endpoint.Core>=0.2.0,<0.3",
+    "GHIElectronics.Endpoint.Core>=0.3.0,<0.4",
 ]
 classifiers = ["Programming Language :: Python :: 3", "Operating System :: POSIX :: Linux"]
 

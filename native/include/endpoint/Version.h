@@ -12,8 +12,8 @@
 #pragma once
 
 #define ENDPOINT_VERSION_MAJOR 0
-#define ENDPOINT_VERSION_MINOR 2
-#define ENDPOINT_VERSION_PATCH 6
+#define ENDPOINT_VERSION_MINOR 3
+#define ENDPOINT_VERSION_PATCH 0
 
 // "0.2.0"
 #define ENDPOINT_VERSION_TEXT(major, minor, patch) #major "." #minor "." #patch
