@@ -299,11 +299,23 @@ class Menu(Widget):
 
 
 class MenuItem:
-    """Handle to a menu item. Subscribe to Clicked."""
+    """Handle to a menu item. Subscribe to Clicked / ValueChanged."""
     def __init__(self, native_handle):
         self._native = native_handle
+        # _subscribe appends to this list to keep CFUNCTYPE trampolines pinned
+        # (ctypes holds weak refs by default). MenuItem isn't a Widget subclass
+        # so we have to set it up ourselves.
+        self._event_trampolines = []
         self.Clicked = _Event()
+        self.ValueChanged = _Event()
         _subscribe(self, native.ui_subscribe_clicked, self.Clicked)
+        _subscribe(self, native.ui_subscribe_value_changed, self.ValueChanged)
+
+    @property
+    def Selected(self):
+        out = native.out_int()
+        native.ui_dropdown_get_selected(self._native, native.ref(out))
+        return out.value
 
 
 class Calendar(Widget):
