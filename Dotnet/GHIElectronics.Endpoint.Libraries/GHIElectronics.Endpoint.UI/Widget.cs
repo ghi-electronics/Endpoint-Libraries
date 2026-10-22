@@ -55,6 +55,11 @@ public abstract class Widget : IDisposable {
         Libendpoint.Check(Libendpoint.UiWidgetSetBgGradient(this.Native, rgbStart, rgbEnd, (int)direction));
     }
 
+    /// <summary>WPF-style per-widget Margin. Works in any parent (flex, dock, or absolute).</summary>
+    public void SetMargin(int left, int top, int right, int bottom) {
+        Libendpoint.Check(Libendpoint.UiWidgetSetMargin(this.Native, left, top, right, bottom));
+    }
+
     /// <summary>Tiled background from raw RGB565 pixel bytes (little-endian).</summary>
     public unsafe void SetBackgroundImage(byte[] rgb565Pixels, int width, int height) {
         // Keep the managed buffer alive for the widget's lifetime (LVGL holds

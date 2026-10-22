@@ -360,6 +360,72 @@ int endpoint_ui_screen_active(void** out);
 // Container: groups children; positions them relative to itself.
 int endpoint_ui_container_create(void* parent, void** out);
 
+// Border: like Container, but exposes WPF-style border + background styling.
+int endpoint_ui_border_create(void* parent, void** out);
+int endpoint_ui_border_set_thickness(void* border, int px);
+int endpoint_ui_border_set_brush(void* border, uint32_t rgb);
+int endpoint_ui_border_set_corner_radius(void* border, int px);
+int endpoint_ui_border_set_padding(void* border, int px);
+
+// StackPanel: flex layout that stacks children. orientation 0 = Vertical, 1 = Horizontal.
+int endpoint_ui_stackpanel_create(void* parent, void** out);
+int endpoint_ui_stackpanel_set_orientation(void* panel, int orientation);
+int endpoint_ui_stackpanel_set_spacing(void* panel, int px);
+
+// WPF-style per-widget Margin (works in any parent).
+int endpoint_ui_widget_set_margin(void* widget, int left, int top, int right, int bottom);
+
+// Grid: WPF-style layout with ColumnDefinitions + RowDefinitions. Sizes are
+// positive (fixed px) or negative (star — "-1" = "*", "-2" = "2*").
+int endpoint_ui_grid_create(void* parent, void** out);
+int endpoint_ui_grid_set_definitions(void* panel, const int* cols, int col_count, const int* rows, int row_count);
+int endpoint_ui_grid_set_cell(void* child, int column, int column_span, int row, int row_span);
+
+// DockPanel: a plain container; the three-language DockPanel wrapper
+// computes positions from each child's Dock side and sets them.
+int endpoint_ui_dockpanel_create(void* parent, void** out);
+
+// Menu + MenuItem: horizontal strip of buttons / dropdowns.
+int endpoint_ui_menu_create(void* parent, void** out);
+int endpoint_ui_menu_set_background(void* menu, uint32_t rgb);
+int endpoint_ui_menuitem_create(void* parent, const char* header, int item_width, void** out);
+int endpoint_ui_menuitem_create_dropdown(void* parent, const char* header,
+                                         const char* newline_joined_subitems,
+                                         int item_width, void** out);
+
+// Calendar.
+int endpoint_ui_calendar_create(void* parent, void** out);
+int endpoint_ui_calendar_set_showed_date(void* cal, int year, int month);
+int endpoint_ui_calendar_set_today(void* cal, int year, int month, int day);
+
+// DataGrid (table).
+int endpoint_ui_datagrid_create(void* parent, void** out);
+int endpoint_ui_datagrid_set_size(void* grid, int cols, int rows);
+int endpoint_ui_datagrid_set_cell(void* grid, int row, int col, const char* text);
+int endpoint_ui_datagrid_set_column_width(void* grid, int col, int px);
+
+// TreeView — a vertical list of indented nodes.
+int endpoint_ui_treeview_create(void* parent, void** out);
+int endpoint_ui_treeview_add_node(void* tree, int depth, int is_expanded,
+                                  int has_children, const char* header, void** out_node);
+int endpoint_ui_treeview_clear(void* tree);
+
+// Chart (lv_chart).
+int endpoint_ui_chart_create(void* parent, void** out);
+int endpoint_ui_chart_set_mode(void* chart, int mode);
+int endpoint_ui_chart_set_colors(void* chart, uint32_t point_color,
+                                 uint32_t area_color, uint32_t label_color);
+int endpoint_ui_chart_set_division(void* chart, int y_divisions);
+int endpoint_ui_chart_set_points(void* chart, const int* values, int count);
+
+// Gauge (lv_scale + needle line).
+int endpoint_ui_gauge_create(void* parent, int width, int height, void** out);
+int endpoint_ui_gauge_set_range(void* gauge, int min, int max);
+int endpoint_ui_gauge_set_value(void* gauge, int value);
+int endpoint_ui_gauge_set_sweep(void* gauge, int sweep_angle);
+int endpoint_ui_gauge_set_needle_shape(void* gauge, int center_y_1000, int length_1000);
+int endpoint_ui_gauge_show_scale(void* gauge, int visible);
+
 // Button: Clicked event via endpoint_ui_subscribe_clicked.
 int endpoint_ui_button_create(void* parent, void** out);
 int endpoint_ui_button_set_text(void* button, const char* text);

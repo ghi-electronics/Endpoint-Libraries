@@ -167,6 +167,10 @@ class Widget:
         """Linear gradient background. direction: 0 = vertical (top->bottom), 1 = horizontal (left->right)."""
         native.ui_widget_set_bg_gradient(self._native, int(rgb_start), int(rgb_end), int(direction))
 
+    def SetMargin(self, left, top, right, bottom):
+        """WPF-style per-widget Margin. Works in any parent."""
+        native.ui_widget_set_margin(self._native, int(left), int(top), int(right), int(bottom))
+
     def SetBackgroundImage(self, rgb565_bytes, width, height):
         """Tiled background from raw RGB565 pixel bytes (little-endian).
         The bytes buffer is pinned on the widget so LVGL can hold a pointer
@@ -210,6 +214,233 @@ class Container(Widget):
         h = native.out_handle()
         native.ui_container_create(parent._native, native.ref(h))
         super().__init__(h.value)
+
+
+class Orientation:
+    """StackPanel orientation (mirrors the .NET enum of the same name)."""
+    Vertical = 0
+    Horizontal = 1
+
+
+class StackPanel(Widget):
+    """WPF-style StackPanel: stacks children vertically (default) or
+    horizontally via LVGL flex. Spacing is the inter-child gap; each
+    child's SetMargin stacks on top of that."""
+    def __init__(self, parent):
+        h = native.out_handle()
+        native.ui_stackpanel_create(parent._native, native.ref(h))
+        super().__init__(h.value)
+
+    @property
+    def Orientation(self): raise AttributeError("Orientation is write-only")
+    @Orientation.setter
+    def Orientation(self, v): native.ui_stackpanel_set_orientation(self._native, int(v))
+
+    @property
+    def Spacing(self): raise AttributeError("Spacing is write-only")
+    @Spacing.setter
+    def Spacing(self, px): native.ui_stackpanel_set_spacing(self._native, int(px))
+
+
+class Grid(Widget):
+    """WPF-style Grid with ColumnDefinitions + RowDefinitions. Sizes:
+    positive = fixed px, 0 or negative = star (-1 = '*', -2 = '2*', ...)."""
+    def __init__(self, parent):
+        h = native.out_handle()
+        native.ui_grid_create(parent._native, native.ref(h))
+        super().__init__(h.value)
+        self._cols_buf = None  # keep arrays alive while LVGL points into them
+        self._rows_buf = None
+
+    def SetDefinitions(self, columns, rows):
+        c_arr = (ctypes.c_int * len(columns))(*[int(v) for v in columns])
+        r_arr = (ctypes.c_int * len(rows))(*[int(v) for v in rows])
+        self._cols_buf = c_arr; self._rows_buf = r_arr
+        native.ui_grid_set_definitions(self._native, c_arr, len(columns), r_arr, len(rows))
+
+    @staticmethod
+    def SetCell(child, column, row, column_span=1, row_span=1):
+        native.ui_grid_set_cell(child._native, int(column), int(column_span), int(row), int(row_span))
+
+
+class DockPanel(Widget):
+    """WPF-style DockPanel. LVGL has no dock layout; the caller positions
+    children using their x/y/width/height after reading their `dock` side."""
+    def __init__(self, parent):
+        h = native.out_handle()
+        native.ui_dockpanel_create(parent._native, native.ref(h))
+        super().__init__(h.value)
+        self.LastChildFill = True
+
+
+class Menu(Widget):
+    """Horizontal menu bar."""
+    def __init__(self, parent):
+        h = native.out_handle()
+        native.ui_menu_create(parent._native, native.ref(h))
+        super().__init__(h.value)
+
+    @property
+    def Background(self): raise AttributeError("Background is write-only")
+    @Background.setter
+    def Background(self, rgb): native.ui_menu_set_background(self._native, int(rgb))
+
+    def AddItem(self, header, item_width=0):
+        out = native.out_handle()
+        native.ui_menuitem_create(self._native, header.encode("utf-8"), int(item_width), native.ref(out))
+        return MenuItem(out.value)
+
+    def AddDropdown(self, header, sub_items, item_width=0):
+        joined = "\n".join(sub_items or [])
+        out = native.out_handle()
+        native.ui_menuitem_create_dropdown(
+            self._native, header.encode("utf-8"), joined.encode("utf-8"), int(item_width), native.ref(out))
+        return MenuItem(out.value)
+
+
+class MenuItem:
+    """Handle to a menu item. Subscribe to Clicked."""
+    def __init__(self, native_handle):
+        self._native = native_handle
+        self.Clicked = _Event()
+        _subscribe(self, native.ui_subscribe_clicked, self.Clicked)
+
+
+class Calendar(Widget):
+    def __init__(self, parent):
+        h = native.out_handle()
+        native.ui_calendar_create(parent._native, native.ref(h))
+        super().__init__(h.value)
+
+    def SetShowedDate(self, year, month):
+        native.ui_calendar_set_showed_date(self._native, int(year), int(month))
+
+    def SetToday(self, year, month, day):
+        native.ui_calendar_set_today(self._native, int(year), int(month), int(day))
+
+
+class DataGrid(Widget):
+    """Simple grid of text cells (TinyCLR-style simple API)."""
+    def __init__(self, parent):
+        h = native.out_handle()
+        native.ui_datagrid_create(parent._native, native.ref(h))
+        super().__init__(h.value)
+
+    def SetSize(self, columns, rows):
+        native.ui_datagrid_set_size(self._native, int(columns), int(rows))
+
+    def SetCell(self, row, column, text):
+        native.ui_datagrid_set_cell(self._native, int(row), int(column), (text or "").encode("utf-8"))
+
+    def SetColumnWidth(self, column, px):
+        native.ui_datagrid_set_column_width(self._native, int(column), int(px))
+
+
+class TreeView(Widget):
+    """Hierarchical list of indented nodes."""
+    def __init__(self, parent):
+        h = native.out_handle()
+        native.ui_treeview_create(parent._native, native.ref(h))
+        super().__init__(h.value)
+
+    def AddNode(self, depth, is_expanded, has_children, header):
+        out = native.out_handle()
+        native.ui_treeview_add_node(
+            self._native, int(depth), 1 if is_expanded else 0, 1 if has_children else 0,
+            (header or "").encode("utf-8"), native.ref(out))
+
+    def Clear(self):
+        native.ui_treeview_clear(self._native)
+
+
+class ChartMode:
+    Line = 0
+    Rectangle = 1
+    Area = 2
+
+
+class Chart(Widget):
+    """TinyCLR-style simple chart (not standard .NET)."""
+    def __init__(self, parent):
+        h = native.out_handle()
+        native.ui_chart_create(parent._native, native.ref(h))
+        super().__init__(h.value)
+
+    @property
+    def Mode(self): raise AttributeError("Mode is write-only")
+    @Mode.setter
+    def Mode(self, m): native.ui_chart_set_mode(self._native, int(m))
+
+    def SetColors(self, point_color, area_color, label_color):
+        native.ui_chart_set_colors(self._native, int(point_color), int(area_color), int(label_color))
+
+    @property
+    def DivisionAxisY(self): raise AttributeError("DivisionAxisY is write-only")
+    @DivisionAxisY.setter
+    def DivisionAxisY(self, d): native.ui_chart_set_division(self._native, int(d))
+
+    def SetPoints(self, values):
+        buf = (ctypes.c_int * len(values))(*[int(v) for v in values])
+        self._points_buf = buf
+        native.ui_chart_set_points(self._native, buf, len(values))
+
+
+class Gauge(Widget):
+    """Radial gauge (TinyCLR-style)."""
+    def __init__(self, parent, width, height):
+        h = native.out_handle()
+        native.ui_gauge_create(parent._native, int(width), int(height), native.ref(h))
+        super().__init__(h.value)
+
+    def SetRange(self, min_value, max_value):
+        native.ui_gauge_set_range(self._native, int(min_value), int(max_value))
+
+    @property
+    def Value(self): raise AttributeError("Value is write-only")
+    @Value.setter
+    def Value(self, v): native.ui_gauge_set_value(self._native, int(v))
+
+    @property
+    def SweepAngle(self): raise AttributeError("SweepAngle is write-only")
+    @SweepAngle.setter
+    def SweepAngle(self, deg): native.ui_gauge_set_sweep(self._native, int(deg))
+
+    def SetNeedleShape(self, center_y, length):
+        native.ui_gauge_set_needle_shape(self._native, int(center_y * 1000), int(length * 1000))
+
+    @property
+    def EnableScale(self): raise AttributeError("EnableScale is write-only")
+    @EnableScale.setter
+    def EnableScale(self, v): native.ui_gauge_show_scale(self._native, 1 if v else 0)
+
+
+class Border(Widget):
+    """Container with WPF-style Thickness / BorderBrush / CornerRadius /
+    Padding. Set Background via the inherited BackgroundColor."""
+    def __init__(self, parent):
+        h = native.out_handle()
+        native.ui_border_create(parent._native, native.ref(h))
+        super().__init__(h.value)
+
+    @property
+    def Thickness(self): raise AttributeError("Thickness is write-only")
+    @Thickness.setter
+    def Thickness(self, px): native.ui_border_set_thickness(self._native, int(px))
+
+    @property
+    def BorderBrush(self): raise AttributeError("BorderBrush is write-only")
+    @BorderBrush.setter
+    def BorderBrush(self, rgb): native.ui_border_set_brush(self._native, int(rgb))
+
+    @property
+    def CornerRadius(self): raise AttributeError("CornerRadius is write-only")
+    @CornerRadius.setter
+    def CornerRadius(self, px): native.ui_border_set_corner_radius(self._native, int(px))
+
+    @property
+    def Padding(self): raise AttributeError("Padding is write-only")
+    @Padding.setter
+    def Padding(self, px): native.ui_border_set_padding(self._native, int(px))
 
 
 def _subscribe(widget, native_subscribe, event):

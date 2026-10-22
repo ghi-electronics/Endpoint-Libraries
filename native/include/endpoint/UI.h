@@ -91,6 +91,11 @@ public:
         Core::detail::Check(endpoint_ui_widget_set_bg_image(this->_native, data, data_len, width, height));
     }
 
+    // WPF-style per-widget Margin.
+    void SetMargin(int left, int top, int right, int bottom) {
+        Core::detail::Check(endpoint_ui_widget_set_margin(this->_native, left, top, right, bottom));
+    }
+
     NativeHandle Native() const { return this->_native; }
 
 protected:
@@ -128,6 +133,213 @@ class Container : public Widget {
 public:
     explicit Container(const Widget& parent) : Widget(nullptr) {
         Core::detail::Check(endpoint_ui_container_create(parent.Native(), &this->_native));
+    }
+};
+
+/// Container with WPF-style Border styling: thickness, brush color,
+/// corner radius, padding. Background is set via the inherited
+/// SetBackgroundColor on Widget.
+class Border : public Widget {
+public:
+    explicit Border(const Widget& parent) : Widget(nullptr) {
+        Core::detail::Check(endpoint_ui_border_create(parent.Native(), &this->_native));
+    }
+
+    void Thickness(int px)       { Core::detail::Check(endpoint_ui_border_set_thickness(this->_native, px)); }
+    void BorderBrush(uint32_t c) { Core::detail::Check(endpoint_ui_border_set_brush(this->_native, c)); }
+    void CornerRadius(int px)    { Core::detail::Check(endpoint_ui_border_set_corner_radius(this->_native, px)); }
+    void Padding(int px)         { Core::detail::Check(endpoint_ui_border_set_padding(this->_native, px)); }
+};
+
+/// WPF-style StackPanel: stacks children vertically or horizontally via
+/// LVGL flex layout. Spacing is the gap between children; children's
+/// individual Margin stacks on top of that.
+enum class Orientation { Vertical = 0, Horizontal = 1 };
+
+class StackPanel : public Widget {
+public:
+    explicit StackPanel(const Widget& parent) : Widget(nullptr) {
+        Core::detail::Check(endpoint_ui_stackpanel_create(parent.Native(), &this->_native));
+    }
+
+    void SetOrientation(Orientation o) {
+        Core::detail::Check(endpoint_ui_stackpanel_set_orientation(this->_native, (int)o));
+    }
+    void Spacing(int px) {
+        Core::detail::Check(endpoint_ui_stackpanel_set_spacing(this->_native, px));
+    }
+};
+
+/// WPF-style Grid: children live in named rows/columns. Call
+/// SetDefinitions once, then for each child call SetCell on it to place
+/// it. Sizes: positive = fixed px, 0 or negative = star (-1 = "*", -2 =
+/// "2*", ...).
+class Grid : public Widget {
+public:
+    explicit Grid(const Widget& parent) : Widget(nullptr) {
+        Core::detail::Check(endpoint_ui_grid_create(parent.Native(), &this->_native));
+    }
+
+    void SetDefinitions(const std::vector<int>& columns, const std::vector<int>& rows) {
+        Core::detail::Check(endpoint_ui_grid_set_definitions(
+            this->_native,
+            columns.empty() ? nullptr : columns.data(), (int)columns.size(),
+            rows.empty() ? nullptr : rows.data(), (int)rows.size()));
+    }
+
+    static void SetCell(const Widget& child, int column, int row,
+                        int columnSpan = 1, int rowSpan = 1) {
+        Core::detail::Check(endpoint_ui_grid_set_cell(child.Native(), column, columnSpan, row, rowSpan));
+    }
+};
+
+/// WPF-style DockPanel. LVGL has no dock layout; the owner (or codegen)
+/// positions children with absolute coords after construction. LastChildFill
+/// is a hint for user code / codegen.
+class DockPanel : public Widget {
+public:
+    explicit DockPanel(const Widget& parent) : Widget(nullptr) {
+        Core::detail::Check(endpoint_ui_dockpanel_create(parent.Native(), &this->_native));
+    }
+};
+
+/// Menu bar — a horizontal row of MenuItem widgets. MenuItem itself is a
+/// handle wrapper (not a Widget subclass) returned by AddItem / AddDropdown.
+class MenuItemHandle {
+public:
+    using ClickedHandler = std::function<void()>;
+    void Clicked(ClickedHandler handler) {
+        auto* fn = new ClickedHandler(std::move(handler));
+        Core::detail::Check(endpoint_ui_subscribe_clicked(this->_native, &detail::EventTrampoline, fn));
+    }
+    NativeHandle Native() const { return this->_native; }
+private:
+    friend class Menu;
+    explicit MenuItemHandle(NativeHandle h) : _native(h) {}
+    NativeHandle _native;
+};
+
+class Menu : public Widget {
+public:
+    explicit Menu(const Widget& parent) : Widget(nullptr) {
+        Core::detail::Check(endpoint_ui_menu_create(parent.Native(), &this->_native));
+    }
+    void Background(uint32_t rgb) {
+        Core::detail::Check(endpoint_ui_menu_set_background(this->_native, rgb));
+    }
+    /// Add a leaf item.
+    MenuItemHandle AddItem(const std::string& header, int itemWidth = 0) {
+        NativeHandle h = nullptr;
+        Core::detail::Check(endpoint_ui_menuitem_create(this->_native, header.c_str(), itemWidth, &h));
+        return MenuItemHandle(h);
+    }
+    /// Add a non-leaf item with a dropdown of sub-item strings.
+    MenuItemHandle AddDropdown(const std::string& header,
+                               const std::vector<std::string>& subItems,
+                               int itemWidth = 0) {
+        std::string joined;
+        for (size_t i = 0; i < subItems.size(); ++i) {
+            if (i) joined += '\n';
+            joined += subItems[i];
+        }
+        NativeHandle h = nullptr;
+        Core::detail::Check(endpoint_ui_menuitem_create_dropdown(this->_native, header.c_str(),
+                                                                 joined.c_str(), itemWidth, &h));
+        return MenuItemHandle(h);
+    }
+};
+
+/// Month Calendar.
+class Calendar : public Widget {
+public:
+    explicit Calendar(const Widget& parent) : Widget(nullptr) {
+        Core::detail::Check(endpoint_ui_calendar_create(parent.Native(), &this->_native));
+    }
+    void SetShowedDate(int year, int month) {
+        Core::detail::Check(endpoint_ui_calendar_set_showed_date(this->_native, year, month));
+    }
+    void SetToday(int year, int month, int day) {
+        Core::detail::Check(endpoint_ui_calendar_set_today(this->_native, year, month, day));
+    }
+};
+
+/// DataGrid — a simple rows x columns table. Call SetSize, then SetCell on
+/// each cell. (TinyCLR-style simple API; the widget keeps the standard name.)
+class DataGrid : public Widget {
+public:
+    explicit DataGrid(const Widget& parent) : Widget(nullptr) {
+        Core::detail::Check(endpoint_ui_datagrid_create(parent.Native(), &this->_native));
+    }
+    void SetSize(int columns, int rows) {
+        Core::detail::Check(endpoint_ui_datagrid_set_size(this->_native, columns, rows));
+    }
+    void SetCell(int row, int column, const std::string& text) {
+        Core::detail::Check(endpoint_ui_datagrid_set_cell(this->_native, row, column, text.c_str()));
+    }
+    void SetColumnWidth(int column, int px) {
+        Core::detail::Check(endpoint_ui_datagrid_set_column_width(this->_native, column, px));
+    }
+};
+
+/// TreeView — a vertical list of indented nodes.
+class TreeView : public Widget {
+public:
+    explicit TreeView(const Widget& parent) : Widget(nullptr) {
+        Core::detail::Check(endpoint_ui_treeview_create(parent.Native(), &this->_native));
+    }
+    void AddNode(int depth, bool isExpanded, bool hasChildren, const std::string& header) {
+        Core::detail::Check(endpoint_ui_treeview_add_node(this->_native, depth,
+            isExpanded ? 1 : 0, hasChildren ? 1 : 0, header.c_str(), nullptr));
+    }
+    void Clear() { Core::detail::Check(endpoint_ui_treeview_clear(this->_native)); }
+};
+
+/// Chart with a single series. Modes: Line (default), Bar, Area.
+enum class ChartMode { Line = 0, Rectangle = 1, Area = 2 };
+
+class Chart : public Widget {
+public:
+    explicit Chart(const Widget& parent) : Widget(nullptr) {
+        Core::detail::Check(endpoint_ui_chart_create(parent.Native(), &this->_native));
+    }
+    void Mode(ChartMode m) {
+        Core::detail::Check(endpoint_ui_chart_set_mode(this->_native, (int)m));
+    }
+    void SetColors(uint32_t pointColor, uint32_t areaColor, uint32_t labelColor) {
+        Core::detail::Check(endpoint_ui_chart_set_colors(this->_native, pointColor, areaColor, labelColor));
+    }
+    void DivisionAxisY(int divisions) {
+        Core::detail::Check(endpoint_ui_chart_set_division(this->_native, divisions));
+    }
+    void SetPoints(const std::vector<int>& values) {
+        Core::detail::Check(endpoint_ui_chart_set_points(this->_native,
+            values.empty() ? nullptr : values.data(), (int)values.size()));
+    }
+};
+
+/// Radial Gauge. The width/height passed to the constructor is fixed — the
+/// scale and needle are sized at creation time.
+class Gauge : public Widget {
+public:
+    Gauge(const Widget& parent, int width, int height) : Widget(nullptr) {
+        Core::detail::Check(endpoint_ui_gauge_create(parent.Native(), width, height, &this->_native));
+    }
+    void SetRange(int min, int max) {
+        Core::detail::Check(endpoint_ui_gauge_set_range(this->_native, min, max));
+    }
+    void Value(int value) {
+        Core::detail::Check(endpoint_ui_gauge_set_value(this->_native, value));
+    }
+    void SweepAngle(int degrees) {
+        Core::detail::Check(endpoint_ui_gauge_set_sweep(this->_native, degrees));
+    }
+    /// Needle center-Y (0..1 fraction of height) and length (0..1 of half-min-dim).
+    void SetNeedleShape(float centerY, float length) {
+        Core::detail::Check(endpoint_ui_gauge_set_needle_shape(this->_native,
+            (int)(centerY * 1000.0f), (int)(length * 1000.0f)));
+    }
+    void EnableScale(bool visible) {
+        Core::detail::Check(endpoint_ui_gauge_show_scale(this->_native, visible ? 1 : 0));
     }
 };
 

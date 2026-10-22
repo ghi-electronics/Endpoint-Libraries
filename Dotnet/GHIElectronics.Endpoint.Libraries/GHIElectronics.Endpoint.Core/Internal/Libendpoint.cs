@@ -353,6 +353,93 @@ namespace GHIElectronics.Endpoint.Core.Internal {
         [LibraryImport(Library, EntryPoint = "endpoint_ui_container_create")]
         public static partial int UiContainerCreate(nint parent, out nint container);
 
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_border_create")]
+        public static partial int UiBorderCreate(nint parent, out nint border);
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_border_set_thickness")]
+        public static partial int UiBorderSetThickness(nint border, int px);
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_border_set_brush")]
+        public static partial int UiBorderSetBrush(nint border, uint rgb);
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_border_set_corner_radius")]
+        public static partial int UiBorderSetCornerRadius(nint border, int px);
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_border_set_padding")]
+        public static partial int UiBorderSetPadding(nint border, int px);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_stackpanel_create")]
+        public static partial int UiStackPanelCreate(nint parent, out nint panel);
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_stackpanel_set_orientation")]
+        public static partial int UiStackPanelSetOrientation(nint panel, int orientation);
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_stackpanel_set_spacing")]
+        public static partial int UiStackPanelSetSpacing(nint panel, int px);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_widget_set_margin")]
+        public static partial int UiWidgetSetMargin(nint widget, int left, int top, int right, int bottom);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_grid_create")]
+        public static partial int UiGridCreate(nint parent, out nint grid);
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_grid_set_definitions")]
+        public static partial int UiGridSetDefinitions(nint panel, int* cols, int colCount, int* rows, int rowCount);
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_grid_set_cell")]
+        public static partial int UiGridSetCell(nint child, int column, int columnSpan, int row, int rowSpan);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_dockpanel_create")]
+        public static partial int UiDockPanelCreate(nint parent, out nint panel);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_menu_create")]
+        public static partial int UiMenuCreate(nint parent, out nint menu);
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_menu_set_background")]
+        public static partial int UiMenuSetBackground(nint menu, uint rgb);
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_menuitem_create", StringMarshalling = StringMarshalling.Utf8)]
+        public static partial int UiMenuItemCreate(nint parent, string header, int itemWidth, out nint item);
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_menuitem_create_dropdown", StringMarshalling = StringMarshalling.Utf8)]
+        public static partial int UiMenuItemCreateDropdown(nint parent, string header, string joined, int itemWidth, out nint item);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_calendar_create")]
+        public static partial int UiCalendarCreate(nint parent, out nint cal);
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_calendar_set_showed_date")]
+        public static partial int UiCalendarSetShowedDate(nint cal, int year, int month);
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_calendar_set_today")]
+        public static partial int UiCalendarSetToday(nint cal, int year, int month, int day);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_datagrid_create")]
+        public static partial int UiDataGridCreate(nint parent, out nint grid);
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_datagrid_set_size")]
+        public static partial int UiDataGridSetSize(nint grid, int cols, int rows);
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_datagrid_set_cell", StringMarshalling = StringMarshalling.Utf8)]
+        public static partial int UiDataGridSetCell(nint grid, int row, int col, string text);
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_datagrid_set_column_width")]
+        public static partial int UiDataGridSetColumnWidth(nint grid, int col, int px);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_treeview_create")]
+        public static partial int UiTreeViewCreate(nint parent, out nint tree);
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_treeview_add_node", StringMarshalling = StringMarshalling.Utf8)]
+        public static partial int UiTreeViewAddNode(nint tree, int depth, int isExpanded, int hasChildren, string header, out nint node);
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_treeview_clear")]
+        public static partial int UiTreeViewClear(nint tree);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_chart_create")]
+        public static partial int UiChartCreate(nint parent, out nint chart);
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_chart_set_mode")]
+        public static partial int UiChartSetMode(nint chart, int mode);
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_chart_set_colors")]
+        public static partial int UiChartSetColors(nint chart, uint pointColor, uint areaColor, uint labelColor);
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_chart_set_division")]
+        public static partial int UiChartSetDivision(nint chart, int yDivisions);
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_chart_set_points")]
+        public static partial int UiChartSetPoints(nint chart, int* values, int count);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_gauge_create")]
+        public static partial int UiGaugeCreate(nint parent, int width, int height, out nint gauge);
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_gauge_set_range")]
+        public static partial int UiGaugeSetRange(nint gauge, int min, int max);
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_gauge_set_value")]
+        public static partial int UiGaugeSetValue(nint gauge, int value);
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_gauge_set_sweep")]
+        public static partial int UiGaugeSetSweep(nint gauge, int degrees);
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_gauge_set_needle_shape")]
+        public static partial int UiGaugeSetNeedleShape(nint gauge, int centerY1000, int length1000);
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_gauge_show_scale")]
+        public static partial int UiGaugeShowScale(nint gauge, int visible);
+
         [LibraryImport(Library, EntryPoint = "endpoint_ui_button_create")]
         public static partial int UiButtonCreate(nint parent, out nint button);
 
@@ -379,6 +466,9 @@ namespace GHIElectronics.Endpoint.Core.Internal {
 
         [LibraryImport(Library, EntryPoint = "endpoint_ui_label_set_font_size")]
         public static partial int UiLabelSetFontSize(nint label, int size);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_label_set_text_align")]
+        public static partial int UiLabelSetTextAlign(nint label, int align);
 
         [LibraryImport(Library, EntryPoint = "endpoint_ui_image_create")]
         public static partial int UiImageCreate(nint parent, out nint image);
