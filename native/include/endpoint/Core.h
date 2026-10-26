@@ -302,4 +302,54 @@ struct EPM815 {
     };
 };
 
+// The EPN256 (Nuvoton MA35D1) module. 0.4.x only exposes GPIO here; the
+// other peripherals (I2C/SPI/UART/CAN/ADC/DAC/PWM/Watchdog/Storage) are
+// still under EPM815 pending the native MA35D1 port.
+struct EPN256 {
+    // GPIO pins, for Devices::Gpio::GpioController
+    struct Gpio {
+        // The EPN256's pins: port * 16 + line, ports A to N
+        struct Pin {
+            static constexpr int PA0 = 0, PA1 = 1, PA2 = 2, PA3 = 3, PA4 = 4, PA5 = 5, PA6 = 6, PA7 = 7;
+            static constexpr int PA8 = 8, PA9 = 9, PA10 = 10, PA11 = 11, PA12 = 12, PA13 = 13, PA14 = 14, PA15 = 15;
+            static constexpr int PB0 = 16, PB1 = 17, PB2 = 18, PB3 = 19, PB4 = 20, PB5 = 21, PB6 = 22, PB7 = 23;
+            static constexpr int PB8 = 24, PB9 = 25, PB10 = 26, PB11 = 27, PB12 = 28, PB13 = 29, PB14 = 30, PB15 = 31;
+            static constexpr int PC0 = 32, PC1 = 33, PC2 = 34, PC3 = 35, PC4 = 36, PC5 = 37, PC6 = 38, PC7 = 39;
+            static constexpr int PC8 = 40, PC9 = 41, PC10 = 42, PC11 = 43, PC12 = 44, PC13 = 45, PC14 = 46, PC15 = 47;
+            static constexpr int PD0 = 48, PD1 = 49, PD2 = 50, PD3 = 51, PD4 = 52, PD5 = 53, PD6 = 54, PD7 = 55;
+            static constexpr int PD8 = 56, PD9 = 57, PD10 = 58, PD11 = 59, PD12 = 60, PD13 = 61, PD14 = 62, PD15 = 63;
+            static constexpr int PE0 = 64, PE1 = 65, PE2 = 66, PE3 = 67, PE4 = 68, PE5 = 69, PE6 = 70, PE7 = 71;
+            static constexpr int PE8 = 72, PE9 = 73, PE10 = 74, PE11 = 75, PE12 = 76, PE13 = 77, PE14 = 78, PE15 = 79;
+            static constexpr int PF0 = 80, PF1 = 81, PF2 = 82, PF3 = 83, PF4 = 84, PF5 = 85, PF6 = 86, PF7 = 87;
+            static constexpr int PF8 = 88, PF9 = 89, PF10 = 90, PF11 = 91, PF12 = 92, PF13 = 93, PF14 = 94, PF15 = 95;
+            static constexpr int PG0 = 96, PG1 = 97, PG2 = 98, PG3 = 99, PG4 = 100, PG5 = 101, PG6 = 102, PG7 = 103;
+            static constexpr int PG8 = 104, PG9 = 105, PG10 = 106, PG11 = 107, PG12 = 108, PG13 = 109, PG14 = 110, PG15 = 111;
+            static constexpr int PH0 = 112, PH1 = 113, PH2 = 114, PH3 = 115, PH4 = 116, PH5 = 117, PH6 = 118, PH7 = 119;
+            static constexpr int PH8 = 120, PH9 = 121, PH10 = 122, PH11 = 123, PH12 = 124, PH13 = 125, PH14 = 126, PH15 = 127;
+            static constexpr int PI0 = 128, PI1 = 129, PI2 = 130, PI3 = 131, PI4 = 132, PI5 = 133, PI6 = 134, PI7 = 135;
+            static constexpr int PI8 = 136, PI9 = 137, PI10 = 138, PI11 = 139, PI12 = 140, PI13 = 141, PI14 = 142, PI15 = 143;
+            static constexpr int PJ0 = 144, PJ1 = 145, PJ2 = 146, PJ3 = 147, PJ4 = 148, PJ5 = 149, PJ6 = 150, PJ7 = 151;
+            static constexpr int PJ8 = 152, PJ9 = 153, PJ10 = 154, PJ11 = 155, PJ12 = 156, PJ13 = 157, PJ14 = 158, PJ15 = 159;
+            static constexpr int PK0 = 160, PK1 = 161, PK2 = 162, PK3 = 163, PK4 = 164, PK5 = 165, PK6 = 166, PK7 = 167;
+            static constexpr int PK8 = 168, PK9 = 169, PK10 = 170, PK11 = 171, PK12 = 172, PK13 = 173, PK14 = 174, PK15 = 175;
+            static constexpr int PL0 = 176, PL1 = 177, PL2 = 178, PL3 = 179, PL4 = 180, PL5 = 181, PL6 = 182, PL7 = 183;
+            static constexpr int PL8 = 184, PL9 = 185, PL10 = 186, PL11 = 187, PL12 = 188, PL13 = 189, PL14 = 190, PL15 = 191;
+            static constexpr int PM0 = 192, PM1 = 193, PM2 = 194, PM3 = 195, PM4 = 196, PM5 = 197, PM6 = 198, PM7 = 199;
+            static constexpr int PM8 = 200, PM9 = 201, PM10 = 202, PM11 = 203, PM12 = 204, PM13 = 205, PM14 = 206, PM15 = 207;
+            static constexpr int PN0 = 208, PN1 = 209, PN2 = 210, PN3 = 211, PN4 = 212, PN5 = 213, PN6 = 214, PN7 = 215;
+            static constexpr int PN8 = 216, PN9 = 217, PN10 = 218, PN11 = 219, PN12 = 220, PN13 = 221, PN14 = 222, PN15 = 223;
+            static constexpr int NONE = -1;  // no pin
+        };
+
+        // The pin's name, for example "PJ14"
+        static std::string Name(int pin) {
+            if (pin < 0 || pin > Pin::PN15) {
+                return "#" + std::to_string(pin);
+            }
+            int port = pin / 16;
+            return std::string("P") + static_cast<char>('A' + port) + std::to_string(pin % 16);
+        }
+    };
+};
+
 }  // namespace GHIElectronics::Endpoint::Core
