@@ -48,7 +48,7 @@ std::map<std::string, int> Scan() {
 }  // namespace
 
 int Find(int port) {
-    auto label = std::string("GPIO") + (port == Pins::PortZ ? 'Z' : static_cast<char>('A' + port));
+    auto label = std::string("gpio") + static_cast<char>('a' + port);
     std::lock_guard lock(gate);
     if (!chips) {
         chips = Scan();

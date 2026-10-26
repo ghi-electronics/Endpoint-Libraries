@@ -1,4 +1,4 @@
-# Builds C and C++ for Endpoint boards (STM32MP1: Cortex-A7, hard float)
+# Builds C and C++ for Endpoint boards (Nuvoton MA35D1: Cortex-A35, aarch64)
 # with Zig's clang, the same compiler "endpoint-cli c++" uses:
 #
 #   cmake -G Ninja -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/endpoint-toolchain.cmake
@@ -7,7 +7,7 @@
 # endpoint-cli downloads it to (ENDPOINT_TOOLS, or %LOCALAPPDATA%\Endpoint\tools).
 
 set(CMAKE_SYSTEM_NAME Linux)
-set(CMAKE_SYSTEM_PROCESSOR arm)
+set(CMAKE_SYSTEM_PROCESSOR aarch64)
 
 set(ENDPOINT_ZIG_VERSION 0.17.0)
 
@@ -39,7 +39,7 @@ set(CMAKE_C_COMPILER "${ENDPOINT_ZIG}" cc)
 set(CMAKE_CXX_COMPILER "${ENDPOINT_ZIG}" c++)
 
 # The board's processor, and the oldest glibc the program may need (as endpoint-cli)
-set(_target "-target arm-linux-gnueabihf.2.34 -mcpu=cortex_a7")
+set(_target "-target aarch64-linux-gnu.2.34 -mcpu=cortex_a35")
 set(CMAKE_C_FLAGS_INIT "${_target}")
 set(CMAKE_CXX_FLAGS_INIT "${_target}")
 set(CMAKE_EXE_LINKER_FLAGS_INIT "${_target}")

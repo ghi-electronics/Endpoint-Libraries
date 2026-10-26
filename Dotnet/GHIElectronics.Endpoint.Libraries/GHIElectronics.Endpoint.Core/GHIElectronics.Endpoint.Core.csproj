@@ -14,13 +14,13 @@
 
   <!-- libendpoint (Endpoint-Libraries/native, built for the board), for the
        features .NET shares with Python and C++ (storage): in the NuGet
-       package for linux-arm, and next to the program for projects that
+       package for linux-arm64, and next to the program for projects that
        reference this one. Build native/ first (its CMake preset "endpoint"). -->
   <PropertyGroup>
     <Libendpoint>$(MSBuildThisFileDirectory)..\..\..\native\build\libendpoint.so</Libendpoint>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="$(Libendpoint)" Link="libendpoint.so" Pack="true" PackagePath="runtimes/linux-arm/native"
+    <None Include="$(Libendpoint)" Link="libendpoint.so" Pack="true" PackagePath="runtimes/linux-arm64/native"
           CopyToOutputDirectory="PreserveNewest" Visible="false" />
   </ItemGroup>
   <Target Name="CheckLibendpoint" BeforeTargets="Build">

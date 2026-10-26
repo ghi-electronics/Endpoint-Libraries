@@ -4,12 +4,17 @@
 
 namespace GHIElectronics::Endpoint::Internal {
 
-// The EPM815's pin numbers, the same as the .NET library: port * 16 + line,
-// ports A (0) to I (8), then Z (9). PC0 = 32, PZ7 = 151.
+// The EPN256's pin numbers, the same as the .NET library: port * 16 + line,
+// ports A (0) to N (13). PC0 = 32, PJ14 = 158, PN15 = 223.
 namespace Pins {
 
+constexpr int PortCount = 14;             // GPIOA ... GPION
+constexpr int Last = PortCount * 16 - 1;  // PN15 = 223
+
+// Kept as a compile-time constant for the STM32-era peripheral code
+// (I2C/SPI/UART/CAN/ADC/DAC) that references it. GPIO on MA35D1 does not
+// use PortZ: port 9 is just GPIOJ.
 constexpr int PortZ = 9;
-constexpr int Last = PortZ * 16 + 7;  // PZ7
 
 bool IsValid(int pin);
 
@@ -19,7 +24,7 @@ int Check(int pin);
 // "PC0", or "#200" for a number that is no pin
 std::string Name(int pin);
 
-// The chip's port (A = 0 ... I = 8, or Stm32Mp1Pins::PortZ) and line
+// The chip's port (A = 0 ... N = 13) and line
 struct ChipPin {
     int port;
     int line;
