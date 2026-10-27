@@ -264,6 +264,12 @@ namespace GHIElectronics.Endpoint.Devices.Display {
             this.targetBpp = p.BitsPerPixel == 0 ? 16 : p.BitsPerPixel;
             this.framebuffer = new FileStream("/dev/fb0", FileMode.Open,
                                               FileAccess.Write, FileShare.ReadWrite);
+            // MA35D1 DCUltra pins fb0 at 32 bpp BGRX8888 regardless of what
+            // display.json's BitsPerPixel says; trust the kernel.
+            try {
+                var b = File.ReadAllText("/sys/class/graphics/fb0/bits_per_pixel").Trim();
+                if (int.TryParse(b, out int parsedBpp) && parsedBpp > 0) this.targetBpp = parsedBpp;
+            } catch { /* keep the configured value */ }
             this.stride = this.width * (this.targetBpp / 8);
             try {
                 var s = File.ReadAllText("/sys/class/graphics/fb0/stride").Trim();
@@ -357,6 +363,37 @@ namespace GHIElectronics.Endpoint.Devices.Display {
                         dst[p * 3 + 1] = src[p * 4 + 1];
                         dst[p * 3 + 2] = src[p * 4 + 2];
                     }
+                    return;
+                }
+            }
+            if (targetBpp == 32) {
+                // BGRX8888 target (MA35D1 DCUltra default). Source bytes are
+                // {B, G, R} / {B, G, R, A} little-endian; destination is
+                // {B, G, R, X}. Unpack RGB565 by replicating the top bits down.
+                if (format == PixelFormat.Format16bppRgb565) {
+                    for (int p = 0; p < pixels; p++) {
+                        byte lo = src[p * 2 + 0], hi = src[p * 2 + 1];
+                        int r5 = (hi >> 3) & 0x1F;
+                        int g6 = ((hi & 0x07) << 3) | ((lo >> 5) & 0x07);
+                        int b5 = lo & 0x1F;
+                        dst[p * 4 + 0] = (byte)((b5 << 3) | (b5 >> 2));
+                        dst[p * 4 + 1] = (byte)((g6 << 2) | (g6 >> 4));
+                        dst[p * 4 + 2] = (byte)((r5 << 3) | (r5 >> 2));
+                        dst[p * 4 + 3] = 0;
+                    }
+                    return;
+                }
+                if (format == PixelFormat.Format24bppRgb) {
+                    for (int p = 0; p < pixels; p++) {
+                        dst[p * 4 + 0] = src[p * 3 + 0];
+                        dst[p * 4 + 1] = src[p * 3 + 1];
+                        dst[p * 4 + 2] = src[p * 3 + 2];
+                        dst[p * 4 + 3] = 0;
+                    }
+                    return;
+                }
+                if (format is PixelFormat.Format32bppRgb or PixelFormat.Format32bppArgb) {
+                    src.Slice(0, pixels * 4).CopyTo(dst);
                     return;
                 }
             }

@@ -80,94 +80,25 @@ bool FramebufferExists() {
     return stat(kFramebufferPath, &st) == 0;
 }
 
-// Static ltdc_generic_setting values the GHI panel driver (see
-// 0004-drm-panel-simple-add-ghi-ltdc-generic-panel.patch) is known to work
-// with across every panel the Endpoint-samples ship for. We only vary clock,
-// timings and the two polarity bits of bus_flags that the LTDC driver
-// actually reads (see drivers/gpu/drm/stm/ltdc.c:600-603 in the Linux tree).
-constexpr int kDefaultNumModes      = 1;
-constexpr int kDefaultDpiWidth      = 0;   // kernel fills in 152 (mm)
-constexpr int kDefaultDpiHeight     = 0;   // kernel fills in 91  (mm)
-constexpr int kDefaultBusFormat     = 0;   // kernel fills in RGB888_1X24
-constexpr int kDefaultConnectorType = 0;   // kernel fills in DRM_MODE_CONNECTOR_DPI
-constexpr int kDefaultBpc           = 8;   // kernel's own default
-
-// Bit values the STM32 LTDC driver reads from bus_flags (from
-// include/drm/drm_connector.h in kernel 5.13):
-//   bit 0 (DRM_BUS_FLAG_DE_LOW):               DE active-low
-//   bit 3 (DRM_BUS_FLAG_PIXDATA_DRIVE_NEGEDGE): pixel clock inverted
-// Every other bit is ignored by the LTDC driver on STM32MP1.
-constexpr int kBusFlagDeLow                 = 1 << 0;  // = 1
-constexpr int kBusFlagPixelClockNegEdge     = 1 << 3;  // = 8
-
-void ApplyParallelLcd(const nlohmann::json& section) {
-    auto parallel = JsonObject(section, "parallel");
-    int width = JsonInt(parallel, "width", 0);
-    int height = JsonInt(parallel, "height", 0);
-    int pixelClockHz = JsonInt(parallel, "pixelClockHz", 0);
-    int hfp = JsonInt(parallel, "hFrontPorch", 0);
-    int hbp = JsonInt(parallel, "hBackPorch", 0);
-    int hsync = JsonInt(parallel, "hSync", 0);
-    int vfp = JsonInt(parallel, "vFrontPorch", 0);
-    int vbp = JsonInt(parallel, "vBackPorch", 0);
-    int vsync = JsonInt(parallel, "vSync", 0);
-    // The STM32 LTDC driver only looks at two bits of bus_flags, so we build
-    // the value from the two user-facing fields instead of letting the user
-    // guess hex magic numbers.
-    bool deActiveLow      = JsonInt(parallel, "deActiveLow", 0) != 0;
-    bool pixelClockFalling = JsonInt(parallel, "pixelClockFalling", 0) != 0;
-    int busFlags = (deActiveLow ? kBusFlagDeLow : 0)
-                 | (pixelClockFalling ? kBusFlagPixelClockNegEdge : 0);
-
-    if (width <= 0 || height <= 0 || pixelClockHz <= 0) {
-        throw EndpointError(ErrorKind::InvalidOperation,
-                            "parallel width/height/pixelClockHz missing in /config/display.json");
-    }
-
-    // panel-simple's ltdc_generic_setting takes 16 ints (see
-    // 0004-drm-panel-simple-add-ghi-ltdc-generic-panel.patch):
-    //   0: clock (kHz)                 8: vtotal
-    //   1: hdisplay                    9: num_modes
-    //   2: hsync_start                 10: size.width (mm)
-    //   3: hsync_end                   11: size.height (mm)
-    //   4: htotal                      12: bus_flags
-    //   5: vdisplay                    13: bus_format
-    //   6: vsync_start                 14: connector_type
-    //   7: vsync_end                   15: bpc
-    int clockKHz = pixelClockHz / 1000;
-    int hsync_start = width + hfp;
-    int hsync_end = hsync_start + hsync;
-    int htotal = hsync_end + hbp;
-    int vsync_start = height + vfp;
-    int vsync_end = vsync_start + vsync;
-    int vtotal = vsync_end + vbp;
-
-    char param[256];
-    std::snprintf(param, sizeof param,
-                  "ltdc_generic_setting=%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d,%d",
-                  clockKHz, width, hsync_start, hsync_end, htotal,
-                  height, vsync_start, vsync_end, vtotal,
-                  kDefaultNumModes, kDefaultDpiWidth, kDefaultDpiHeight,
-                  busFlags, kDefaultBusFormat,
-                  kDefaultConnectorType, kDefaultBpc);
-
-    // Load the STM32 LTDC (display controller) driver FIRST. It is a module
-    // now (CONFIG_DRM_STM=m) to keep boot time off GPIO-only customers, so
-    // panel-simple has nothing to bind to until this is in. Without this,
-    // the LTDC DT node stays unbound forever and /dev/fb0 never appears.
-    char* ltdcArgv[] = {const_cast<char*>("modprobe"),
-                        const_cast<char*>("stm_drm"),
-                        nullptr};
-    RunAndWait("/sbin/modprobe", ltdcArgv);
-
+void ApplyParallelLcd(const nlohmann::json& /*section*/) {
+    // Nuvoton MA35D1 DCUltra. The panel timings, bus format, and DE / pixel-
+    // clock polarities are described in the device tree (ma35d1-som-256m.dts +
+    // our Endpoint DTS tweaks) and read by ma35-drm at probe. The /config/
+    // display.json "parallel" section's width / height / timing fields are
+    // IGNORED on MA35D1 — we keep the schema cross-chip for forward
+    // compatibility but there is nothing to pass through as module params on
+    // this chip. STM32MP1 used to need panel-simple + ltdc_generic_setting
+    // here; that path is gone with the 0.4.x switch to Nuvoton-only.
+    //
+    // Load the Nuvoton DCUltra driver. It is a module (CONFIG_DRM_MA35=m) so
+    // a customer with no display pays zero boot time; this call is the
+    // moment the ~200 ms probe runs. Touch stays the customer's job
+    // (subclass of the Touch abstract class, driving their chip through
+    // Core.I2c + Core.Gpio) — we ship no touch kernel driver.
     char* argv[] = {const_cast<char*>("modprobe"),
-                    const_cast<char*>("panel-simple"),
-                    param,
+                    const_cast<char*>("ma35-drm"),
                     nullptr};
     RunAndWait("/sbin/modprobe", argv);
-    // Touch is the customer's responsibility (subclass of the Touch
-    // abstract class, driving their chip through Core.I2c + Core.Gpio).
-    // We ship no touch kernel driver.
 }
 
 // libgpiod 1.x releases the line as soon as gpioset exits, which drops the
@@ -228,9 +159,12 @@ void ApplyBacklight(const nlohmann::json& section, bool on) {
 }
 
 void UnloadPanel() {
+    // modprobe -r ma35-drm. Reclaims the 8 MiB display_buf CMA region and
+    // ends the DCUltra pixel-clock, so a Disable() call really is "pay-for-
+    // use off" and not just the backlight.
     char* argv[] = {const_cast<char*>("modprobe"),
                     const_cast<char*>("-r"),
-                    const_cast<char*>("panel-simple"),
+                    const_cast<char*>("ma35-drm"),
                     nullptr};
     RunAndWait("/sbin/modprobe", argv);
 }

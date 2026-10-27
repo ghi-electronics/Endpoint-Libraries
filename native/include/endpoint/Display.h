@@ -309,8 +309,17 @@ inline void ParallelDisplayController::Enable() {
         this->height = s.Parallel->Height;
         this->targetBpp = s.Parallel->BitsPerPixel ? s.Parallel->BitsPerPixel : 16;
     }
-    // Open /dev/fb0 and read the real stride (DMA alignment can make it >Width*bpp/8).
+    // Open /dev/fb0 and let the kernel tell us the real pixel depth and stride:
+    // MA35D1 DCUltra pins fb0 at 32 bpp BGRX8888 regardless of what
+    // display.json's BitsPerPixel says, and DMA alignment can make the stride
+    // wider than width * bpp / 8.
     this->framebuffer.open("/dev/fb0", std::ios::in | std::ios::out | std::ios::binary);
+    std::ifstream bf("/sys/class/graphics/fb0/bits_per_pixel");
+    if (bf) {
+        int b = 0;
+        bf >> b;
+        if (b > 0) this->targetBpp = b;
+    }
     this->stride = this->width * (this->targetBpp / 8);
     std::ifstream sf("/sys/class/graphics/fb0/stride");
     if (sf) {
@@ -355,12 +364,35 @@ inline void ParallelDisplayController::Flush(const uint8_t* pixels, size_t lengt
         uint8_t* dst = row.data();
         if (format == PixelFormat::Format16bppRgb565 && targetBytesPerPixel == 2) {
             std::memcpy(dst, src, width * 2);
+        } else if (format == PixelFormat::Format16bppRgb565 && targetBytesPerPixel == 4) {
+            // RGB565 source -> BGRX8888 target (MA35D1 DCUltra). Unpack the
+            // 5/6/5 bits and replicate the high bits into the low ones so a
+            // fully-on channel reaches 0xFF.
+            for (int p = 0; p < width; ++p) {
+                uint8_t lo = src[p * 2 + 0], hi = src[p * 2 + 1];
+                uint8_t r5 = static_cast<uint8_t>((hi >> 3) & 0x1F);
+                uint8_t g6 = static_cast<uint8_t>(((hi & 0x07) << 3) | ((lo >> 5) & 0x07));
+                uint8_t b5 = static_cast<uint8_t>(lo & 0x1F);
+                dst[p * 4 + 0] = static_cast<uint8_t>((b5 << 3) | (b5 >> 2));
+                dst[p * 4 + 1] = static_cast<uint8_t>((g6 << 2) | (g6 >> 4));
+                dst[p * 4 + 2] = static_cast<uint8_t>((r5 << 3) | (r5 >> 2));
+                dst[p * 4 + 3] = 0x00;
+            }
         } else if (format == PixelFormat::Format24bppRgb && targetBytesPerPixel == 2) {
             for (int p = 0; p < width; ++p) {
                 uint8_t b = src[p * 3 + 0], g = src[p * 3 + 1], re = src[p * 3 + 2];
                 uint16_t v = ((re >> 3) << 11) | ((g >> 2) << 5) | (b >> 3);
                 dst[p * 2 + 0] = static_cast<uint8_t>(v & 0xFF);
                 dst[p * 2 + 1] = static_cast<uint8_t>(v >> 8);
+            }
+        } else if (format == PixelFormat::Format24bppRgb && targetBytesPerPixel == 4) {
+            // 24bpp source is in {B,G,R} byte order (System.Drawing); BGRX
+            // target is {B,G,R,X}, so copy three bytes and zero the X byte.
+            for (int p = 0; p < width; ++p) {
+                dst[p * 4 + 0] = src[p * 3 + 0];
+                dst[p * 4 + 1] = src[p * 3 + 1];
+                dst[p * 4 + 2] = src[p * 3 + 2];
+                dst[p * 4 + 3] = 0x00;
             }
         } else if ((format == PixelFormat::Format32bppArgb || format == PixelFormat::Format32bppRgb)
                    && targetBytesPerPixel == 2) {
@@ -370,6 +402,11 @@ inline void ParallelDisplayController::Flush(const uint8_t* pixels, size_t lengt
                 dst[p * 2 + 0] = static_cast<uint8_t>(v & 0xFF);
                 dst[p * 2 + 1] = static_cast<uint8_t>(v >> 8);
             }
+        } else if ((format == PixelFormat::Format32bppArgb || format == PixelFormat::Format32bppRgb)
+                   && targetBytesPerPixel == 4) {
+            // Both ARGB32 and BGRX8888 are {B,G,R,A/X} in little-endian memory
+            // -> straight copy.
+            std::memcpy(dst, src, static_cast<size_t>(width) * 4);
         } else {
             throw Core::NotSupportedException("Unsupported pixel-format / target-bpp combo");
         }
