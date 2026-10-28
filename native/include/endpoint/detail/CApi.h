@@ -326,6 +326,16 @@ int endpoint_ui_stop(void);
 int endpoint_ui_touch_attach(void);
 int endpoint_ui_touch_feed(int x, int y, int pressed);
 
+// UI timer. Call Create after Initialize; the callback fires every period_ms
+// milliseconds from inside endpoint_ui_run's LVGL pump, so widget calls in it
+// are safe (LVGL is LV_USE_OS=LV_OS_NONE, so background threads must NOT call
+// LVGL directly). Returns an opaque handle in *out_timer; pass it to Delete
+// to cancel. Create / SetPeriod / Delete are safe from any thread.
+int endpoint_ui_timer_create(uint32_t period_ms, void (*cb)(void* context),
+                             void* context, void** out_timer);
+int endpoint_ui_timer_set_period(void* timer, uint32_t period_ms);
+int endpoint_ui_timer_delete(void* timer);
+
 // Common widget operations. `widget` is a handle returned by one of the
 // *_create functions (internally an lv_obj_t*). Destroy frees the widget
 // and all its children.

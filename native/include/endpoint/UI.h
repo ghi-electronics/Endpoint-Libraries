@@ -54,6 +54,47 @@ namespace Touch {
     }
 }
 
+/// Thread-safe periodic callback that runs on the UI thread. The lambda
+/// fires inside Run()'s LVGL pump every periodMs milliseconds, so widget
+/// updates in the callback are safe:
+/// <code>
+///     auto t = std::make_unique<UI::Timer>(100, [this]{
+///         this->_gauge->Value(static_cast<int>(1650 + 1450 * std::sin(this->_phase)));
+///         this->_phase += 0.12;
+///     });
+/// </code>
+/// Destructor cancels the timer. Create / SetPeriod / Delete are safe from
+/// any thread; the body runs on the UI thread.
+class Timer {
+public:
+    using Callback = std::function<void()>;
+
+    Timer(uint32_t periodMs, Callback callback) : callback_(std::move(callback)) {
+        void* h = nullptr;
+        Core::detail::Check(endpoint_ui_timer_create(periodMs, &Timer::Trampoline, this, &h));
+        this->handle_ = h;
+    }
+    ~Timer() {
+        if (this->handle_) endpoint_ui_timer_delete(this->handle_);
+    }
+    Timer(const Timer&) = delete;
+    Timer& operator=(const Timer&) = delete;
+
+    void SetPeriod(uint32_t periodMs) {
+        if (this->handle_) {
+            Core::detail::Check(endpoint_ui_timer_set_period(this->handle_, periodMs));
+        }
+    }
+
+private:
+    static void Trampoline(void* context) {
+        auto* self = static_cast<Timer*>(context);
+        if (self && self->callback_) self->callback_();
+    }
+    void* handle_ = nullptr;
+    Callback callback_;
+};
+
 /// Base class for every widget. Holds the native handle; destructor releases
 /// the underlying LVGL object. Not copyable (widgets own their handle).
 class Widget {

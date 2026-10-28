@@ -88,6 +88,53 @@ class TouchBridge:
         native.ui_touch_feed(x, y, 1 if pressed else 0)
 
 
+class UiTimer:
+    """Thread-safe periodic callback that runs on the UI thread. The callable
+    fires inside UI.Run()'s LVGL pump every period_ms milliseconds, so widget
+    updates in it are safe (LVGL itself is single-threaded). Dispose() /
+    __del__ cancels the timer. Create / set_period / Dispose are safe from any
+    thread; the body runs on the UI thread.
+
+    Example::
+
+        def tick():
+            gauge.Value = int(1650 + 1450 * math.sin(phase))
+        timer = UiTimer(100, tick)
+    """
+
+    def __init__(self, period_ms, callback):
+        if callback is None:
+            raise ValueError("callback is required")
+        self._callback = callback
+        # Keep a reference to the trampoline so ctypes doesn't collect it while
+        # the native timer still holds a pointer to it.
+        self._trampoline = UiEventCallback(lambda _ctx: self._fire())
+        handle = native.out_handle()
+        native.ui_timer_create(int(period_ms), self._trampoline, None, native.ref(handle))
+        self._handle = handle.value
+
+    def _fire(self):
+        try:
+            self._callback()
+        except Exception:
+            # A C callback must not propagate Python exceptions back into
+            # native code (would unwind through LVGL). Swallow.
+            pass
+
+    def SetPeriod(self, period_ms):
+        if self._handle:
+            native.ui_timer_set_period(self._handle, int(period_ms))
+
+    def Dispose(self):
+        if self._handle:
+            native.ui_timer_delete(self._handle)
+            self._handle = None
+
+    def __del__(self):
+        try: self.Dispose()
+        except Exception: pass
+
+
 # ------------------------------------------------------------------
 # Base + widgets
 # ------------------------------------------------------------------

@@ -99,4 +99,47 @@ void TouchFeed(int x, int y, bool pressed) {
     g_touch_pressed = pressed;
 }
 
+namespace {
+// The trampoline the LVGL timer calls. We stash the user's callback and
+// context in a struct allocated at TimerCreate time, hand lv_timer that
+// struct as the user data, and free the struct in TimerDelete so stale
+// callbacks never fire after cancellation.
+struct TimerSlot {
+    void (*callback)(void*);
+    void* context;
+};
+
+void TimerTrampoline(lv_timer_t* timer) {
+    auto* slot = static_cast<TimerSlot*>(lv_timer_get_user_data(timer));
+    if (slot && slot->callback) slot->callback(slot->context);
+}
+}
+
+void* TimerCreate(uint32_t period_ms, void (*cb)(void*), void* context) {
+    if (!g_initialized.load()) {
+        throw EndpointError(ErrorKind::InvalidOperation, "UI::Initialize() must be called before TimerCreate()");
+    }
+    if (!cb) return nullptr;
+    auto* slot = new TimerSlot{cb, context};
+    lv_timer_t* timer = lv_timer_create(TimerTrampoline, period_ms, slot);
+    if (!timer) {
+        delete slot;
+        throw EndpointError(ErrorKind::IO, "lv_timer_create failed");
+    }
+    return timer;
+}
+
+void TimerSetPeriod(void* timer, uint32_t period_ms) {
+    if (!timer) return;
+    lv_timer_set_period(static_cast<lv_timer_t*>(timer), period_ms);
+}
+
+void TimerDelete(void* timer) {
+    if (!timer) return;
+    auto* t = static_cast<lv_timer_t*>(timer);
+    auto* slot = static_cast<TimerSlot*>(lv_timer_get_user_data(t));
+    lv_timer_delete(t);
+    delete slot;
+}
+
 }  // namespace GHIElectronics::Endpoint::Internal::UI

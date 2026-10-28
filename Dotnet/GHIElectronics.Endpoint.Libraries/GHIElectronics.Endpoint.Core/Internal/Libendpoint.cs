@@ -293,6 +293,19 @@ namespace GHIElectronics.Endpoint.Core.Internal {
         [LibraryImport(Library, EntryPoint = "endpoint_ui_touch_feed")]
         public static partial int UiTouchFeed(int x, int y, int pressed);
 
+        public unsafe delegate void UiTimerCallback(nint context);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_timer_create")]
+        public static partial int UiTimerCreate(uint periodMs,
+                                                 nint callback, nint context,
+                                                 out nint outTimer);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_timer_set_period")]
+        public static partial int UiTimerSetPeriod(nint timer, uint periodMs);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_timer_delete")]
+        public static partial int UiTimerDelete(nint timer);
+
         [LibraryImport(Library, EntryPoint = "endpoint_ui_widget_destroy")]
         public static partial int UiWidgetDestroy(nint widget);
 

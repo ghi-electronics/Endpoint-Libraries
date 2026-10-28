@@ -91,6 +91,22 @@ ENDPOINT_API int endpoint_ui_touch_feed(int x, int y, int pressed) {
     return Call([&] { UI::TouchFeed(x, y, pressed != 0); });
 }
 
+ENDPOINT_API int endpoint_ui_timer_create(uint32_t period_ms, void (*cb)(void*),
+                                          void* context, void** out_timer) {
+    return Call([&] {
+        void* t = UI::TimerCreate(period_ms, cb, context);
+        if (out_timer) *out_timer = t;
+    });
+}
+
+ENDPOINT_API int endpoint_ui_timer_set_period(void* timer, uint32_t period_ms) {
+    return Call([&] { UI::TimerSetPeriod(timer, period_ms); });
+}
+
+ENDPOINT_API int endpoint_ui_timer_delete(void* timer) {
+    return Call([&] { UI::TimerDelete(timer); });
+}
+
 // =========================================================================
 // Common widget operations
 // =========================================================================

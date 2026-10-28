@@ -22,15 +22,19 @@ namespace {
 constexpr const char* kConfigPath = "/config/display.json";
 constexpr const char* kFramebufferPath = "/dev/fb0";
 
-void RunAndWait(const char* path, char* const argv[]) {
+// Runs <path> with <argv> and returns the child's exit status (-1 on fork or
+// wait failure). Caller interprets non-zero to decide retry policy.
+int RunAndWait(const char* path, char* const argv[]) {
     pid_t child = fork();
     if (child == 0) {
         execv(path, argv);
         _exit(127);
     }
-    if (child > 0) {
-        while (waitpid(child, nullptr, 0) < 0 && errno == EINTR) {}
-    }
+    if (child <= 0) return -1;
+    int status = 0;
+    while (waitpid(child, &status, 0) < 0 && errno == EINTR) {}
+    if (WIFEXITED(status)) return WEXITSTATUS(status);
+    return -1;
 }
 
 nlohmann::json ReadConfig() {
@@ -162,11 +166,22 @@ void UnloadPanel() {
     // modprobe -r ma35-drm. Reclaims the 8 MiB display_buf CMA region and
     // ends the DCUltra pixel-clock, so a Disable() call really is "pay-for-
     // use off" and not just the backlight.
+    //
+    // After the C# / Python / C++ wrappers close their /dev/fb0 FileStream the
+    // kernel's DRM teardown takes a few ms to drop its last internal reference,
+    // so an immediate `modprobe -r` fails with EBUSY ("Resource temporarily
+    // unavailable"). Retry a handful of times with a short sleep so the common
+    // close-then-disable path finishes cleanly. Give up quietly after ~500 ms;
+    // the next Enable() will modprobe again and the stale instance will unload
+    // when its refcount drops.
     char* argv[] = {const_cast<char*>("modprobe"),
                     const_cast<char*>("-r"),
                     const_cast<char*>("ma35-drm"),
                     nullptr};
-    RunAndWait("/sbin/modprobe", argv);
+    for (int i = 0; i < 10; ++i) {
+        if (RunAndWait("/sbin/modprobe", argv) == 0) return;
+        usleep(50 * 1000);
+    }
 }
 
 }  // namespace
