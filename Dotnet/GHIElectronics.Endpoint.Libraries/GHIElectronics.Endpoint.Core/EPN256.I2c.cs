@@ -21,15 +21,15 @@ namespace GHIElectronics.Endpoint.Core {
         /// matching the Nuvoton SOM DTS's i2cN labels.
         /// </summary>
         public static class I2c {
-            /// <summary>I2C1: PB10 (SDA), PB11 (SCL); /dev/i2c-1</summary>
+            /// <summary>I2C1: PB10 (SDA), PB11 (SCL); /dev/i2c-1 (requires a board-level pinctrl override; left in for API parity).</summary>
             public const int I2c1 = 1;
-            /// <summary>I2C2: PB8 (SDA), PB9 (SCL); /dev/i2c-2</summary>
+            /// <summary>I2C2: PB8 (SDA), PB9 (SCL); /dev/i2c-2. Hosts the on-SOM audio codec at 0x1A; sharing is fine.</summary>
             public const int I2c2 = 2;
-            /// <summary>I2C3: PM14 (SDA), PM15 (SCL); /dev/i2c-3</summary>
+            /// <summary>I2C3: PM14 (SDA), PM15 (SCL); /dev/i2c-3.</summary>
             public const int I2c3 = 3;
-            /// <summary>I2C4: /dev/i2c-4</summary>
+            /// <summary>I2C4: /dev/i2c-4.</summary>
             public const int I2c4 = 4;
-            /// <summary>I2C5: PJ12 (SDA), PJ13 (SCL); /dev/i2c-5</summary>
+            /// <summary>I2C5: PJ12 (SDA), PJ13 (SCL); /dev/i2c-5. Default bus for the touch chip on the EPN256 reference panel.</summary>
             public const int I2c5 = 5;
 
             /// <summary>The speed when none is given: 400 kHz (fast mode)</summary>
