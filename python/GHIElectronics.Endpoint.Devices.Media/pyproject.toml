@@ -8,12 +8,12 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "GHIElectronics.Endpoint.Devices.Media"
-version = "0.3.0"
+version = "0.4.0"
 description = "Webcams (Camera: JPEG pictures and streaming from any USB camera) and sound (the API of .NET IoT's SoundDevice: WAV, MP3, recording, volume) of GHI Electronics Endpoint."
 authors = [{ name = "GHI Electronics, LLC", email = "support@ghielectronics.com" }]
 requires-python = ">=3.9"
 dependencies = [
-    "GHIElectronics.Endpoint.Core>=0.3.0,<0.4",
+    "GHIElectronics.Endpoint.Core>=0.4.0,<0.5",
 ]
 classifiers = ["Programming Language :: Python :: 3", "Operating System :: POSIX :: Linux"]
 
