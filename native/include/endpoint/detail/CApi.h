@@ -203,8 +203,8 @@ int endpoint_camera_get_control(void* camera, int control, int* supported, int* 
                                 int* defaultValue, int* value);
 int endpoint_camera_set_control(void* camera, int control, int value);
 
-// Network: translates a type (0=Ethernet, 1=WiFi, 2=UsbTethered) into the
-// system identifier for its interface ("eth0", "wlan0", "usb0", ...).
+// Network: translates a type (0=Ethernet, 1=WiFi) into the system
+// identifier for its interface ("eth0", "wlan0", ...).
 // Fills outBuf with an empty string if no interface of that type is
 // currently present. Enable reads /config/network.json fresh every time
 // and applies synchronously in the caller's process.

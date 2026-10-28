@@ -45,7 +45,6 @@ namespace GHIElectronics.Endpoint.Devices.Network {
             this.sectionName = type switch {
                 NetworkType.Ethernet => "ethernet",
                 NetworkType.Wifi => "wifi",
-                NetworkType.UsbTethered => "usbTethered",
                 _ => throw new ArgumentOutOfRangeException(nameof(type)),
             };
         }
@@ -61,8 +60,8 @@ namespace GHIElectronics.Endpoint.Devices.Network {
         }
 
         /// <summary>
-        /// The system identifier (eth0, wlan0, usb0, ...) for the first
-        /// interface of the given type, or an empty string if none is present.
+        /// The system identifier (eth0, wlan0, ...) for the first interface
+        /// of the given type, or an empty string if none is present.
         /// </summary>
         public static string GetName(NetworkType type) {
             const int bufferSize = 32;
@@ -79,7 +78,7 @@ namespace GHIElectronics.Endpoint.Devices.Network {
 
         public NetworkType Type { get; }
 
-        /// <summary>System identifier (eth0, wlan0, usb0, ...).</summary>
+        /// <summary>System identifier (eth0, wlan0, ...).</summary>
         public string Name { get; }
 
         /// <summary>

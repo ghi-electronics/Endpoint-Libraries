@@ -1,5 +1,5 @@
-"""Network on Endpoint, by type (Ethernet, WiFi, UsbTethered) instead of
-system identifiers (eth0, wlan0, usb0) that change with plug order.
+"""Network on Endpoint, by type (Ethernet, WiFi) instead of system
+identifiers (eth0, wlan0) that change with plug order.
 
 Enable / Disable are runtime-only and do not touch /config/network.json.
 Get/SetInterfaceSettings read and write that file; agent's boot applier
@@ -35,12 +35,10 @@ class NetworkType(IntEnum):
 
     Ethernet = 0
     Wifi = 1
-    UsbTethered = 2
 
 
 _SECTION_KEYS[NetworkType.Ethernet] = "ethernet"
 _SECTION_KEYS[NetworkType.Wifi] = "wifi"
-_SECTION_KEYS[NetworkType.UsbTethered] = "usbTethered"
 
 
 class WiFiSecurityType(IntEnum):
@@ -53,7 +51,7 @@ class WiFiSecurityType(IntEnum):
 
 
 class NetworkInterfaceSettings:
-    """Settings for an Ethernet or UsbTethered interface. Read with
+    """Settings for an Ethernet interface. Read with
     :meth:`NetworkController.GetInterfaceSettings` and apply with
     :meth:`NetworkController.SetInterfaceSettings`. For WiFi use
     :class:`WiFiNetworkInterfaceSettings`."""
@@ -99,8 +97,8 @@ class NetworkController:
 
     @staticmethod
     def GetName(type_):
-        """The system identifier (eth0, wlan0, usb0, ...) for the first
-        interface of the given type, or an empty string if none is present."""
+        """The system identifier (eth0, wlan0, ...) for the first interface
+        of the given type, or an empty string if none is present."""
         buffer = ctypes.create_string_buffer(32)
         native.network_get_interface_name(int(type_), buffer, len(buffer))
         return buffer.value.decode("ascii")

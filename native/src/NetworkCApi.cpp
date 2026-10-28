@@ -25,7 +25,6 @@ const char* SettingsSectionKey(int type) {
     switch (type) {
         case 0: return "ethernet";
         case 1: return "wifi";
-        case 2: return "usbTethered";
         default: return "";
     }
 }
@@ -65,7 +64,7 @@ void SaveNetworkConfig(const nlohmann::json& j) {
 
 }  // namespace
 
-// type: 0 = Ethernet, 1 = WiFi, 2 = UsbTethered.
+// type: 0 = Ethernet, 1 = WiFi.
 
 ENDPOINT_API int endpoint_network_get_interface_name(int type, char* out_buf, int out_size) {
     return Call([&] {

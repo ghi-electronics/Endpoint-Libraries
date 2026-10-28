@@ -1,5 +1,5 @@
-// Network on Endpoint, by type (Ethernet, WiFi, UsbTethered) instead of system
-// identifiers (eth0, wlan0, usb0) that change with plug order.
+// Network on Endpoint, by type (Ethernet, WiFi) instead of system
+// identifiers (eth0, wlan0) that change with plug order.
 //
 // Enable / Disable are runtime-only and do not touch /config/network.json.
 // Get/SetInterfaceSettings read and write that file. Status (addresses,
@@ -30,7 +30,6 @@ namespace GHIElectronics::Endpoint::Devices::Network {
 enum class NetworkType : int {
     Ethernet = 0,
     Wifi = 1,
-    UsbTethered = 2,
 };
 
 // How a WiFi network authenticates clients.
@@ -41,9 +40,9 @@ enum class WiFiSecurityType : int {
     Wpa3 = 3,
 };
 
-// Settings for an Ethernet or UsbTethered interface (IP, routing, DNS,
-// MAC pinning). Empty string means "not set"; empty DnsAddresses leaves
-// the system default. For WiFi use WiFiNetworkInterfaceSettings.
+// Settings for an Ethernet interface (IP, routing, DNS, MAC pinning).
+// Empty string means "not set"; empty DnsAddresses leaves the system
+// default. For WiFi use WiFiNetworkInterfaceSettings.
 struct NetworkInterfaceSettings {
     bool IsDhcpEnabled = true;
     std::string Address;
@@ -66,7 +65,7 @@ public:
     // type is currently present on the board.
     static std::unique_ptr<NetworkController> FromType(NetworkType type);
 
-    // The system identifier (eth0, wlan0, usb0, ...) for the first interface
+    // The system identifier (eth0, wlan0, ...) for the first interface
     // of the given network type, or an empty string if none is currently present.
     static std::string GetName(NetworkType type) {
         char buf[32] = {};

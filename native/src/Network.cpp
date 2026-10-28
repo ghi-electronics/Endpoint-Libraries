@@ -4,7 +4,6 @@
 #include <csignal>
 #include <dirent.h>
 #include <ifaddrs.h>
-#include <linux/limits.h>
 #include <net/if.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -42,17 +41,6 @@ void RunAndWait(const char* path, char* const argv[]) {
     }
 }
 
-std::string DeviceLink(const std::string& iface) {
-    char buf[PATH_MAX];
-    ssize_t n = readlink(("/sys/class/net/" + iface + "/device").c_str(),
-                         buf, sizeof buf - 1);
-    if (n <= 0) {
-        return {};
-    }
-    buf[n] = '\0';
-    return buf;
-}
-
 Type ClassifyInterface(const std::string& iface) {
     if (iface == "lo") {
         return Type::Ignore;
@@ -60,10 +48,6 @@ Type ClassifyInterface(const std::string& iface) {
     std::string base = "/sys/class/net/" + iface;
     if (access((base + "/wireless").c_str(), F_OK) == 0) {
         return Type::Wifi;
-    }
-    std::string dev = DeviceLink(iface);
-    if (std::strstr(dev.c_str(), "usb-ffs") || std::strstr(dev.c_str(), "/gadget")) {
-        return Type::UsbTethered;
     }
     std::ifstream typefile(base + "/type");
     int kernelType = 0;
@@ -293,21 +277,19 @@ const char* SectionKey(Type type) {
     switch (type) {
         case Type::Ethernet: return "ethernet";
         case Type::Wifi: return "wifi";
-        case Type::UsbTethered: return "usbTethered";
         default: return "";
     }
 }
 
 // Default-route priority between kinds. Lowest metric wins when more than
 // one interface has a default route (standard Linux routing semantics):
-//   ethernet (100) < wifi (200) < usbTethered (300)
+//   ethernet (100) < wifi (200)
 // So when the user enables both ethernet and wifi, ethernet carries outbound
-// traffic. Promise from [[feedback-no-auto-network]] / usb-host-design docs.
+// traffic. Promise from [[feedback-no-auto-network]].
 int MetricForType(Type type) {
     switch (type) {
         case Type::Ethernet: return 100;
         case Type::Wifi: return 200;
-        case Type::UsbTethered: return 300;
         default: return 1000;
     }
 }
@@ -437,70 +419,7 @@ std::string GetInterfaceName(Type wanted) {
     return candidates.empty() ? std::string{} : candidates.front();
 }
 
-// UsbTethered is route-only: the usb0 interface is owned by S40network (static
-// 192.168.82.2 for endpoint-cli / SSH), so the applier must never touch its
-// link state. "Enabling" UsbTethered just adds a default route via the host PC's
-// gateway (192.168.82.1 by convention, matching our board's static 192.168.82.2);
-// "Disabling" removes that route. The usb0 interface stays up either way.
-constexpr const char* kUsbTetheredGateway = "192.168.82.1";
-
-void EnableUsbTethered() {
-    std::string iface = GetInterfaceName(Type::UsbTethered);
-    if (iface.empty()) {
-        throw EndpointError(ErrorKind::InvalidOperation,
-                            "no usbTethered interface is currently present");
-    }
-    char iface_buf[IFNAMSIZ];
-    std::snprintf(iface_buf, sizeof iface_buf, "%s", iface.c_str());
-    char metric_buf[16];
-    std::snprintf(metric_buf, sizeof metric_buf, "%d", MetricForType(Type::UsbTethered));
-
-    // Clear any existing default via this interface so re-Enable is idempotent.
-    char* del_argv[] = {const_cast<char*>("ip"), const_cast<char*>("route"),
-                        const_cast<char*>("del"), const_cast<char*>("default"),
-                        const_cast<char*>("dev"), iface_buf, nullptr};
-    RunAndWait("/sbin/ip", del_argv);
-
-    char* add_argv[] = {const_cast<char*>("ip"), const_cast<char*>("route"),
-                        const_cast<char*>("add"), const_cast<char*>("default"),
-                        const_cast<char*>("via"), const_cast<char*>(kUsbTetheredGateway),
-                        const_cast<char*>("dev"), iface_buf,
-                        const_cast<char*>("metric"), metric_buf, nullptr};
-    RunAndWait("/sbin/ip", add_argv);
-
-    // UsbTethered has no DHCP, so no DNS is set up for us. Point /etc/resolv.conf
-    // at the PC (Windows ICS runs a DNS proxy there) with a public fallback
-    // in case the user is using a NAT setup without an on-host DNS proxy.
-    std::ofstream resolv("/etc/resolv.conf");
-    resolv << "nameserver " << kUsbTetheredGateway << '\n';
-    resolv << "nameserver 8.8.8.8\n";
-}
-
-void DisableUsbTethered() {
-    std::string iface = GetInterfaceName(Type::UsbTethered);
-    if (iface.empty()) return;
-    char iface_buf[IFNAMSIZ];
-    std::snprintf(iface_buf, sizeof iface_buf, "%s", iface.c_str());
-    char* argv[] = {const_cast<char*>("ip"), const_cast<char*>("route"),
-                    const_cast<char*>("del"), const_cast<char*>("default"),
-                    const_cast<char*>("via"), const_cast<char*>(kUsbTetheredGateway),
-                    const_cast<char*>("dev"), iface_buf, nullptr};
-    RunAndWait("/sbin/ip", argv);
-}
-
-bool UsbTetheredRouteExists() {
-    std::string iface = GetInterfaceName(Type::UsbTethered);
-    if (iface.empty()) return false;
-    std::string out = RunAndCapture("/sbin/ip -4 route show default dev " + iface);
-    return !out.empty();
-}
-
 void Enable(Type type) {
-    if (type == Type::UsbTethered) {
-        EnableUsbTethered();
-        return;
-    }
-
     // Load the kernel driver(s) for this interface type on demand. The
     // drivers are kernel modules so that boards which do not use network
     // pay zero boot time; the first Enable() modprobes what is needed.
@@ -584,10 +503,6 @@ void Enable(Type type) {
 }
 
 void Disable(Type type) {
-    if (type == Type::UsbTethered) {
-        DisableUsbTethered();
-        return;
-    }
     std::string iface = GetInterfaceName(type);
     if (iface.empty()) return;
     StopDhcp(iface);
@@ -595,13 +510,6 @@ void Disable(Type type) {
 }
 
 bool IsEnabled(Type type) {
-    // UsbTethered's usb0 is always admin-up (owned by S40network) regardless of
-    // whether we're routing through it. For UsbTethered, "enabled" means our
-    // default route exists; for ethernet / wifi, it means the interface is
-    // admin-up (what Enable() does to it).
-    if (type == Type::UsbTethered) {
-        return UsbTetheredRouteExists();
-    }
     std::string iface = GetInterfaceName(type);
     if (iface.empty()) return false;
     std::ifstream f("/sys/class/net/" + iface + "/flags");
