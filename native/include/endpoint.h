@@ -21,6 +21,12 @@
 #include "endpoint/Core.h"
 #include "endpoint/Dac.h"
 #include "endpoint/Display.h"
+// EPN256 pin names and the pay-for-use SerialPort / Spi / I2c / Pwm / Can /
+// Adc / StorageController helpers — pulled in by default so sample code can
+// write EPN256::StorageController::UsbHostMassStorage without an extra
+// include. (Mirrors the .NET and Python APIs, where EPN256 is reachable
+// through the top-level Core import.)
+#include "endpoint/EPN256.h"
 #include "endpoint/Gpio.h"
 #include "endpoint/I2c.h"
 #include "endpoint/Media.h"
