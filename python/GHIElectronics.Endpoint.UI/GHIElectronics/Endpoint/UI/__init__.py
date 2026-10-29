@@ -545,6 +545,14 @@ class Button(Widget):
         native.ui_button_set_font_size(self._native, value)
 
 
+class TextAlignment:
+    """Horizontal alignment for Label.Text. Matches .NET's
+    GHIElectronics.Endpoint.UI.TextAlignment enum."""
+    Left = 0
+    Center = 1
+    Right = 2
+
+
 class Label(Widget):
     def __init__(self, parent):
         h = native.out_handle()
@@ -568,6 +576,12 @@ class Label(Widget):
     @FontSize.setter
     def FontSize(self, value):
         native.ui_label_set_font_size(self._native, value)
+
+    @property
+    def TextAlignment(self): raise AttributeError("TextAlignment is write-only")
+    @TextAlignment.setter
+    def TextAlignment(self, value):
+        native.ui_label_set_text_align(self._native, int(value))
 
 
 class Image(Widget):

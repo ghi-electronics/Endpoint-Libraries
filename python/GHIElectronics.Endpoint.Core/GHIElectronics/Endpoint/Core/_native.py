@@ -263,6 +263,7 @@ _FUNCTIONS = {
     "ui_label_set_text": [_handle, _text],
     "ui_label_set_color": [_handle, _uint32],
     "ui_label_set_font_size": [_handle, _int],
+    "ui_label_set_text_align": [_handle, _int],
     "ui_image_create": [_handle, _out_handle],
     "ui_image_set_source": [_handle, _bytes_ptr, _int, _int, _int],
     "ui_textbox_create": [_handle, _out_handle],

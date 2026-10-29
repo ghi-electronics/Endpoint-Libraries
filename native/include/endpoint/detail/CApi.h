@@ -448,6 +448,7 @@ int endpoint_ui_label_create(void* parent, void** out);
 int endpoint_ui_label_set_text(void* label, const char* text);
 int endpoint_ui_label_set_color(void* label, uint32_t rgb);
 int endpoint_ui_label_set_font_size(void* label, int size);
+int endpoint_ui_label_set_text_align(void* label, int align);
 
 // Image: raw RGB565 pixels (little-endian). The caller keeps the pixel
 // buffer alive for the lifetime of the widget; libendpoint does not copy.

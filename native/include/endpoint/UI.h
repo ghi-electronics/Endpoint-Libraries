@@ -402,6 +402,8 @@ public:
     }
 };
 
+enum class TextAlignment : int { Left = 0, Center = 1, Right = 2 };
+
 class Label : public Widget {
 public:
     explicit Label(const Widget& parent) : Widget(nullptr) {
@@ -411,6 +413,9 @@ public:
     void Text(const std::string& value) { Core::detail::Check(endpoint_ui_label_set_text(this->_native, value.c_str())); }
     void Color(uint32_t rgb)            { Core::detail::Check(endpoint_ui_label_set_color(this->_native, rgb)); }
     void FontSize(int size)             { Core::detail::Check(endpoint_ui_label_set_font_size(this->_native, size)); }
+    void TextAlignment(UI::TextAlignment align) {
+        Core::detail::Check(endpoint_ui_label_set_text_align(this->_native, static_cast<int>(align)));
+    }
 };
 
 class Image : public Widget {
