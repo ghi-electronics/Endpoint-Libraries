@@ -61,8 +61,11 @@ struct WiFiNetworkInterfaceSettings : NetworkInterfaceSettings {
 
 class NetworkController {
 public:
-    // The controller for the given type, or nullptr if no interface of that
-    // type is currently present on the board.
+    // The controller for the given type. Always returns a valid controller:
+    // the controller represents the TYPE (Ethernet, WiFi), not a specific
+    // interface. Hardware does not have to be present yet; call
+    // SetInterfaceSettings then Enable, which modprobes any USB driver
+    // needed and brings the matching interface up.
     static std::unique_ptr<NetworkController> FromType(NetworkType type);
 
     // The system identifier (eth0, wlan0, ...) for the first interface
@@ -74,7 +77,16 @@ public:
     }
 
     NetworkType Type() const { return this->type; }
-    const std::string& Name() const { return this->name; }
+
+    // System identifier (eth0, wlan0, ...), or empty string if no
+    // interface of this type is currently present. Reads live from the
+    // kernel on every call - reflects the state right now, not at
+    // FromType() time.
+    std::string Name() const { return GetName(this->type); }
+
+    // True if an interface of this type currently exists. WiFi stays
+    // false until Enable() has been called at least once.
+    bool IsPresent() const { return !Name().empty(); }
 
     bool IsEnabled() const {
         int result = 0;
@@ -152,15 +164,12 @@ public:
     }
 
 private:
-    NetworkController(NetworkType t, std::string n) : type(t), name(std::move(n)) {}
+    explicit NetworkController(NetworkType t) : type(t) {}
     NetworkType type;
-    std::string name;
 };
 
 inline std::unique_ptr<NetworkController> NetworkController::FromType(NetworkType type) {
-    std::string name = GetName(type);
-    if (name.empty()) return nullptr;
-    return std::unique_ptr<NetworkController>(new NetworkController(type, std::move(name)));
+    return std::unique_ptr<NetworkController>(new NetworkController(type));
 }
 
 }  // namespace GHIElectronics::Endpoint::Devices::Network

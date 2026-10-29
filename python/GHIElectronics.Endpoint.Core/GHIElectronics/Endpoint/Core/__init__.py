@@ -23,6 +23,7 @@ from ._errors import (
 __all__ = [
     "DeviceConnectionStatus",
     "EPM815",
+    "EPN256",
     "ArgumentException",
     "ArgumentOutOfRangeException",
     "InvalidOperationException",

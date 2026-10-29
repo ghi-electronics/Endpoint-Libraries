@@ -20,9 +20,14 @@ namespace GHIElectronics::Endpoint::Internal::Storage {
 enum class Kind : int { SdCard = 0, UsbHostMassStorage = 1 };
 enum ConnectionStatus : int { Disconnected = 0, Connected = 1, Bad = 2 };
 
-// The names of EPM815.StorageController
+// Controller name strings. Both the 0.3.x EPM815 names and the 0.4.x
+// EPN256 names map to the same two kinds (SD card slot, USB mass
+// storage); the SoC-specific prefix only matters because older code was
+// pinned to EPM815.* and 0.4.x code uses EPN256.*.
 constexpr const char* SdCardName = "EPM815.StorageController.SdCard";
 constexpr const char* UsbHostMassStorageName = "EPM815.StorageController.UsbHostMassStorage";
+constexpr const char* SdCardName2 = "EPN256.StorageController.SdCard";
+constexpr const char* UsbHostMassStorageName2 = "EPN256.StorageController.UsbHostMassStorage";
 
 // The SD card slot, or the USB host (all its drives). After Enable, the
 // callback gets every drive that is connected (first the ones already

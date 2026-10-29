@@ -2,12 +2,41 @@
 the same as .NET's GHIElectronics.Endpoint.Core.EPN256. Mirrors _epm815 so
 sample code reads the same shape regardless of the chip."""
 
+import os
+import subprocess
+import threading
+import time
+
 
 def _name(pin):
     if 0 <= pin <= 223:
         port = pin // 16
         return f"P{chr(ord('A') + port)}{pin % 16}"
     return f"#{pin}"
+
+
+def _run(path, *args):
+    """Run a program and raise if it exits non-zero."""
+    result = subprocess.run([path, *args], capture_output=True, text=True)
+    if result.returncode != 0:
+        raise OSError(f"{path} {' '.join(args)} failed: {result.stderr.strip()}")
+
+
+def _try_run(path, *args):
+    """Run a program and ignore the exit code (for best-effort cleanup)."""
+    try:
+        subprocess.run([path, *args], capture_output=True, text=True)
+    except OSError:
+        pass
+
+
+def _wait_path(path, is_dir=False, timeout_s=1.0, poll_s=0.02):
+    """Spin until a /dev or /sys path appears, or raise after timeout."""
+    deadline = time.time() + timeout_s
+    check = os.path.isdir if is_dir else os.path.exists
+    while not check(path) and time.time() < deadline:
+        time.sleep(poll_s)
+    return check(path)
 
 
 class EPN256:
@@ -243,3 +272,361 @@ class EPN256:
             PN14 = 222
             PN15 = 223
             NONE = -1
+
+    # Pay-for-use peripheral initializers. Same pattern + same side-effects as
+    # the .NET GHIElectronics.Endpoint.Core.EPN256.* classes: Initialize loads
+    # the kernel driver (or binds a platform device via sysfs), the kernel's
+    # pinctrl framework claims the pins at probe time, and UnInitialize
+    # reverses it so unused pins return to free GPIO.
+
+    class Spi:
+        """MA35D1 SPI controllers. Initialize modprobes spi-ma35d1-spi + spidev,
+        which triggers probe + pinctrl mux so /dev/spidev<N>.0 appears for
+        userspace. Mirrors .NET's EPN256.Spi.
+
+            EPN256.Spi.Initialize(EPN256.Spi.Spi0)
+        """
+        Spi0 = 0  # PB8 (SS1), PB9 (CLK), PB10 (MOSI), PB11 (MISO)
+        Spi1 = 1  # PC8 (SS0), PC9 (CLK), PC10 (MOSI), PC11 (MISO)
+        Spi2 = 2  # PG8 (SS0), PG9 (CLK), PG10 (MOSI), PK4 (MISO)
+        Spi3 = 3  # PL8 (SS0), PL9 (CLK), PL4 (MOSI), PL5 (MISO)
+
+        _controller_module = "spi-ma35d1-spi"
+        _spidev_module = "spidev"
+        _gate = threading.Lock()
+        _open_count = {}
+        _module_loaded = False
+
+        @staticmethod
+        def _validate(bus):
+            if not (0 <= bus <= 3):
+                raise ValueError(f"Must be EPN256.Spi.Spi0 / Spi1 / Spi2 / Spi3, got {bus}")
+
+        @classmethod
+        def Initialize(cls, bus):
+            cls._validate(bus)
+            with cls._gate:
+                if not cls._module_loaded:
+                    _run("/sbin/modprobe", cls._controller_module)
+                    _run("/sbin/modprobe", cls._spidev_module)
+                    cls._module_loaded = True
+                cls._open_count[bus] = cls._open_count.get(bus, 0) + 1
+            dev = f"/dev/spidev{bus}.0"
+            if not _wait_path(dev, timeout_s=1.0):
+                raise OSError(
+                    f"spi-ma35d1 loaded but {dev} did not appear within 1 s. "
+                    "Have you added a pinctrl_spi group to the device tree for your board?")
+
+        @classmethod
+        def UnInitialize(cls, bus):
+            cls._validate(bus)
+            with cls._gate:
+                n = cls._open_count.get(bus, 0)
+                if n <= 0:
+                    return
+                if n == 1:
+                    cls._open_count.pop(bus, None)
+                else:
+                    cls._open_count[bus] = n - 1
+                if not cls._open_count and cls._module_loaded:
+                    _try_run("/sbin/rmmod", cls._spidev_module)
+                    _try_run("/sbin/rmmod", cls._controller_module)
+                    cls._module_loaded = False
+
+    class I2c:
+        """MA35D1 I2C buses. Initialize modprobes i2c-ma35d1; pinctrl claims the
+        bus's pins at probe. Mirrors .NET's EPN256.I2c."""
+        I2c1 = 1
+        I2c2 = 2
+        I2c3 = 3
+        I2c4 = 4
+        I2c5 = 5  # Default on EPN256 reference touch panel
+
+        _module_name = "i2c-ma35d1"
+        _gate = threading.Lock()
+        _open_count = {}
+        _module_loaded = False
+
+        @staticmethod
+        def _validate(bus):
+            if not (1 <= bus <= 5):
+                raise ValueError(f"Must be EPN256.I2c.I2c1..I2c5, got {bus}")
+
+        @classmethod
+        def Initialize(cls, bus, frequency=400_000):
+            cls._validate(bus)
+            if not (10_000 <= frequency <= 1_000_000):
+                raise ValueError(f"I2C speeds are 10 kHz to 1 MHz, got {frequency}")
+            with cls._gate:
+                if not cls._module_loaded:
+                    _run("/sbin/modprobe", cls._module_name)
+                    cls._module_loaded = True
+                cls._open_count[bus] = cls._open_count.get(bus, 0) + 1
+            dev = f"/dev/i2c-{bus}"
+            if not _wait_path(dev, timeout_s=1.0):
+                raise OSError(f"i2c-ma35d1 loaded but {dev} did not appear within 1 s.")
+
+        @classmethod
+        def UnInitialize(cls, bus):
+            cls._validate(bus)
+            with cls._gate:
+                n = cls._open_count.get(bus, 0)
+                if n <= 0:
+                    return
+                if n == 1:
+                    cls._open_count.pop(bus, None)
+                else:
+                    cls._open_count[bus] = n - 1
+                if not cls._open_count and cls._module_loaded:
+                    _try_run("/sbin/rmmod", cls._module_name)
+                    cls._module_loaded = False
+
+    class Pwm:
+        """MA35D1 Enhanced PWM. Initialize modprobes pwm-ma35d1 and resolves
+        the Linux pwmchipN that corresponds to the requested EPWM instance.
+        Mirrors .NET's EPN256.Pwm."""
+        Epwm0 = 0
+        Epwm1 = 1  # Used by display backlight on EPN256
+        Epwm2 = 2
+
+        _module_name = "pwm-ma35d1"
+        _platform_devices = ["40580000.epwm0", "40590000.epwm1", "405a0000.epwm2"]
+        _gate = threading.Lock()
+        _open_count = {}
+        _module_loaded = False
+
+        @staticmethod
+        def _validate(controller):
+            if not (0 <= controller <= 2):
+                raise ValueError(f"Must be EPN256.Pwm.Epwm0 / Epwm1 / Epwm2, got {controller}")
+
+        @classmethod
+        def Initialize(cls, controller):
+            cls._validate(controller)
+            with cls._gate:
+                if not cls._module_loaded:
+                    _run("/sbin/modprobe", cls._module_name)
+                    cls._module_loaded = True
+                cls._open_count[controller] = cls._open_count.get(controller, 0) + 1
+            for _ in range(50):
+                if cls._try_get_chip_id(controller) is not None:
+                    return
+                time.sleep(0.02)
+            raise OSError(
+                f"pwm-ma35d1 loaded but no pwmchip matched {cls._platform_devices[controller]} within 1 s.")
+
+        @classmethod
+        def UnInitialize(cls, controller):
+            cls._validate(controller)
+            with cls._gate:
+                n = cls._open_count.get(controller, 0)
+                if n <= 0:
+                    return
+                if n == 1:
+                    cls._open_count.pop(controller, None)
+                else:
+                    cls._open_count[controller] = n - 1
+                if not cls._open_count and cls._module_loaded:
+                    _try_run("/sbin/rmmod", cls._module_name)
+                    cls._module_loaded = False
+
+        @classmethod
+        def GetChipId(cls, controller):
+            """The Linux pwmchip number for this EPWM instance. Call after Initialize."""
+            cls._validate(controller)
+            chip = cls._try_get_chip_id(controller)
+            if chip is None:
+                raise OSError(f"EPN256.Pwm.Initialize({controller}) must be called first.")
+            return chip
+
+        @classmethod
+        def _try_get_chip_id(cls, controller):
+            root = "/sys/class/pwm"
+            if not os.path.isdir(root):
+                return None
+            expected = cls._platform_devices[controller]
+            for entry in sorted(os.listdir(root)):
+                of_name_path = os.path.join(root, entry, "device", "of_node", "name")
+                try:
+                    with open(of_name_path) as f:
+                        name = f.read().strip(" \t\r\n\x00")
+                except OSError:
+                    continue
+                if expected.lower().endswith("." + name.lower()):
+                    if entry.startswith("pwmchip"):
+                        try:
+                            return int(entry[len("pwmchip"):])
+                        except ValueError:
+                            pass
+            return None
+
+    class Can:
+        """MA35D1 CAN interfaces (Bosch M_CAN). Initialize modprobes
+        m_can_platform and brings the SocketCAN interface up at the given
+        bitrate. Mirrors .NET's EPN256.Can."""
+        Can0 = "can0"
+        Can1 = "can1"
+
+        _module_name = "m_can_platform"
+        _gate = threading.Lock()
+        _open_count = {}
+        _module_loaded = False
+
+        @staticmethod
+        def _validate(iface):
+            if iface not in ("can0", "can1"):
+                raise ValueError(f"Must be EPN256.Can.Can0 or Can1, got {iface}")
+
+        @classmethod
+        def Initialize(cls, iface, bitrate=500_000):
+            cls._validate(iface)
+            if not (10_000 <= bitrate <= 1_000_000):
+                raise ValueError(f"CAN bitrate must be 10 kbit/s to 1 Mbit/s, got {bitrate}")
+            with cls._gate:
+                if not cls._module_loaded:
+                    _run("/sbin/modprobe", cls._module_name)
+                    cls._module_loaded = True
+                cls._open_count[iface] = cls._open_count.get(iface, 0) + 1
+            if not _wait_path(f"/sys/class/net/{iface}", is_dir=True, timeout_s=1.0):
+                raise OSError(f"m_can_platform loaded but {iface} did not appear within 1 s.")
+            _run("/sbin/ip", "link", "set", iface, "down")
+            _run("/sbin/ip", "link", "set", iface, "type", "can", "bitrate", str(bitrate))
+            _run("/sbin/ip", "link", "set", iface, "up")
+
+        @classmethod
+        def UnInitialize(cls, iface):
+            if iface not in ("can0", "can1"):
+                return
+            with cls._gate:
+                n = cls._open_count.get(iface, 0)
+                if n <= 0:
+                    return
+                if n == 1:
+                    cls._open_count.pop(iface, None)
+                    _try_run("/sbin/ip", "link", "set", iface, "down")
+                else:
+                    cls._open_count[iface] = n - 1
+                if not cls._open_count and cls._module_loaded:
+                    _try_run("/sbin/rmmod", cls._module_name)
+                    cls._module_loaded = False
+
+    class SerialPort:
+        """MA35D1 user UARTs (UART0 is the console, not exposed). Initialize
+        sysfs-binds the UART's platform device to the ma35d1-uart driver, which
+        re-applies pinctrl and claims the TX/RX pins. Mirrors .NET's
+        EPN256.SerialPort."""
+        Uart11 = "/dev/ttyS11"
+        Uart12 = "/dev/ttyS12"
+        Uart14 = "/dev/ttyS14"
+
+        _driver_path = "/sys/bus/platform/drivers/ma35d1-uart"
+        _device_name = {
+            "/dev/ttyS11": "407b0000.serial",
+            "/dev/ttyS12": "407c0000.serial",
+            "/dev/ttyS14": "407e0000.serial",
+        }
+
+        _gate = threading.Lock()
+        _open_count = {}
+
+        @classmethod
+        def Initialize(cls, device):
+            platform = cls._device_name.get(device)
+            if platform is None:
+                raise ValueError(f"Must be EPN256.SerialPort.Uart11 / Uart12 / Uart14, got {device}")
+            with cls._gate:
+                n = cls._open_count.get(device, 0)
+                if n == 0 and not os.path.exists(f"{cls._driver_path}/{platform}"):
+                    cls._write_sysfs(f"{cls._driver_path}/bind", platform)
+                cls._open_count[device] = n + 1
+            if not _wait_path(device, timeout_s=1.0):
+                raise OSError(f"Bound {platform} but {device} did not appear within 1 s.")
+
+        @classmethod
+        def UnInitialize(cls, device):
+            platform = cls._device_name.get(device)
+            if platform is None:
+                return
+            with cls._gate:
+                n = cls._open_count.get(device, 0)
+                if n <= 0:
+                    return
+                if n == 1:
+                    cls._open_count.pop(device, None)
+                    try:
+                        cls._write_sysfs(f"{cls._driver_path}/unbind", platform)
+                    except OSError:
+                        pass
+                else:
+                    cls._open_count[device] = n - 1
+
+        @staticmethod
+        def _write_sysfs(path, value):
+            # Use the shell for the single-write semantics sysfs bind requires.
+            result = subprocess.run(["/bin/sh", "-c", f"echo {value} > {path}"],
+                                    capture_output=True, text=True)
+            if result.returncode != 0:
+                raise OSError(f"Writing '{value}' to {path} failed: {result.stderr.strip()}")
+
+    class StorageController:
+        """Storage controller name strings, for
+        GHIElectronics.Endpoint.Devices.Storage.StorageController.FromName.
+        Mirrors .NET's EPN256.StorageController:
+
+            usb = StorageController.FromName(EPN256.StorageController.UsbHostMassStorage)
+        """
+        SdCard = "EPN256.StorageController.SdCard"
+        UsbHostMassStorage = "EPN256.StorageController.UsbHostMassStorage"
+
+    class Adc:
+        """MA35D1 Enhanced ADC via Linux IIO. No modprobe needed (controller
+        is bundled). Mirrors .NET's EPN256.Adc."""
+        Eadc0 = "eadc0"
+
+        _iio_root = "/sys/bus/iio/devices"
+
+        @classmethod
+        def ReadRaw(cls, bank, channel):
+            """Raw ADC code (0..4095 for the 12-bit eadc0)."""
+            iio_dir = cls._resolve_iio_dir(bank)
+            path = f"{iio_dir}/in_voltage{channel}_raw"
+            if not os.path.exists(path):
+                raise OSError(f"ADC channel {channel} not available on {bank} ({path} missing).")
+            with open(path) as f:
+                return int(f.read().strip())
+
+        @classmethod
+        def ReadMillivolts(cls, bank, channel):
+            """Raw * (scale, if present in IIO) + offset, in mV. Fallback: 3.3 V / 4096."""
+            iio_dir = cls._resolve_iio_dir(bank)
+            raw = cls.ReadRaw(bank, channel)
+            scale = (cls._try_read_float(f"{iio_dir}/in_voltage_scale")
+                     or cls._try_read_float(f"{iio_dir}/in_voltage{channel}_scale")
+                     or (3300.0 / 4096.0))
+            offset = cls._try_read_float(f"{iio_dir}/in_voltage_offset") or 0.0
+            return int(round((raw + offset) * scale))
+
+        @classmethod
+        def _resolve_iio_dir(cls, bank):
+            if bank != cls.Eadc0:
+                raise ValueError(f"Only EPN256.Adc.Eadc0 is supported on this chip, got {bank}")
+            if not os.path.isdir(cls._iio_root):
+                raise OSError("IIO subsystem not available: CONFIG_IIO is not enabled.")
+            for entry in os.listdir(cls._iio_root):
+                name_path = os.path.join(cls._iio_root, entry, "name")
+                try:
+                    with open(name_path) as f:
+                        name = f.read().strip()
+                except OSError:
+                    continue
+                if name.lower() in ("40430000.adc", "ma35d1-eadc"):
+                    return os.path.join(cls._iio_root, entry)
+            raise OSError(f"IIO device for {bank} not found under {cls._iio_root}.")
+
+        @staticmethod
+        def _try_read_float(path):
+            try:
+                with open(path) as f:
+                    return float(f.read().strip())
+            except OSError:
+                return None

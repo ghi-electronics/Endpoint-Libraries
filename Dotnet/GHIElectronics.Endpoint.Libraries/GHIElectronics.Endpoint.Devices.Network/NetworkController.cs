@@ -39,9 +39,8 @@ namespace GHIElectronics.Endpoint.Devices.Network {
 
         private readonly string sectionName;
 
-        private NetworkController(NetworkType type, string name) {
+        private NetworkController(NetworkType type) {
             this.Type = type;
-            this.Name = name;
             this.sectionName = type switch {
                 NetworkType.Ethernet => "ethernet",
                 NetworkType.Wifi => "wifi",
@@ -50,14 +49,17 @@ namespace GHIElectronics.Endpoint.Devices.Network {
         }
 
         /// <summary>
-        /// The controller for the given type, or null if no interface of that
-        /// type is currently present on the board. Hot-pluggable interfaces
-        /// (USB adapters, WiFi sticks) return null until the hardware shows up.
+        /// The controller for the given type. Always returns a valid
+        /// controller: the controller represents the <em>type</em>
+        /// (Ethernet, WiFi), not a specific interface. Hardware does not
+        /// have to be present yet - call
+        /// <see cref="SetInterfaceSettings"/> to configure, then
+        /// <see cref="Enable"/>, which modprobes any USB driver needed and
+        /// brings the matching interface up. Use <see cref="IsPresent"/>
+        /// to check if the hardware is currently plugged in.
         /// </summary>
-        public static NetworkController? FromType(NetworkType type) {
-            string name = GetName(type);
-            return name.Length == 0 ? null : new NetworkController(type, name);
-        }
+        public static NetworkController FromType(NetworkType type) =>
+            new NetworkController(type);
 
         /// <summary>
         /// The system identifier (eth0, wlan0, ...) for the first interface
@@ -78,8 +80,18 @@ namespace GHIElectronics.Endpoint.Devices.Network {
 
         public NetworkType Type { get; }
 
-        /// <summary>System identifier (eth0, wlan0, ...).</summary>
-        public string Name { get; }
+        /// <summary>System identifier (eth0, wlan0, ...), or empty string if
+        /// no interface of this type is currently present. Reads live from
+        /// the kernel on every access - it reflects the state right now,
+        /// not the state at <see cref="FromType"/> time.</summary>
+        public string Name => GetName(this.Type);
+
+        /// <summary>True if an interface of this type currently exists on
+        /// the board (built-in PHY detected, or USB adapter plugged in and
+        /// its driver loaded). WiFi stays false until <see cref="Enable"/>
+        /// is called at least once (that is what modprobes the Wi-Fi
+        /// driver).</summary>
+        public bool IsPresent => this.Name.Length > 0;
 
         /// <summary>
         /// The standard <see cref="System.Net.NetworkInformation.NetworkInterface"/>

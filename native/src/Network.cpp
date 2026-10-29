@@ -403,14 +403,31 @@ std::vector<std::string> GetMatchingInterfaces(Type wanted) {
     return all;
 }
 
+// True if the interface has a Layer-1 carrier (cable plugged in, link up,
+// WiFi associated). Reads /sys/class/net/<iface>/carrier.
+bool HasCarrier(const std::string& iface) {
+    std::ifstream f("/sys/class/net/" + iface + "/carrier");
+    int c = 0;
+    f >> c;
+    return c == 1;
+}
+
 std::string GetInterfaceName(Type wanted) {
-    // Prefer an interface that is admin-UP (one Enable() previously
-    // succeeded on, or one some other process brought up). This keeps
-    // Name consistent with the interface Enable() actually chose when
-    // more than one netdev of this kind exists and the first one in
-    // alphabetical order could not be enabled (e.g. a dead built-in PHY
-    // on a board where a USB adapter is the real ethernet).
+    // Preference order, matching Enable()'s own candidate pick:
+    //   1. admin-up AND has carrier (cable plugged in / associated)
+    //   2. admin-up (Enable() succeeded here, but cable not plugged)
+    //   3. first alphabetical (no interface has been enabled yet)
+    // On a board with built-in Ethernet (eth0) and a USB-Ethernet dongle
+    // (eth2) where only the dongle has a cable, Enable() picks eth2 for
+    // DHCP; Name / IsConnected / IsEnabled must agree, so this function
+    // must return eth2 too - not eth0 just because it is alphabetically
+    // first and admin-up.
     auto candidates = GetMatchingInterfaces(wanted);
+    for (const auto& iface : candidates) {
+        if (IsAdminUp(iface) && HasCarrier(iface)) {
+            return iface;
+        }
+    }
     for (const auto& iface : candidates) {
         if (IsAdminUp(iface)) {
             return iface;
@@ -420,19 +437,46 @@ std::string GetInterfaceName(Type wanted) {
 }
 
 void Enable(Type type) {
-    // Load the kernel driver(s) for this interface type on demand. The
-    // drivers are kernel modules so that boards which do not use network
-    // pay zero boot time; the first Enable() modprobes what is needed.
-    //  - stmmac_platform: STM32 SoC's built-in GMAC (RMII ethernet)
-    //  - usbnet / cdc_ether / ax88179_178a: USB ethernet dongles
-    // modprobe auto-resolves dependencies, so pulling in stmmac_platform
-    // brings in stmmac and phylink as well.
+    // Load the kernel driver(s) for USB-Ethernet dongles on demand. The
+    // built-in MA35D1 Ethernet uses nuvoton-dwmac, compiled =y, so eth0 /
+    // eth1 are present from boot without modprobe. The USB-Ethernet drivers
+    // ship as modules so boards that never plug in an adapter pay zero
+    // boot cost; the first Enable() modprobes every common chip family.
+    // Each modprobe is independent - a module not matching the customer's
+    // adapter just no-ops (the modprobe either succeeds and the driver sits
+    // idle, or fails silently with "module not found" and we move on).
+    const char* const* modList = nullptr;
+    size_t modCount = 0;
+    static const char* const ethMods[] = {
+        "usbnet",            // shared USB-NET core
+        "r8152",             // Realtek RTL8152 / RTL8153
+        "ax88179_178a",      // ASIX AX88179 / AX88178A (gigabit)
+        "asix",              // ASIX AX8817x (10/100)
+        "smsc95xx",          // SMSC9500 series
+        "cdc_ether",         // CDC Ethernet class (standard)
+        "cdc_ncm",           // CDC NCM class (standard)
+    };
+    static const char* const wifiMods[] = {
+        "cfg80211",          // Wi-Fi config layer (pulled by MAC drivers)
+        "mac80211",          // soft-MAC layer (pulled by driver below)
+        "rtl8xxxu",          // Realtek 8188CUS/8188CU/8192CU/8723AU
+        "rtl8192cu",         // older rtlwifi driver for same chip family
+        "ath9k_htc",         // Atheros AR9170/AR9271 USB
+        "mt76x2u",           // MediaTek MT7612U
+        "brcmfmac",          // Broadcom BCM43xx (incl. BCM43143 USB)
+    };
     if (type == Type::Ethernet) {
-        for (const char* mod : {"stmmac_platform", "usbnet", "cdc_ether"}) {
-            char* argv[] = {const_cast<char*>("modprobe"),
-                            const_cast<char*>(mod), nullptr};
-            RunAndWait("/sbin/modprobe", argv);
-        }
+        modList = ethMods;
+        modCount = sizeof(ethMods) / sizeof(ethMods[0]);
+    } else if (type == Type::Wifi) {
+        modList = wifiMods;
+        modCount = sizeof(wifiMods) / sizeof(wifiMods[0]);
+    }
+    for (size_t i = 0; i < modCount; ++i) {
+        char* argv[] = {const_cast<char*>("modprobe"),
+                        const_cast<char*>("-q"),
+                        const_cast<char*>(modList[i]), nullptr};
+        RunAndWait("/sbin/modprobe", argv);
     }
     // (WiFi driver loading is handled by wpa_supplicant / udhcpc paths
     // further down; USB WiFi dongles bring their own drivers.)
@@ -466,7 +510,11 @@ void Enable(Type type) {
         if (security.empty()) security = "wpa2";
     }
 
-    std::string iface;
+    // Bring every candidate admin-up; collect the ones that accepted it
+    // (a dead PHY would reject). Then pick the one with carrier (cable
+    // plugged in); fall back to the first admin-up if none has carrier,
+    // so a cable-less DHCP attempt still produces a clear error.
+    std::vector<std::string> adminUp;
     for (const auto& candidate : candidates) {
         if (type == Type::Wifi) {
             StartWpaSupplicant(candidate, ssid, password, security);
@@ -474,15 +522,23 @@ void Enable(Type type) {
         LinkSet(candidate, "up");
         usleep(100 * 1000);  // let the kernel update flags
         if (IsAdminUp(candidate)) {
-            iface = candidate;
-            break;
+            adminUp.push_back(candidate);
         }
-        // This candidate rejected admin-up (dead PHY etc.); try the next.
     }
-    if (iface.empty()) {
+    if (adminUp.empty()) {
         throw EndpointError(ErrorKind::InvalidOperation,
                             std::string("no ") + SectionKey(type) +
                             " interface could be brought up");
+    }
+    std::string iface;
+    for (const auto& candidate : adminUp) {
+        if (WaitForCarrier(candidate, 1000)) {
+            iface = candidate;
+            break;
+        }
+    }
+    if (iface.empty()) {
+        iface = adminUp.front();
     }
 
     int metric = MetricForType(type);

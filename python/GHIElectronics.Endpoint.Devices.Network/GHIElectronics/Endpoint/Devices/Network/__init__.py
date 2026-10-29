@@ -77,23 +77,36 @@ class WiFiNetworkInterfaceSettings(NetworkInterfaceSettings):
 
 
 class NetworkController:
-    """One of the board's network interfaces. :meth:`FromType` returns the
-    controller for the first interface of the given type, honouring the
-    ``mac`` filter in network.json when set. ``Enable()`` / ``Disable()``
-    are runtime-only. Settings persistence is a separate call to
-    :meth:`SetInterfaceSettings`."""
+    """One of the board's network interfaces, by type (Ethernet, WiFi).
+    :meth:`FromType` always returns a controller - the controller
+    represents the type, not a specific interface. Hardware does not have
+    to be present yet; call :meth:`SetInterfaceSettings` to configure,
+    then :meth:`Enable`, which modprobes any USB driver needed and brings
+    the matching interface up. Use :attr:`IsPresent` to check if hardware
+    is currently present."""
 
-    def __init__(self, type_, name):
+    def __init__(self, type_):
         self.Type = type_
-        self.Name = name
         self._section = _SECTION_KEYS[type_]
 
     @staticmethod
     def FromType(type_):
-        """The controller for the given type, or ``None`` if no interface
-        of that type is currently present on the board."""
-        name = NetworkController.GetName(type_)
-        return NetworkController(type_, name) if name else None
+        """The controller for the given type. Always non-null."""
+        return NetworkController(type_)
+
+    @property
+    def Name(self):
+        """System identifier (eth0, wlan0, ...), or empty string if no
+        interface of this type is currently present. Reads live from the
+        kernel on every access."""
+        return NetworkController.GetName(self.Type)
+
+    @property
+    def IsPresent(self):
+        """True if an interface of this type currently exists on the board.
+        WiFi stays False until :meth:`Enable` is called at least once
+        (that is what modprobes the WiFi driver)."""
+        return len(self.Name) > 0
 
     @staticmethod
     def GetName(type_):

@@ -302,10 +302,11 @@ struct EPM815 {
     };
 };
 
-// The EPN256 (Nuvoton MA35D1) module. 0.4.x only exposes GPIO here; the
-// other peripherals (I2C/SPI/UART/CAN/ADC/DAC/PWM/Watchdog/Storage) are
-// still under EPM815 pending the native MA35D1 port.
-struct EPN256 {
+// The EPN256 (Nuvoton MA35D1) module. GPIO pin constants live here; the
+// pay-for-use peripheral initializers (Spi, I2c, Pwm, Can, SerialPort,
+// Adc, StorageController) live in endpoint/EPN256.h - include that too
+// when you need them. Namespace, not struct, so EPN256.h can extend it.
+namespace EPN256 {
     // GPIO pins, for Devices::Gpio::GpioController
     struct Gpio {
         // The EPN256's pins: port * 16 + line, ports A to N
@@ -350,6 +351,6 @@ struct EPN256 {
             return std::string("P") + static_cast<char>('A' + port) + std::to_string(pin % 16);
         }
     };
-};
+}  // namespace EPN256
 
 }  // namespace GHIElectronics::Endpoint::Core

@@ -9,6 +9,7 @@
 #include <sys/socket.h>
 #include <sys/stat.h>
 #include <sys/statvfs.h>
+#include <sys/wait.h>
 #include <unistd.h>
 
 #include <algorithm>
@@ -35,8 +36,12 @@ namespace {
 
 using Clock = std::chrono::steady_clock;
 
-// The EPM815's SD card slot is SDMMC1 (its eMMC is SDMMC2)
-constexpr const char* SdCardHost = "/58005000.mmc/";
+// Platform SD-card host prefixes seen in sysfs.
+//  - "/58005000.mmc/"     EPM815 (STM32MP1)  SDMMC1
+//  - "/40180000.sdhci/"   EPN256 (MA35D1)    SDHC0 (user's SD slot)
+// A disk whose realpath contains any of these is "the SD card slot".
+constexpr const char* SdCardHost1 = "/58005000.mmc/";
+constexpr const char* SdCardHost2 = "/40180000.sdhci/";
 
 // A new disk is looked at a moment after the kernel reports it, when its
 // partitions are there too
@@ -116,7 +121,9 @@ std::optional<Kind> KindOf(const std::string& disk) {
         return Kind::UsbHostMassStorage;
     }
     if (disk.rfind("mmcblk", 0) == 0 && disk.find("boot") == std::string::npos &&
-        disk.find("rpmb") == std::string::npos && path.find(SdCardHost) != std::string::npos) {
+        disk.find("rpmb") == std::string::npos &&
+        (path.find(SdCardHost1) != std::string::npos ||
+         path.find(SdCardHost2) != std::string::npos)) {
         return Kind::SdCard;
     }
     return std::nullopt;
@@ -473,7 +480,41 @@ public:
 private:
     Watcher() = default;
 
+    // Load the USB mass-storage driver stack on demand. Pay-for-use rule
+    // ([[feedback-boot-time-pay-for-use]]): the SCSI + USB_STORAGE + SD
+    // modules are not loaded at boot, so a program that uses only the SD
+    // card slot pays nothing. The first time any StorageController is
+    // enabled we probe them here (quietly; -q so a chip-family we do not
+    // have in the firmware does not spam the console). modprobe
+    // auto-resolves dependencies, so pulling in usb_storage brings in
+    // scsi_mod and usbcore too.
+    void LoadUsbStorageDrivers() {
+        static const char* const mods[] = {
+            "sd_mod",         // SCSI disk
+            "usb_storage",    // USB mass storage class
+            "uas",            // USB attached SCSI (faster path on USB 3.x)
+            "exfat",          // exFAT (external drives > 32 GB)
+            "ntfs3",          // NTFS (Windows-formatted drives)
+            "iso9660",        // CD-ROM mode USB drives
+            "udf",            // UDF-formatted drives
+        };
+        for (const char* mod : mods) {
+            pid_t child = fork();
+            if (child == 0) {
+                char* argv[] = {const_cast<char*>("modprobe"),
+                                const_cast<char*>("-q"),
+                                const_cast<char*>(mod), nullptr};
+                execv("/sbin/modprobe", argv);
+                _exit(127);
+            }
+            if (child > 0) {
+                while (waitpid(child, nullptr, 0) < 0 && errno == EINTR) {}
+            }
+        }
+    }
+
     void Start() {
+        LoadUsbStorageDrivers();
         sock = socket(AF_NETLINK, SOCK_DGRAM | SOCK_CLOEXEC, NETLINK_KOBJECT_UEVENT);
         if (sock < 0) {
             ThrowSystemError("Cannot watch for drives");
@@ -713,15 +754,16 @@ int DriveTypeOf(const std::string& type) {
 }  // namespace
 
 Controller::Controller(const std::string& name, Callback callback) : callback(std::move(callback)) {
-    if (name == SdCardName) {
+    if (name == SdCardName || name == SdCardName2) {
         kind = Kind::SdCard;
     }
-    else if (name == UsbHostMassStorageName) {
+    else if (name == UsbHostMassStorageName || name == UsbHostMassStorageName2) {
         kind = Kind::UsbHostMassStorage;
     }
     else {
         ThrowArgument("There is no storage controller named \"" + name +
-                      "\": use EPM815.StorageController.SdCard or EPM815.StorageController.UsbHostMassStorage");
+                      "\": use EPN256.StorageController.SdCard or "
+                      "EPN256.StorageController.UsbHostMassStorage");
     }
 }
 
