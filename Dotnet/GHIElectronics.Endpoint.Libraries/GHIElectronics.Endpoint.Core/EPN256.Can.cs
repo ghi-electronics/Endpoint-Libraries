@@ -11,8 +11,8 @@ namespace GHIElectronics.Endpoint.Core {
         /// <example>
         /// <code>
         /// EPN256.Can.Initialize(EPN256.Can.Can0, bitrate: 500_000);
-        /// // The interface is up as "can0" and can be used by any Linux
-        /// // CAN library (SocketCAN).
+        /// // The interface is up as "can0"; use with .NET IoT's CanRaw
+        /// // (Iot.Device.SocketCan) as usual.
         /// </code>
         /// </example>
         public static class Can {
@@ -27,10 +27,9 @@ namespace GHIElectronics.Endpoint.Core {
             private static bool moduleLoaded;
 
             /// <summary>
-            /// Loads the CAN driver, probes the chosen interface, sets its
-            /// bitrate and brings it up. After this call the SocketCAN
-            /// interface is ready for any linux-can library (e.g.
-            /// <c>SocketCANSharp</c>).
+            /// Claims the chosen CAN interface, sets its bitrate and brings it up.
+            /// After this call the interface is ready for .NET IoT's <c>CanRaw</c>
+            /// (<c>Iot.Device.SocketCan</c>).
             /// </summary>
             public static void Initialize(string iface, int bitrate = 500_000) {
                 if (iface != Can0 && iface != Can1) {

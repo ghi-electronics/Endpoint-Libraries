@@ -77,9 +77,9 @@ namespace GHIElectronics.Endpoint.Core {
             }
 
             /// <summary>
-            /// Returns the Linux <c>pwmchipN</c> id for the chosen controller,
-            /// which <c>System.Device.Pwm.PwmChannel.Create</c> takes as its
-            /// first argument. Only valid after <see cref="Initialize"/>.
+            /// Returns the PWM chip id for the chosen controller — the first
+            /// argument that <c>System.Device.Pwm.PwmChannel.Create</c> takes.
+            /// Only valid after <see cref="Initialize"/>.
             /// </summary>
             public static int GetChipId(int controller) {
                 ValidateController(controller);

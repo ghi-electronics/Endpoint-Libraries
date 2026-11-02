@@ -3,8 +3,9 @@ using System.Text;
 
 namespace GHIElectronics.Endpoint.Core {
     /// <summary>
-    /// Runs a program and collects what it prints. For the libraries'
-    /// remaining uses of Linux tools; prefer a direct API where there is one.
+    /// Runs an external program and collects what it prints. Used internally by
+    /// the Endpoint libraries where a direct API is not yet available; prefer the
+    /// direct API where one exists.
     /// </summary>
     public class Script {
         private readonly ProcessStartInfo startInfo;

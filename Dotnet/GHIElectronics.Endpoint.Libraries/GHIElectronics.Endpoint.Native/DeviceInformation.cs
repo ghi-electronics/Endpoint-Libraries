@@ -219,8 +219,8 @@ namespace GHIElectronics.Endpoint.Native {
 
         
         /// <summary>
-        /// Returns <c>true</c> when the board booted from the SD card, detected by scanning
-        /// <c>/boot/extlinux/extlinux.conf</c> for the <c>mmcblk1</c> root device.
+        /// Returns <c>true</c> when the board booted from the SD card, <c>false</c>
+        /// when it booted from the on-board eMMC.
         /// </summary>
         public static bool SdBoot() {
             var script = new Script("cat", "./", "/boot/extlinux/extlinux.conf");
