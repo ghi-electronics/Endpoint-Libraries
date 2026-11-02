@@ -235,11 +235,11 @@ class Keyboard(BaseDevice):
     gives one KeyDown.
 
         keyboard = Keyboard(e.DeviceName)   # from UsbHostController, DeviceType.Keyboard
-        keyboard.CharDown += lambda sender, a: print(a.ASCII, end="", flush=True)
+        keyboard.CharDown += lambda sender, a: print(a.Ascii, end="", flush=True)
     """
 
     KeyUp = _EventProperty()
-    """A key was released: handler(sender, e) with e.Which (Key) and e.ASCII (a str, "\\0" if none)"""
+    """A key was released: handler(sender, e) with e.Which (Key) and e.Ascii (a str, "\\0" if none)"""
     KeyDown = _EventProperty()
     """A key was pressed"""
     CharUp = _EventProperty()
@@ -262,7 +262,7 @@ class Keyboard(BaseDevice):
     def _on_event(self, event, a, b, c, d, e):
         if event != _KEY:
             return
-        args = Keyboard.KeyboardEventArgs(Which=_key(a), ASCII=chr(c))
+        args = Keyboard.KeyboardEventArgs(Which=_key(a), Ascii=chr(c))
         if b == KeyState.Pressed:
             self.KeyDown(self, args)
             if c:

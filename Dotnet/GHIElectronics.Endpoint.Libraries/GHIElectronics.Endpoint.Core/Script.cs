@@ -15,13 +15,21 @@ namespace GHIElectronics.Endpoint.Core {
         private int exitCode;
         private volatile bool running;
 
-        public delegate void OutputDataRecivedEventHandler(Script sender, string received);
+        /// <summary>Signature for the <see cref="OutputDataReceived"/> event.</summary>
+        /// <param name="sender">The <see cref="Script"/> whose program produced the line.</param>
+        /// <param name="received">One line of standard output, without the newline.</param>
+        public delegate void OutputDataReceivedEventHandler(Script sender, string received);
 
         /// <summary>Each line the program prints, as it prints it</summary>
-        public event OutputDataRecivedEventHandler OutputDataRecivedEvent;
+        public event OutputDataReceivedEventHandler OutputDataReceived;
 
-        public bool Busy => this.running;
+        /// <summary>True while the program is running (between <see cref="Start"/> and the program's exit).</summary>
+        public bool IsBusy => this.running;
 
+        /// <summary>Prepares to run <paramref name="filename"/> with the given arguments and working directory.</summary>
+        /// <param name="filename">Path to the program, or a name that <c>PATH</c> resolves.</param>
+        /// <param name="workingdir">Working directory for the program; empty for the current one.</param>
+        /// <param name="arguments">Command-line arguments as a single string, split by the shell convention.</param>
         public Script(string filename, string workingdir, string arguments) =>
             this.startInfo = new ProcessStartInfo(filename, arguments ?? string.Empty) {
                 WorkingDirectory = workingdir ?? string.Empty,
@@ -49,7 +57,7 @@ namespace GHIElectronics.Endpoint.Core {
                     this.output.Append(e.Data).Append('\n');
                 }
                 if (e.Data.Length > 0) {
-                    this.OutputDataRecivedEvent?.Invoke(this, e.Data);
+                    this.OutputDataReceived?.Invoke(this, e.Data);
                 }
             };
             started.ErrorDataReceived += (_, e) => {
@@ -102,6 +110,7 @@ namespace GHIElectronics.Endpoint.Core {
             }
         }
 
+        /// <summary>Everything the program has printed to standard error so far, newline-separated.</summary>
         public string Error {
             get {
                 lock (this.gate) {
@@ -110,6 +119,7 @@ namespace GHIElectronics.Endpoint.Core {
             }
         }
 
+        /// <summary>Everything the program has printed to standard output so far, newline-separated.</summary>
         public string Output {
             get {
                 lock (this.gate) {

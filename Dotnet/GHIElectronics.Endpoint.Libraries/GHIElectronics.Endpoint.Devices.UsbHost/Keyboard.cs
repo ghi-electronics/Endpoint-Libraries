@@ -6,12 +6,14 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
     /// The CharUp and CharDown events are only fired when a given key press has a
     /// corresponding ASCII key code (a US keyboard; Ctrl+A to Ctrl+Z give 1 to 26).
     /// A key held down gives one KeyDown. The events come on the keyboard's own thread.
+    /// </remarks>
+    /// <example>
     /// <code>
     /// var keyboard = new Keyboard(e.DeviceName);    // from UsbHostController, DeviceType.Keyboard
-    /// keyboard.CharDown += (sender, a) => Console.Write(a.ASCII);
+    /// keyboard.CharDown += (sender, a) => Console.Write(a.Ascii);
     /// keyboard.KeyDown += (sender, a) => { if (a.Which == Key.Escape) Console.WriteLine("Esc"); };
     /// </code>
-    /// </remarks>
+    /// </example>
     public class Keyboard : BaseDevice {
         /// <summary>The handler for used for keyboard callbacks.</summary>
         public delegate void KeyboardEventHandler(Keyboard sender, KeyboardEventArgs args);
@@ -44,16 +46,16 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
             if (kind != 1) {
                 return;
             }
-            var args = new KeyboardEventArgs { Which = (Key)a, ASCII = (char)c };
+            var args = new KeyboardEventArgs { Which = (Key)a, Ascii = (char)c };
             if ((KeyState)b == KeyState.Pressed) {
                 this.KeyDown?.Invoke(this, args);
-                if (args.ASCII != 0) {
+                if (args.Ascii != 0) {
                     this.CharDown?.Invoke(this, args);
                 }
             }
             else {
                 this.KeyUp?.Invoke(this, args);
-                if (args.ASCII != 0) {
+                if (args.Ascii != 0) {
                     this.CharUp?.Invoke(this, args);
                 }
             }
@@ -65,7 +67,7 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
             public Key Which { get; set; }
 
             /// <summary>The ASCII representation of the key, if available. Otherwise, this value is <b>0</b>.</summary>
-            public char ASCII { get; set; }
+            public char Ascii { get; set; }
         }
     }
 }

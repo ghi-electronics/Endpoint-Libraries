@@ -3,16 +3,22 @@ using GHIElectronics.Endpoint.Core.Internal;
 namespace GHIElectronics.Endpoint.Core {
     public static partial class EPM815 {
         /// <summary>
-        /// PWM pins, for .NET's System.Device.Pwm. Initialize connects the pin
-        /// to its timer; GetChipId and GetChannelId give what PwmChannel needs:
+        /// PWM pins bundled with EPM815, for .NET's <c>System.Device.Pwm</c>.
+        /// <see cref="Initialize"/> connects the pin to its timer;
+        /// <see cref="GetChipId"/> and <see cref="GetChannelId"/> give what
+        /// <c>PwmChannel</c> needs. Channels of one timer share its frequency.
+        /// </summary>
+        /// <example>
         /// <code>
         /// EPM815.Pwm.Initialize(EPM815.Pwm.Pin.PA8);
-        /// using var pwm = PwmChannel.Create(EPM815.Pwm.GetChipId(EPM815.Pwm.Pin.PA8),
-        ///     EPM815.Pwm.GetChannelId(EPM815.Pwm.Pin.PA8), 1000, 0.5);
+        /// using var pwm = PwmChannel.Create(
+        ///     EPM815.Pwm.GetChipId(EPM815.Pwm.Pin.PA8),
+        ///     EPM815.Pwm.GetChannelId(EPM815.Pwm.Pin.PA8),
+        ///     1000,
+        ///     0.5);
         /// pwm.Start();
         /// </code>
-        /// Channels of one timer share its frequency.
-        /// </summary>
+        /// </example>
         public static class Pwm {
             /// <summary>The pins with PWM (the timer and channel are in the comments)</summary>
             public static class Pin {

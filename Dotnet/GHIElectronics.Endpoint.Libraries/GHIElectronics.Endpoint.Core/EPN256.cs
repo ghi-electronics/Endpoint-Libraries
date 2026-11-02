@@ -4,18 +4,27 @@ using GHIElectronics.Endpoint.Core.Internal;
 
 namespace GHIElectronics.Endpoint.Core {
     /// <summary>
-    /// The EPN256 module (Nuvoton MA35D1, dual Cortex-A35, 256 MB DDR3L):
-    /// its pin names and the pin setup the other libraries use. Pin numbers
-    /// are port * 16 + pin.
-    ///
-    /// Mirrors <see cref="EPM815"/> so sample code reads the same shape
-    /// regardless of the chip.
+    /// The EPN256 module: its pin names and the pin setup the other libraries
+    /// use. Pin numbers are packed as <c>port * 16 + line</c>.
+    /// Mirrors <see cref="EPM815"/> so sample code reads the same shape across
+    /// boards.
     /// </summary>
     public static partial class EPN256 {
+        /// <summary>
+        /// GPIO pins and the module-level pin numbering scheme. Pin numbers are
+        /// packed as <c>port * 16 + line</c>, where port is a <see cref="Port"/>
+        /// value (A..N) and line is 0..15. Most applications should use the
+        /// standard <see cref="GpioController"/> through <see cref="Driver"/>
+        /// rather than the module-level helpers.
+        /// </summary>
         public static partial class Gpio {
+            /// <summary>GPIO ports on EPN256 (one gpiochip per port, in order).</summary>
+            /// <remarks>Values are the port's index (A = 0 ... N = 13).</remarks>
             public enum Port : uint { A = 0, B = 1, C = 2, D = 3, E = 4, F = 5, G = 6, H = 7, I = 8, J = 9, K = 10, L = 11, M = 12, N = 13 }
 
             /// <summary>The EPN256's pins (ports A to N, 16 pins per port).</summary>
+            /// <remarks>Each constant is packed as <c>port * 16 + line</c>. The letter after P is the
+            /// <see cref="Port"/> and the digits 0..15 are the pin within that port.</remarks>
             public static class Pin {
                 public const int PA0 = 0; public const int PA1 = 1; public const int PA2 = 2; public const int PA3 = 3; public const int PA4 = 4; public const int PA5 = 5; public const int PA6 = 6; public const int PA7 = 7;
                 public const int PA8 = 8; public const int PA9 = 9; public const int PA10 = 10; public const int PA11 = 11; public const int PA12 = 12; public const int PA13 = 13; public const int PA14 = 14; public const int PA15 = 15;
@@ -51,18 +60,18 @@ namespace GHIElectronics.Endpoint.Core {
             }
 
             /// <summary>
-            /// GPIO for .NET's <see cref="GpioController"/> with the EPN256's pin
-            /// numbers.
+            /// GPIO driver for .NET's <see cref="GpioController"/> using the
+            /// EPN256 pin numbers. Every pin mode, pull-up/down and pin change
+            /// event of <see cref="GpioController"/> works. One gpiochip is
+            /// exposed per port (A ... N).
+            /// </summary>
+            /// <example>
             /// <code>
             /// using var gpio = new GpioController(new EPN256.Gpio.Driver());
             /// gpio.OpenPin(EPN256.Gpio.Pin.PJ14, PinMode.Output);
             /// gpio.Write(EPN256.Gpio.Pin.PJ14, PinValue.High);
             /// </code>
-            /// Pins go through the system's GPIO driver (libgpiod), so every
-            /// pin mode, pull-up/down and pin change event of .NET's
-            /// GpioController works. One Linux gpiochip per port
-            /// (A = gpiochip0 ... N = gpiochip13).
-            /// </summary>
+            /// </example>
             public sealed class Driver : GpioDriver {
                 private const string Owner = "GPIO";
 
@@ -72,8 +81,10 @@ namespace GHIElectronics.Endpoint.Core {
                 private readonly HashSet<int> open = new();
                 private readonly Dictionary<(int Pin, PinChangeEventHandler Callback), PinChangeEventHandler> callbacks = new();
 
+                /// <inheritdoc/>
                 protected override int PinCount => Pin.PN15 + 1;
 
+                /// <inheritdoc/>
                 protected override void OpenPin(int pinNumber) {
                     lock (this.gate) {
                         if (this.open.Contains(pinNumber)) {
@@ -91,6 +102,7 @@ namespace GHIElectronics.Endpoint.Core {
                     }
                 }
 
+                /// <inheritdoc/>
                 protected override void ClosePin(int pinNumber) {
                     lock (this.gate) {
                         if (!this.open.Remove(pinNumber)) {
@@ -104,8 +116,10 @@ namespace GHIElectronics.Endpoint.Core {
                     }
                 }
 
+                /// <inheritdoc/>
                 protected override void SetPinMode(int pinNumber, PinMode mode) => this.Port(pinNumber).SetPinMode(pinNumber % 16, mode);
 
+                /// <inheritdoc/>
                 protected override void SetPinMode(int pinNumber, PinMode mode, PinValue initialValue) {
                     if (mode != PinMode.Output) {
                         this.SetPinMode(pinNumber, mode);
@@ -118,18 +132,24 @@ namespace GHIElectronics.Endpoint.Core {
                     port.OpenPin(pinNumber % 16, PinMode.Output, initialValue);
                 }
 
+                /// <inheritdoc/>
                 protected override PinMode GetPinMode(int pinNumber) => this.Port(pinNumber).GetPinMode(pinNumber % 16);
 
+                /// <inheritdoc/>
                 protected override bool IsPinModeSupported(int pinNumber, PinMode mode) =>
                     IsValid(pinNumber) && this.Port(pinNumber).IsPinModeSupported(pinNumber % 16, mode);
 
+                /// <inheritdoc/>
                 protected override PinValue Read(int pinNumber) => this.Port(pinNumber).Read(pinNumber % 16);
 
+                /// <inheritdoc/>
                 protected override void Write(int pinNumber, PinValue value) => this.Port(pinNumber).Write(pinNumber % 16, value);
 
+                /// <inheritdoc/>
                 protected override WaitForEventResult WaitForEvent(int pinNumber, PinEventTypes eventTypes, CancellationToken cancellationToken) =>
                     this.Port(pinNumber).WaitForEvent(pinNumber % 16, eventTypes, cancellationToken);
 
+                /// <inheritdoc/>
                 protected override void AddCallbackForPinValueChangedEvent(int pinNumber, PinEventTypes eventTypes, PinChangeEventHandler callback) {
                     // The port reports its own line number: give the app the EPN256 pin number
                     PinChangeEventHandler handler = (sender, e) => callback(this, new PinValueChangedEventArgs(e.ChangeType, pinNumber));
@@ -139,6 +159,7 @@ namespace GHIElectronics.Endpoint.Core {
                     this.Port(pinNumber).RegisterCallbackForPinValueChangedEvent(pinNumber % 16, eventTypes, handler);
                 }
 
+                /// <inheritdoc/>
                 protected override void RemoveCallbackForPinValueChangedEvent(int pinNumber, PinChangeEventHandler callback) {
                     PinChangeEventHandler handler;
                     lock (this.gate) {
@@ -149,6 +170,7 @@ namespace GHIElectronics.Endpoint.Core {
                     this.Port(pinNumber).UnregisterCallbackForPinValueChangedEvent(pinNumber % 16, handler);
                 }
 
+                /// <inheritdoc/>
                 protected override void Dispose(bool disposing) {
                     if (disposing) {
                         lock (this.gate) {

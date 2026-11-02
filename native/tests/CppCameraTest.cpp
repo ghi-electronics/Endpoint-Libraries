@@ -34,7 +34,7 @@ int main() {
     {
         std::mutex mutex;
         auto usb = UsbHost::UsbHostController::GetDefault();
-        usb.OnConnectionChangedEvent += [&](UsbHost::UsbHostController&, const UsbHost::UsbDeviceConnectionEventArgs& e) {
+        usb.ConnectionChanged += [&](UsbHost::UsbHostController&, const UsbHost::UsbDeviceConnectionEventArgs& e) {
             std::lock_guard lock(mutex);
             if (e.Type() == UsbHost::DeviceType::Webcam && e.DeviceStatus() == DeviceConnectionStatus::Connected) {
                 webcam = e.DeviceName();
@@ -48,7 +48,7 @@ int main() {
         return 1;
     }
 
-    auto camera = std::make_unique<Media::Camera>(webcam);
+    auto camera = std::make_unique<Camera::UsbCamera>(webcam);
     Check(!camera->SupportedFormats().empty(), "Camera " + camera->DeviceName() + " '" + camera->Name() + "': " +
                                                    std::to_string(camera->SupportedFormats().size()) + " formats");
     auto t = std::chrono::steady_clock::now();
@@ -69,7 +69,7 @@ int main() {
     camera->SetResolution(640, 480);
     std::atomic<int> frames = 0;
     std::atomic<bool> good = true;
-    camera->FrameReceived += [&](Media::Camera&, const Media::FrameReceivedEventArgs& e) {
+    camera->FrameReceived += [&](Camera::UsbCamera&, const Camera::FrameReceivedEventArgs& e) {
         frames++;
         if (!Valid(e.Jpeg()) || e.Width() != 640) good = false;
     };
@@ -78,11 +78,11 @@ int main() {
     camera->StopStreaming();
     Check(frames > 40 && good, "streaming: " + std::to_string(frames) + " frames in 3 s, each a whole JPEG");
 
-    auto brightness = camera->GetControl(Media::CameraControl::Brightness);
-    camera->SetControl(Media::CameraControl::Brightness, brightness.Maximum / 2);
-    Check(camera->GetControl(Media::CameraControl::Brightness).Value == brightness.Maximum / 2,
+    auto brightness = camera->GetControl(Camera::CameraControl::Brightness);
+    camera->SetControl(Camera::CameraControl::Brightness, brightness.Maximum / 2);
+    Check(camera->GetControl(Camera::CameraControl::Brightness).Value == brightness.Maximum / 2,
           "Brightness " + std::to_string(brightness.Value) + " -> " + std::to_string(brightness.Maximum / 2));
-    camera->SetControl(Media::CameraControl::Brightness, brightness.Value);
+    camera->SetControl(Camera::CameraControl::Brightness, brightness.Value);
     Check(!camera->SupportedControls().empty(), std::to_string(camera->SupportedControls().size()) + " controls");
     camera->Dispose();
     try {

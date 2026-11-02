@@ -4,15 +4,17 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
     /// <summary>Allows a usb device to be used a mouse.</summary>
     /// <remarks>
     /// By default, the reported range for position is between 0 and 512, as on
-    /// TinyCLR: set it to the screen with SetCursorBounds. The events come on
-    /// the mouse's own thread.
+    /// TinyCLR: set it to the screen with <c>SetCursorBounds</c>. The events
+    /// come on the mouse's own thread.
+    /// </remarks>
+    /// <example>
     /// <code>
     /// var mouse = new Mouse(e.DeviceName);    // from UsbHostController, DeviceType.Mouse
     /// mouse.SetCursorBounds(new Position { X = 0, Y = 0 }, new Position { X = 799, Y = 479 });
     /// mouse.CursorMoved += (sender, a) => Console.WriteLine($"Cursor at {a.NewPosition.X}, {a.NewPosition.Y}");
     /// mouse.ButtonChanged += (sender, a) => Console.WriteLine($"{a.Which} {a.State}");
     /// </code>
-    /// </remarks>
+    /// </example>
     public class Mouse : BaseDevice {
         /// <summary>The delegate for when one of the mouse's button is pressed or released.</summary>
         public delegate void ButtonChangedEventHandler(Mouse sender, ButtonChangedEventArgs e);

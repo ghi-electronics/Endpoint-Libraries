@@ -217,10 +217,10 @@ def never(sender, e):
     calls.append("never")
 
 
-usb.OnConnectionChangedEvent += on_usb
-usb.OnConnectionChangedEvent += never
-usb.OnConnectionChangedEvent -= never
-raises(TypeError, lambda: setattr(usb, "OnConnectionChangedEvent", on_usb), "= instead of +=")
+usb.ConnectionChanged += on_usb
+usb.ConnectionChanged += never
+usb.ConnectionChanged -= never
+raises(TypeError, lambda: setattr(usb, "ConnectionChanged", on_usb), "= instead of +=")
 usb.Enable()
 time.sleep(1)
 check("never" not in calls and len(calls) == len(connected), f"+= and -=: {calls}")
@@ -247,7 +247,7 @@ check(Storage.DeviceConnectionStatus is DeviceConnectionStatus, "Storage's Devic
 print("=== USB host (lists what is plugged in)")
 host = UsbHostController.GetDefault()
 things = []
-host.OnConnectionChangedEvent += lambda sender, e: things.append(e)
+host.ConnectionChanged += lambda sender, e: things.append(e)
 host.Enable()
 time.sleep(1)
 for e in things:

@@ -7,6 +7,12 @@ using GHIElectronics.Endpoint.Core.Internal;
 
 namespace GHIElectronics.Endpoint.UI;
 
+/// <summary>
+/// LVGL subsystem lifecycle. Call <see cref="Initialize"/> once after the
+/// display is enabled, then <see cref="Run"/> on your UI thread. LVGL is
+/// built single-threaded (<c>LV_USE_OS=LV_OS_NONE</c>); use
+/// <see cref="UiTimer"/> for periodic work that must touch widgets.
+/// </summary>
 public static class UI {
     /// <summary>
     /// Initialize LVGL and bind it to the framebuffer. Call after the display
@@ -32,7 +38,13 @@ public static class UI {
 /// accordingly on its event loop.
 /// </summary>
 public static class TouchBridge {
+    /// <summary>Register the touch input device with LVGL. Call once after <see cref="UI.Initialize"/>.</summary>
     public static void Attach() => Libendpoint.Check(Libendpoint.UiTouchAttach());
+
+    /// <summary>Submit one touch sample. Call from the touch driver's event handler.</summary>
+    /// <param name="x">Touch X coordinate in pixels.</param>
+    /// <param name="y">Touch Y coordinate in pixels.</param>
+    /// <param name="pressed"><c>true</c> while the finger is down; <c>false</c> on release.</param>
     public static void Feed(int x, int y, bool pressed) =>
         Libendpoint.Check(Libendpoint.UiTouchFeed(x, y, pressed ? 1 : 0));
 }
@@ -43,13 +55,15 @@ public static class TouchBridge {
 /// milliseconds, so widget updates in it are safe (LVGL itself is single-
 /// threaded). Dispose cancels the timer. Create / SetPeriod / Dispose are safe
 /// from any thread; the body runs on the UI thread.
-/// <code>
-///     var t = new UiTimer(100, () => {
-///         gauge.Value = (int)(1650 + 1450 * Math.Sin(phase));
-///         phase += 0.12;
-///     });
-/// </code>
 /// </summary>
+/// <example>
+/// <code>
+/// var t = new UiTimer(100, () => {
+///     gauge.Value = (int)(1650 + 1450 * Math.Sin(phase));
+///     phase += 0.12;
+/// });
+/// </code>
+/// </example>
 public sealed class UiTimer : IDisposable {
     private readonly Libendpoint.UiTimerCallback _trampoline;
     private readonly Action _callback;
@@ -57,6 +71,9 @@ public sealed class UiTimer : IDisposable {
     private nint _handle;
     private bool _disposed;
 
+    /// <summary>Create a periodic timer that fires <paramref name="callback"/> on the UI thread.</summary>
+    /// <param name="periodMs">Period in milliseconds between callbacks.</param>
+    /// <param name="callback">Delegate to invoke on each tick; runs on LVGL's event thread so widget updates are safe.</param>
     public UiTimer(uint periodMs, Action callback) {
         this._callback = callback ?? throw new ArgumentNullException(nameof(callback));
         this._trampoline = this.Trampoline;
@@ -66,18 +83,26 @@ public sealed class UiTimer : IDisposable {
         Libendpoint.Check(Libendpoint.UiTimerCreate(periodMs, fnPtr, 0, out this._handle));
     }
 
+    /// <summary>Create a periodic timer with a <see cref="TimeSpan"/> period (clamped to at least 1 ms).</summary>
+    /// <param name="period">Period between callbacks.</param>
+    /// <param name="callback">Delegate to invoke on each tick; runs on the UI thread.</param>
     public UiTimer(TimeSpan period, Action callback)
         : this((uint)Math.Max(1, (long)period.TotalMilliseconds), callback) { }
 
+    /// <summary>Change the timer period in milliseconds. Safe to call from any thread.</summary>
+    /// <param name="periodMs">New period in milliseconds.</param>
     public void SetPeriod(uint periodMs) {
         if (!this._disposed && this._handle != 0) {
             Libendpoint.Check(Libendpoint.UiTimerSetPeriod(this._handle, periodMs));
         }
     }
 
+    /// <summary>Change the timer period (clamped to at least 1 ms). Safe to call from any thread.</summary>
+    /// <param name="period">New period.</param>
     public void SetPeriod(TimeSpan period) =>
         this.SetPeriod((uint)Math.Max(1, (long)period.TotalMilliseconds));
 
+    /// <summary>Cancel the timer and release its pinned callback. Idempotent.</summary>
     public void Dispose() {
         if (this._disposed) return;
         this._disposed = true;

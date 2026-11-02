@@ -1,7 +1,7 @@
 using System.Buffers.Binary;
 using GHIElectronics.Endpoint.Core.Internal;
 
-namespace GHIElectronics.Endpoint.Devices.Media {
+namespace GHIElectronics.Endpoint.Devices.Sound {
     // An MP3 as a WAV stream (a 44-byte header, then 16-bit samples), decoded by
     // libendpoint while SoundDevice.Play reads it: a whole song is never in memory.
     // SoundDevice plays whole blocks, so the last one is filled with silence.

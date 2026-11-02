@@ -3,14 +3,17 @@ using GHIElectronics.Endpoint.Core.Internal;
 namespace GHIElectronics.Endpoint.Core {
     public static partial class EPM815 {
         /// <summary>
-        /// The serial ports (UARTs), for .NET's System.IO.Ports. Initialize
-        /// connects the port's pins; then use .NET's SerialPort as usual:
+        /// The serial ports (UARTs) bundled with EPM815, for .NET's
+        /// <c>System.IO.Ports</c>. <see cref="Initialize"/> connects the port's
+        /// pins; then use <c>SerialPort</c> as usual.
+        /// </summary>
+        /// <example>
         /// <code>
         /// EPM815.SerialPort.Initialize(EPM815.SerialPort.Uart4);
         /// using var port = new System.IO.Ports.SerialPort(EPM815.SerialPort.Uart4, 115200);
         /// port.Open();
         /// </code>
-        /// </summary>
+        /// </example>
         public static class SerialPort {
             /// <summary>UART1: PZ7 (TX), PZ6 (RX), PA12 (RTS), PZ3 (CTS)</summary>
             public const string Uart1 = "/dev/ttySTM0";

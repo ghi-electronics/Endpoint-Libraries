@@ -6,7 +6,9 @@ namespace GHIElectronics.Endpoint.Devices.Display {
     /// panel directly over SPI/I2C/anything else.
     /// </summary>
     public enum DisplayType {
+        /// <summary>No built-in display is attached, or a customer subclass owns the panel directly.</summary>
         None = 0,
+        /// <summary>The SoC's parallel-RGB controller drives the panel through <c>/dev/fb0</c>.</summary>
         Parallel = 1,
     }
 }

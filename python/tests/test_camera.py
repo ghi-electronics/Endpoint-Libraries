@@ -1,5 +1,5 @@
-# Board test of the Python Camera (GHIElectronics.Endpoint.Devices.Media) with a
-# real USB webcam, found the customer way (UsbHostController). Run as root on
+# Board test of the Python UsbCamera (GHIElectronics.Endpoint.Devices.Camera) with
+# a real USB webcam, found the customer way (UsbHostController). Run as root on
 # the board with the packages on the path:
 #
 #     python3 test_camera.py [hub folder to switch off for the unplug test]
@@ -9,7 +9,7 @@ import time
 
 from GHIElectronics.Endpoint.Core import (ArgumentException, ArgumentOutOfRangeException, DeviceConnectionStatus,
                                           IOException)
-from GHIElectronics.Endpoint.Devices.Media import Camera, CameraControl, CameraPixelFormat
+from GHIElectronics.Endpoint.Devices.Camera import UsbCamera, CameraControl, CameraPixelFormat
 from GHIElectronics.Endpoint.Devices.UsbHost import DeviceType, UsbHostController
 
 failures = 0
@@ -28,7 +28,7 @@ def valid(jpeg):
 
 found = []
 usb = UsbHostController.GetDefault()
-usb.OnConnectionChangedEvent += lambda s, e: found.append(e.DeviceName) if (
+usb.ConnectionChanged += lambda s, e: found.append(e.DeviceName) if (
     e.Type == DeviceType.Webcam and e.DeviceStatus == DeviceConnectionStatus.Connected) else None
 usb.Enable()
 time.sleep(1)
@@ -36,7 +36,7 @@ usb.Dispose()
 if not found:
     sys.exit("FAIL  no webcam plugged in")
 
-camera = Camera(found[0])
+camera = UsbCamera(found[0])
 check(len(camera.SupportedFormats) > 0, f"{camera!r} '{camera.Name}': {camera.SupportedFormats}")
 check((camera.Width, camera.Height) == (640, 480), f"at first {camera.Width}x{camera.Height} {camera.PixelFormat.name} {camera.FrameRate} fps")
 t = time.monotonic()

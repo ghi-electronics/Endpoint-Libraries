@@ -74,10 +74,10 @@ except TypeError as e:
     check(True, f"= instead of +=: {e}")
 
 keyboard = Keyboard(names["keyboard"])
-keyboard.KeyDown += lambda s, e: add("keyboard", f"KeyDown {e.Which.name} {ord(e.ASCII)}")
-keyboard.KeyUp += lambda s, e: add("keyboard", f"KeyUp {e.Which.name} {ord(e.ASCII)}")
-keyboard.CharDown += lambda s, e: add("keyboard", f"CharDown {e.Which.name} {ord(e.ASCII)}")
-keyboard.CharUp += lambda s, e: add("keyboard", f"CharUp {e.Which.name} {ord(e.ASCII)}")
+keyboard.KeyDown += lambda s, e: add("keyboard", f"KeyDown {e.Which.name} {ord(e.Ascii)}")
+keyboard.KeyUp += lambda s, e: add("keyboard", f"KeyUp {e.Which.name} {ord(e.Ascii)}")
+keyboard.CharDown += lambda s, e: add("keyboard", f"CharDown {e.Which.name} {ord(e.Ascii)}")
+keyboard.CharUp += lambda s, e: add("keyboard", f"CharUp {e.Which.name} {ord(e.Ascii)}")
 keyboard.Disconnected += lambda s, e: add("keyboard", "Disconnected")
 
 # Not kept in a variable: it must still give its events (alive until disposed)

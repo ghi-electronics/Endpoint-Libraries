@@ -3,24 +3,24 @@ using System.Globalization;
 namespace GHIElectronics.Endpoint.Core {
     public static partial class EPN256 {
         /// <summary>
-        /// MA35D1 enhanced-ADC channels, read through Linux's IIO (Industrial I/O)
-        /// subsystem. The ADC controller is bundled hardware on EPN256 — the
-        /// kernel's resistive-touch driver uses it — so there is no pay-for-use
-        /// Initialize / UnInitialize dance. Just read channels directly:
+        /// The ADC channels bundled with EPN256. Call
+        /// <see cref="ReadMillivolts"/> on <see cref="Eadc0"/> and the channel
+        /// index to read a channel. Channels 0 - 3 of <see cref="Eadc0"/> drive
+        /// the resistive touch screen on the reference panel; stay off those
+        /// unless the touch subnode has been removed.
+        /// </summary>
+        /// <example>
         /// <code>
         /// int mv = EPN256.Adc.ReadMillivolts(EPN256.Adc.Eadc0, 2);
         /// </code>
-        /// Channels 0 - 3 of eadc0 drive the resistive touch screen on the
-        /// reference panel; stay off those unless you've removed the touch
-        /// subnode from the device tree.
-        /// </summary>
+        /// </example>
         public static class Adc {
-            /// <summary>Enhanced ADC bank 0 (eadc0) — 8 channels, 12-bit.</summary>
+            /// <summary>ADC bank 0 (<c>eadc0</c>) — 8 channels, 12-bit.</summary>
             public const string Eadc0 = "eadc0";
 
             private const string IioRoot = "/sys/bus/iio/devices";
 
-            /// <summary>Raw ADC code (0..4095 for the 12-bit eadc0).</summary>
+            /// <summary>Raw ADC code (0..4095 for the 12-bit <see cref="Eadc0"/>).</summary>
             public static int ReadRaw(string bank, int channel) {
                 var iioDir = ResolveIioDir(bank);
                 var path = $"{iioDir}/in_voltage{channel}_raw";
@@ -33,8 +33,8 @@ namespace GHIElectronics.Endpoint.Core {
 
             /// <summary>
             /// Reads raw and applies the IIO scale and offset so the result is
-            /// millivolts. For the MA35D1 enhanced ADC the reference is 3.3 V
-            /// over 12 bits, so scale is ~0.806 mV/count.
+            /// millivolts. The reference is 3.3 V over 12 bits, giving roughly
+            /// 0.806 mV/count.
             /// </summary>
             public static int ReadMillivolts(string bank, int channel) {
                 var iioDir = ResolveIioDir(bank);

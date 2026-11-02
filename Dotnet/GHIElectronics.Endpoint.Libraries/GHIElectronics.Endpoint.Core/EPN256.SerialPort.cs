@@ -3,20 +3,21 @@ using System.Diagnostics;
 namespace GHIElectronics.Endpoint.Core {
     public static partial class EPN256 {
         /// <summary>
-        /// The user-facing serial ports (UARTs), for System.IO.Ports.SerialPort.
-        /// Uart0 is reserved for the kernel console and NOT exposed here. The
-        /// three ports below are stable thanks to the DT aliases in the firmware
-        /// (serial11 = &amp;uart11, etc.), so <c>EPN256.SerialPort.Uart11</c>
-        /// is always <c>/dev/ttyS11</c> regardless of probe order.
+        /// The user-facing serial ports (UARTs) bundled with EPN256, for
+        /// <c>System.IO.Ports.SerialPort</c>. The console UART is reserved for
+        /// the kernel and not exposed here. The three ports below have stable
+        /// names, so <see cref="Uart11"/> is always <c>/dev/ttyS11</c>.
+        /// <see cref="Initialize"/> brings up the UART, claiming its TX / RX
+        /// pins; <see cref="UnInitialize"/> returns them to free GPIO. Both are
+        /// safe to call multiple times; the first <see cref="Initialize"/> does
+        /// the work and the matching <see cref="UnInitialize"/> undoes it.
+        /// </summary>
+        /// <example>
         /// <code>
         /// EPN256.SerialPort.Initialize(EPN256.SerialPort.Uart11);
         /// using var port = new System.IO.Ports.SerialPort(EPN256.SerialPort.Uart11, 115200);
         /// </code>
-        /// Initialize binds the UART to its kernel driver, which re-applies the
-        /// pinctrl state and claims the TX / RX pins. UnInitialize unbinds and
-        /// returns the pins to free GPIO. Both are safe to call multiple times;
-        /// the first Initialize does the work, the matching UnInitialize undoes it.
-        /// </summary>
+        /// </example>
         public static class SerialPort {
             /// <summary>UART11: PB2 (TX), PB3 (RX); /dev/ttyS11</summary>
             public const string Uart11 = "/dev/ttyS11";
@@ -36,8 +37,8 @@ namespace GHIElectronics.Endpoint.Core {
             private static readonly Dictionary<string, int> openCount = new();
 
             /// <summary>
-            /// Binds the UART to the ma35d1-uart kernel driver so its TX / RX
-            /// pins get muxed and <c>/dev/ttyS&lt;N&gt;</c> becomes writable.
+            /// Brings up the UART so its TX / RX pins are muxed and
+            /// <c>/dev/ttyS&lt;N&gt;</c> becomes writable.
             /// </summary>
             /// <param name="device">
             /// One of <see cref="Uart11"/>, <see cref="Uart12"/>, <see cref="Uart14"/>.
@@ -66,8 +67,9 @@ namespace GHIElectronics.Endpoint.Core {
             }
 
             /// <summary>
-            /// Unbinds the UART from its driver and releases the TX / RX pins
-            /// back to free GPIO. Reverses Initialize; call once per Initialize.
+            /// Tears down the UART and releases the TX / RX pins back to free
+            /// GPIO. Reverses <see cref="Initialize"/>; call once per
+            /// <see cref="Initialize"/>.
             /// </summary>
             public static void UnInitialize(string device) {
                 if (!DeviceName.TryGetValue(device, out var platform)) {

@@ -5,18 +5,21 @@ using static GHIElectronics.Endpoint.Core.Chips.Stm32Mp1Pins;
 namespace GHIElectronics.Endpoint.Core {
     public static partial class EPM815 {
         /// <summary>
-        /// The CAN ports, for .NET IoT's CanRaw (Iot.Device.SocketCan, which the
-        /// GHIElectronics.Endpoint.Devices.Can package brings). Initialize
-        /// connects the port's pins, sets its bitrate and starts it; then use
-        /// CanRaw as usual:
+        /// The CAN ports bundled with EPM815. Use with .NET IoT's
+        /// <c>CanRaw</c> (<c>Iot.Device.SocketCan</c>, which the
+        /// <c>GHIElectronics.Endpoint.Devices.Can</c> package brings).
+        /// <see cref="Initialize"/> connects the port's pins, sets its bitrate
+        /// and starts it; then use <c>CanRaw</c> as usual. Each constant is the
+        /// port's name for <c>CanRaw</c>, fixed by the firmware. A port that
+        /// goes bus-off after too many errors restarts by itself after 100 ms.
+        /// </summary>
+        /// <example>
         /// <code>
         /// EPM815.Can.Initialize(EPM815.Can.Can1, 500_000);
         /// using var can = new CanRaw(EPM815.Can.Can1);
         /// can.WriteFrame(new byte[] { 1, 2, 3 }, new CanId { Standard = 0x123 });
         /// </code>
-        /// Each constant is the port's name for CanRaw, fixed by the firmware.
-        /// A port that goes bus-off after too many errors restarts by itself after 100 ms.
-        /// </summary>
+        /// </example>
         public static class Can {
             /// <summary>FDCAN1: PD1 (TX), PD0 (RX)</summary>
             public const string Can1 = "can0";

@@ -3,23 +3,21 @@ using System.Diagnostics;
 namespace GHIElectronics.Endpoint.Core {
     public static partial class EPN256 {
         /// <summary>
-        /// The I2C buses, for .NET's System.Device.I2c. Initialize loads the
-        /// MA35D1 I2C controller driver (as a module) so <c>/dev/i2c-N</c>
-        /// appears and the bus's pins are muxed by the kernel's pinctrl
-        /// framework; UnInitialize unloads it so the pins return to free
-        /// GPIO. The kernel driver is CONFIG_I2C_MA35=m in the Endpoint
-        /// firmware, which keeps I2C controllers unprobed until a userspace
-        /// library needs them (pay-for-use rule). Use .NET's I2cDevice as
-        /// usual between Initialize and UnInitialize:
+        /// The I2C buses bundled with EPN256. Use with .NET's
+        /// <c>System.Device.I2c</c>. <see cref="Initialize"/> brings up the
+        /// bus and muxes its pins; <see cref="UnInitialize"/> tears it down so
+        /// the pins return to free GPIO. The buses are kept unprobed until a
+        /// userspace library needs them (pay-for-use rule). Each constant is
+        /// the bus number for <c>I2cConnectionSettings</c> (<c>/dev/i2c-N</c>).
+        /// </summary>
+        /// <example>
         /// <code>
         /// EPN256.I2c.Initialize(EPN256.I2c.I2c5);
         /// using var device = I2cDevice.Create(new I2cConnectionSettings(EPN256.I2c.I2c5, 0x5D));
         /// // ... read / write ...
         /// EPN256.I2c.UnInitialize(EPN256.I2c.I2c5);
         /// </code>
-        /// Each constant is the bus number for I2cConnectionSettings (/dev/i2c-N),
-        /// matching the Nuvoton SOM DTS's i2cN labels.
-        /// </summary>
+        /// </example>
         public static class I2c {
             /// <summary>I2C1: PB10 (SDA), PB11 (SCL); /dev/i2c-1 (requires a board-level pinctrl override; left in for API parity).</summary>
             public const int I2c1 = 1;
@@ -34,6 +32,7 @@ namespace GHIElectronics.Endpoint.Core {
 
             /// <summary>The speed when none is given: 400 kHz (fast mode)</summary>
             public const int DefaultFrequency = 400_000;
+            /// <summary>The slowest supported bus speed: 10 kHz.</summary>
             public const int MinFrequency = 10_000;
             /// <summary>1 MHz (fast mode plus)</summary>
             public const int MaxFrequency = 1_000_000;
@@ -46,18 +45,15 @@ namespace GHIElectronics.Endpoint.Core {
             private static bool moduleLoaded;
 
             /// <summary>
-            /// Loads the MA35D1 I2C controller driver so <c>/dev/i2c-{bus}</c>
-            /// appears and the bus's pins are muxed (by the kernel's pinctrl
-            /// framework, as part of the driver's probe). May be called more
-            /// than once for the same bus; the same number of UnInitialize
+            /// Brings up the I2C controller so <c>/dev/i2c-{bus}</c> appears
+            /// and the bus's pins are muxed. May be called more than once for
+            /// the same bus; the same number of <see cref="UnInitialize"/>
             /// calls then releases it.
             /// </summary>
-            /// <param name="bus">I2c1, I2c2, I2c3, I2c4 or I2c5</param>
+            /// <param name="bus">I2c1, I2c2, I2c3, I2c4 or I2c5.</param>
             /// <param name="frequency">The bus speed in Hz, from 10 kHz to 1 MHz.
-            /// The MA35D1 I2C controller driver uses the device-tree clock-frequency
-            /// (set in the SOM DTS to 100 kHz) by default; a non-default value is
-            /// accepted but not yet applied (parked until the sysfs clock_frequency
-            /// path is wired up — the controller runs at the DTS speed for now).</param>
+            /// A non-default value is accepted but not yet applied; the controller
+            /// currently runs at its configured default speed.</param>
             public static void Initialize(int bus, int frequency = DefaultFrequency) {
                 ValidateBus(bus);
                 if (frequency is < MinFrequency or > MaxFrequency) {
@@ -81,16 +77,16 @@ namespace GHIElectronics.Endpoint.Core {
                 }
                 if (!File.Exists(devPath)) {
                     throw new InvalidOperationException(
-                        $"i2c-ma35d1 loaded but {devPath} did not appear within 1 s. " +
-                        $"The DT may have &i2c{bus} disabled: check the firmware's DTS tweaks.");
+                        $"I2C controller loaded but {devPath} did not appear within 1 s. " +
+                        $"Check the firmware's device-tree tweaks for i2c{bus}.");
                 }
             }
 
             /// <summary>
-            /// Reverse of Initialize. When the last outstanding Initialize for
-            /// any bus is matched, the i2c-ma35d1 kernel module is unloaded,
-            /// which releases the pinctrl mux for every bus and returns their
-            /// pins to free GPIO.
+            /// Reverse of <see cref="Initialize"/>. When the last outstanding
+            /// <see cref="Initialize"/> for any bus is matched, the I2C driver
+            /// is unloaded, which releases the pin mux for every bus and
+            /// returns their pins to free GPIO.
             /// </summary>
             public static void UnInitialize(int bus) {
                 ValidateBus(bus);

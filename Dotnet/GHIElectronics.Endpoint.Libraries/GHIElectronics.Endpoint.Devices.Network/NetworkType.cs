@@ -6,7 +6,9 @@ namespace GHIElectronics.Endpoint.Devices.Network {
     /// a built-in WiFi module or any WiFi USB stick.
     /// </summary>
     public enum NetworkType {
+        /// <summary>Wired Ethernet: the board's built-in PHY or any USB Ethernet adapter.</summary>
         Ethernet = 0,
+        /// <summary>WiFi: a built-in WiFi module or any WiFi USB stick.</summary>
         Wifi = 1,
     }
 }

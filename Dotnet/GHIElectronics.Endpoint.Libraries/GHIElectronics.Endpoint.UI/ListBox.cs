@@ -8,16 +8,22 @@ namespace GHIElectronics.Endpoint.UI;
 /// Clicked event you subscribe to.
 /// </summary>
 public class ListBox : Widget {
+    /// <summary>Create a list box inside <paramref name="parent"/>.</summary>
+    /// <param name="parent">Containing widget.</param>
     public ListBox(Widget parent) : base(0) {
         Libendpoint.Check(Libendpoint.UiListBoxCreate(parent.Native, out var n));
         this.Native = n;
     }
 
+    /// <summary>Append an item.</summary>
+    /// <param name="text">Row text.</param>
+    /// <returns>Handle for subscribing to the row's <see cref="ListBoxItem.Clicked"/> event.</returns>
     public ListBoxItem AddItem(string text) {
         Libendpoint.Check(Libendpoint.UiListBoxAddItem(this.Native, text, out var item));
         return new ListBoxItem(item);
     }
 
+    /// <summary>Remove every item.</summary>
     public void Clear() => Libendpoint.Check(Libendpoint.UiListBoxClear(this.Native));
 }
 
@@ -36,6 +42,7 @@ public class ListBoxItem {
             this.Native, EventTrampolines.Pointer(), GCHandle.ToIntPtr(this._clickedHandle)));
     }
 
+    /// <summary>Fires when this list item is tapped. Runs on the UI thread.</summary>
     public event EventHandler Clicked {
         add => this._clicked += value;
         remove => this._clicked -= value;

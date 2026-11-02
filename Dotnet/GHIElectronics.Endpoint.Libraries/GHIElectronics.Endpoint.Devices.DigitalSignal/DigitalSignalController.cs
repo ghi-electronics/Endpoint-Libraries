@@ -7,18 +7,35 @@ using static GHIElectronics.Endpoint.Core.EPM815.Gpio;
 
 
 namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
+    /// <summary>What a <see cref="DigitalSignalController"/> operation does on a GPIO pin.</summary>
     public enum DigitalSignalMode {
+        /// <summary>Emits a train of timed high/low pulses on the pin.</summary>
         GeneratePulse = 0,
+        /// <summary>Measures the duration of a single pulse on the pin.</summary>
         ReadPulse = 1,
+        /// <summary>Records a train of edge timestamps from the pin into a buffer.</summary>
         CapturePulse = 2,
     }
 
+    /// <summary>Why a <see cref="DigitalSignalController"/> operation stopped before producing its result.</summary>
     public enum DigitalSignalError {
+        /// <summary>No error: the operation completed normally.</summary>
         None = 0,
+        /// <summary>The capture buffer could not be allocated on the timing helper.</summary>
         OutOfMemory = 1,
+        /// <summary>The expected edge did not arrive before the configured timeout.</summary>
         Timeout = 2,
     }
 
+    /// <summary>
+    /// Generates, reads, or captures digital pulse trains on a single GPIO pin with
+    /// nanosecond-grade timing produced by a hardware timing helper. One
+    /// <see cref="DigitalSignalController"/> owns one pin and runs one operation at
+    /// a time; completion is reported through <see cref="GenerateFinished"/>,
+    /// <see cref="ReadPulseFinished"/> or <see cref="CaptureFinished"/>. Each
+    /// callback runs on the native receive thread - not the thread that started
+    /// the operation.
+    /// </summary>
     public class DigitalSignalController {
 
         internal const int CMD_RAW_DATA_START_OFFSET = 64;
@@ -38,10 +55,43 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
 
 
 
+        /// <summary>
+        /// Fires once when <see cref="Generate(uint[], uint, int, uint, Edge)"/> finishes.
+        /// Runs on the native receive thread.
+        /// </summary>
+        /// <param name="sender">The controller that generated the pulses.</param>
+        /// <param name="endState">The pin level (0 or 1) after the last pulse.</param>
+        /// <param name="aborted"><c>true</c> if <see cref="Abort"/> stopped the generation; otherwise <c>false</c>.</param>
         public delegate void PulseGenerateEventHandler(DigitalSignalController sender, uint endState, bool aborted);
+
+        /// <summary>
+        /// Fires once when <see cref="ReadPulse"/> finishes. Runs on the native receive thread.
+        /// </summary>
+        /// <param name="sender">The controller that read the pulse.</param>
+        /// <param name="duration">Total time the matching edges accumulated (sum of the matching pulse widths).</param>
+        /// <param name="count">Number of pulses actually measured (may be less than requested on abort/timeout).</param>
+        /// <param name="pinState">Pin level (0 or 1) at the end of the read.</param>
+        /// <param name="aborted"><c>true</c> if <see cref="Abort"/> stopped the read; otherwise <c>false</c>.</param>
         public delegate void PulseReadEventHandler(DigitalSignalController sender, TimeSpan duration, uint count, uint pinState, bool aborted);
+
+        /// <summary>
+        /// Fires once when <see cref="Capture(uint, Edge, bool, TimeSpan)"/> finishes.
+        /// Runs on the native receive thread.
+        /// </summary>
+        /// <param name="sender">The controller that captured the pulses.</param>
+        /// <param name="buffer">Pulse widths in nanoseconds, each the interval between consecutive edges.</param>
+        /// <param name="count">Number of edges captured (<paramref name="buffer"/> contains <c>count - 1</c> deltas).</param>
+        /// <param name="pinState">Pin level (0 or 1) at the end of the capture.</param>
+        /// <param name="aborted"><c>true</c> if <see cref="Abort"/> stopped the capture; otherwise <c>false</c>.</param>
         public delegate void PulseCaptureEventHandler(DigitalSignalController sender, double[] buffer, uint count, uint pinState, bool aborted);
 
+        /// <summary>
+        /// Fires on the native receive thread when an operation fails. The usual <c>Finished</c>
+        /// callback is not raised when this fires.
+        /// </summary>
+        /// <param name="sender">The controller that was running the operation.</param>
+        /// <param name="mode">Which operation produced the error.</param>
+        /// <param name="error">The failure cause.</param>
         public delegate void ErrorEventHandler(DigitalSignalController sender, DigitalSignalMode mode, DigitalSignalError error);
 
         private PulseReadEventHandler pulseReadCallback;
@@ -49,6 +99,7 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
         private PulseCaptureEventHandler pulseCaptureCallback;
         private ErrorEventHandler errorCallback;
 
+        /// <summary>Raised once when <see cref="ReadPulse"/> completes. Handler runs on the native receive thread.</summary>
         public event PulseReadEventHandler ReadPulseFinished {
             add => this.pulseReadCallback += value;
             remove {
@@ -57,6 +108,7 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
             }
         }
 
+        /// <summary>Raised once when <see cref="Generate(uint[], uint, int, uint, Edge)"/> completes. Handler runs on the native receive thread.</summary>
         public event PulseGenerateEventHandler GenerateFinished {
             add => this.pulseGenerateCallback += value;
             remove {
@@ -65,6 +117,7 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
             }
         }
 
+        /// <summary>Raised once when <see cref="Capture(uint, Edge, bool, TimeSpan)"/> completes. Handler runs on the native receive thread.</summary>
         public event PulseCaptureEventHandler CaptureFinished {
             add => this.pulseCaptureCallback += value;
             remove {
@@ -73,6 +126,7 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
             }
         }
 
+        /// <summary>Raised instead of the normal <c>Finished</c> event when an operation fails (timeout or out-of-memory). Handler runs on the native receive thread.</summary>
         public event ErrorEventHandler ErrorReceived {
             add => this.errorCallback += value;
             remove {
@@ -81,9 +135,12 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
             }
         }
 
+        /// <summary><c>true</c> while no <see cref="Generate(uint[], uint, int, uint, Edge)"/> operation is in flight.</summary>
         public bool CanGeneratePulse { get; private set; } = true;
+        /// <summary><c>true</c> while no <see cref="ReadPulse"/> operation is in flight.</summary>
         public bool CanReadPulse { get; private set; } = true;
 
+        /// <summary><c>true</c> while no <see cref="Capture(uint, Edge, bool, TimeSpan)"/> operation is in flight.</summary>
         public bool CanCapture { get; private set; } = true;
 
 
@@ -91,6 +148,14 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
         private int pin;
 
         internal static bool InitLibCount = false;
+        /// <summary>
+        /// Reserves the given GPIO pin, starts the timing helper (loading it if needed),
+        /// and subscribes to its data stream. The constructor returns once the helper is reachable;
+        /// subsequent calls to <see cref="Generate(uint[], uint, int, uint, Edge)"/>,
+        /// <see cref="ReadPulse"/> and <see cref="Capture(uint, Edge, bool, TimeSpan)"/> go through it.
+        /// </summary>
+        /// <param name="pin">GPIO pin number (combined port+index, see <c>EPM815.Gpio</c>).</param>
+        /// <exception cref="ArgumentException">Pin is negative or already reserved by another driver.</exception>
         public DigitalSignalController(int pin) {
 
             if (pin < 0)
@@ -125,7 +190,7 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
             this.pin = pin;
             NativeRpmsgHelper.DataReceived += this.NativeRpmsgHelper_DataReceived;
 
-            NativeRpmsgHelper.TaskReceive();
+            NativeRpmsgHelper.StartReceiving();
 
             PinReserve(pin);
 
@@ -259,6 +324,7 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
             this.Dispose(disposing: false);
         }
 
+        /// <summary>Unsubscribes from the timing helper and releases the pin so another driver can claim it.</summary>
         public void Dispose() {
             this.Dispose(true);
             GC.SuppressFinalize(this);
@@ -276,12 +342,30 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
             this.disposed = true;
         }
 
+        /// <summary>Generates the whole <paramref name="data"/> array with the default multiplier of 100 ns and <see cref="Edge.Falling"/> start edge.</summary>
+        /// <param name="data">Pulse widths; see <see cref="Generate(uint[], uint, int, uint, Edge)"/>.</param>
         public void Generate(uint[] data) {
             this.Generate(data, 0, data.Length); ;
         }
+        /// <summary>Generates a slice of <paramref name="data"/> with the default multiplier of 100 ns and <see cref="Edge.Falling"/> start edge.</summary>
+        /// <param name="data">Pulse widths; see <see cref="Generate(uint[], uint, int, uint, Edge)"/>.</param>
+        /// <param name="offset">Index of the first value in <paramref name="data"/> to generate.</param>
+        /// <param name="count">Number of values to generate.</param>
         public void Generate(uint[] data, uint offset, int count) {
             this.Generate(data, offset, count, 100, Edge.Falling); ;
         }
+        /// <summary>
+        /// Emits a pulse train on the pin. Each entry in <paramref name="data"/> is a pulse width in
+        /// units of <paramref name="multiplier"/> nanoseconds; consecutive entries alternate between
+        /// the two pin levels, starting from the level opposite of <paramref name="edge"/>. Returns
+        /// immediately; completion arrives on <see cref="GenerateFinished"/>.
+        /// </summary>
+        /// <param name="data">Pulse widths, in units of <paramref name="multiplier"/> ns.</param>
+        /// <param name="offset">Index of the first width to emit.</param>
+        /// <param name="count">Number of widths to emit.</param>
+        /// <param name="multiplier">Nanoseconds per unit (prescaler sanity-checked against the hardware timer; must be &gt; 0 and fit in 16 bits).</param>
+        /// <param name="edge">Which edge the first pulse ends on (<see cref="Edge.Falling"/> means start high, finish on a falling edge).</param>
+        /// <exception cref="Exception">Thrown when a previous Generate is still running or the multiplier is out of range.</exception>
         public void Generate(uint[] data, uint offset, int count, uint multiplier, Edge edge) {
 
             if (!this.CanGeneratePulse) {
@@ -332,6 +416,14 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
             NativeRpmsgHelper.Send(buffer, 0, buffer.Length);
         }
 
+        /// <summary>
+        /// Measures the aggregate duration of <paramref name="pulseNum"/> matching-edge pulses on the pin.
+        /// Returns immediately; the measured duration arrives on <see cref="ReadPulseFinished"/>.
+        /// </summary>
+        /// <param name="pulseNum">Number of pulses to measure (counted on the <paramref name="edge"/> transitions).</param>
+        /// <param name="edge">Which edge marks the start/end of each counted pulse.</param>
+        /// <param name="waitForEdge">If <c>true</c>, align the first measurement to the first matching edge; if <c>false</c>, start measuring at once.</param>
+        /// <exception cref="Exception">Thrown when a previous ReadPulse is still running.</exception>
         public void ReadPulse(uint pulseNum, Edge edge, bool waitForEdge = false) {
             if (!this.CanReadPulse) {
                 throw new Exception("ReadPulse mode is busy");
@@ -362,7 +454,23 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
 
         }
 
+        /// <summary>Captures <paramref name="count"/> edges with no timeout (<see cref="TimeSpan.Zero"/>).</summary>
+        /// <param name="count">Number of edge timestamps to capture.</param>
+        /// <param name="edge">Which edge to timestamp (<see cref="Edge.Rising"/> or <see cref="Edge.Falling"/>).</param>
+        /// <param name="waitForEdge">If <c>true</c>, defer capturing until the first matching edge; if <c>false</c>, start sampling the current state at once.</param>
         public void Capture(uint count, Edge edge, bool waitForEdge = false) => this.Capture(count, edge, waitForEdge, TimeSpan.Zero);
+        /// <summary>
+        /// Captures <paramref name="count"/> edge-to-edge timings on the pin. Returns immediately; the
+        /// captured timings arrive on <see cref="CaptureFinished"/> as nanosecond values (consecutive
+        /// edge deltas, so the array has <c>count - 1</c> useful entries). Fails with
+        /// <see cref="DigitalSignalError.Timeout"/> if <paramref name="timeout"/> elapses before all
+        /// edges arrive.
+        /// </summary>
+        /// <param name="count">Number of edges to capture.</param>
+        /// <param name="edge">Which edge to timestamp.</param>
+        /// <param name="waitForEdge">If <c>true</c>, align the first sample with the first matching edge.</param>
+        /// <param name="timeout">Maximum wait before giving up; <see cref="TimeSpan.Zero"/> means no timeout.</param>
+        /// <exception cref="Exception">Thrown when a previous Capture is still running.</exception>
         public void Capture(uint count, Edge edge, bool waitForEdge, TimeSpan timeout) {
 
             if (!this.CanCapture) {
@@ -401,6 +509,11 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
 
         }
 
+        /// <summary>
+        /// Cancels the current <see cref="Generate(uint[], uint, int, uint, Edge)"/>,
+        /// <see cref="ReadPulse"/>, or <see cref="Capture(uint, Edge, bool, TimeSpan)"/>. The
+        /// corresponding <c>Finished</c> event still fires with <c>aborted</c> set to <c>true</c>.
+        /// </summary>
         public void Abort() {
 
             var buffer = new uint[CMD_RAW_DATA_START_OFFSET];
@@ -418,11 +531,21 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
         
     }
 
+    /// <summary>What a <see cref="PulseFeedbackController"/> measures.</summary>
     public enum PulseFeedbackMode {
+        /// <summary>Measures how long a charged pin takes to drain through its pull-down (single-pin mode, no echo pin).</summary>
         DrainDuration = 0,
+        /// <summary>Measures the duration of the response pulse on the echo pin after a trigger pulse is sent on the pulse pin.</summary>
         EchoDuration = 1,
+        /// <summary>Measures the delay from the end of the trigger pulse to the first edge on the echo pin (classic HC-SR04 ultrasonic ranging).</summary>
         DurationUntilEcho = 2
     }
+    /// <summary>
+    /// Blocking pulse-and-measure helper for simple two-wire sensors (capacitive sensors,
+    /// HC-SR04 ultrasonic rangers, etc.). <see cref="Trigger"/> sends a pulse on the pulse
+    /// pin and waits for the result on the echo pin; measurement runs on the hardware
+    /// timing helper for microsecond-grade timing.
+    /// </summary>
     public class PulseFeedbackController : IDisposable {
 
         private readonly PulseFeedbackMode mode;
@@ -431,18 +554,32 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
         private readonly int echoPin;
 
 
+        /// <summary>If <c>true</c>, disable GPIO interrupts around the measurement for less jitter. Defaults to <c>false</c>.</summary>
         public bool DisableInterrupts { get; set; }
+        /// <summary>Maximum time <see cref="Trigger"/> waits for the echo before returning. Defaults to 100 ms.</summary>
         public TimeSpan Timeout { get; set; }
+        /// <summary>Width of the trigger pulse on the pulse pin. Defaults to 20 ms.</summary>
         public TimeSpan PulseLength { get; set; }
+        /// <summary>Active level of the pulse pin while the trigger is asserted. Defaults to <c>true</c> (high).</summary>
         public bool PulseValue { get; set; }
+        /// <summary>Level the echo pin takes while asserted. Defaults to <c>true</c> (high).</summary>
         public bool EchoValue { get; set; }
 
         internal const int MODE_PULSEFEEDBACK = 3;
 
+        /// <summary>Single-pin constructor; valid only for <see cref="PulseFeedbackMode.DrainDuration"/>.</summary>
+        /// <param name="pin">The pin used for both the drive and the measurement.</param>
+        /// <param name="mode">Must be <see cref="PulseFeedbackMode.DrainDuration"/>.</param>
+        /// <exception cref="ArgumentException">Pin is negative, already reserved, or <paramref name="mode"/> requires an echo pin.</exception>
         public PulseFeedbackController(int pin, PulseFeedbackMode mode)
             : this(pin, -1, mode) {
         }
 
+        /// <summary>Two-pin constructor for echo-based modes.</summary>
+        /// <param name="pulsePin">Pin that drives the trigger pulse.</param>
+        /// <param name="echoPin">Pin that is sampled for the response; must be &gt;= 0 unless <paramref name="mode"/> is <see cref="PulseFeedbackMode.DrainDuration"/>.</param>
+        /// <param name="mode">Which measurement to perform on <see cref="Trigger"/>.</param>
+        /// <exception cref="ArgumentException">Pins are invalid or already reserved, or <paramref name="mode"/> contradicts the pin layout.</exception>
         public PulseFeedbackController(int pulsePin, int echoPin, PulseFeedbackMode mode) {
 
 
@@ -505,7 +642,7 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
 
             NativeRpmsgHelper.DataReceived += this.NativeRpmsgHelper_PulseFeedbackDataReceived;
 
-            NativeRpmsgHelper.TaskReceive();
+            NativeRpmsgHelper.StartReceiving();
 
             PinReserve(this.pulsePin);
 
@@ -546,6 +683,11 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
 
         private bool valueReady = false;
         private long value = 0;
+        /// <summary>
+        /// Drives the pulse pin for <see cref="PulseLength"/>, measures the matching echo and returns it.
+        /// Blocks until the measurement completes or <see cref="Timeout"/> elapses (polls every 10 ms).
+        /// </summary>
+        /// <returns>The measured duration (drain time, echo width, or trigger-to-echo delay depending on the mode).</returns>
         public TimeSpan Trigger() {
             var buffer = new uint[DigitalSignalController.CMD_RAW_DATA_START_OFFSET];
 
@@ -602,6 +744,7 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
             this.Dispose(disposing: false);
         }
 
+        /// <summary>Unsubscribes from the timing helper and releases the pulse and echo pins.</summary>
         public void Dispose() {
             this.Dispose(true);
             GC.SuppressFinalize(this);

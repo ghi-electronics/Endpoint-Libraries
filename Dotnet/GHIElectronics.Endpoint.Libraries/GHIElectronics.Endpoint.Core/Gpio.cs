@@ -4,34 +4,84 @@ using GHIElectronics.Endpoint.Core.Internal;
 
 namespace GHIElectronics.Endpoint.Core {
     /// <summary>
-    /// The EPM815 module (STM32MP15x): its pin names and the pin setup the
-    /// other libraries use. Pin numbers are port * 16 + pin, with port Z
-    /// after port I.
+    /// The EPM815 module: its pin names and the pin setup the other libraries
+    /// use. Pin numbers are port * 16 + pin, with port Z after port I.
     /// </summary>
     public static partial class EPM815 {
+        /// <summary>
+        /// GPIO pins and the register-level pin configuration (mode, alternate
+        /// function, pull, speed, output type) for EPM815. Most applications
+        /// should use the standard <see cref="GpioController"/> through
+        /// <see cref="Driver"/>; the enums and setters here are for the
+        /// low-level peripheral libraries in this package.
+        /// </summary>
         public static partial class Gpio {
+            /// <summary>Alternate functions AF0..AF15 for the pin's AFRL / AFRH register.</summary>
+            /// <remarks>The processor's reference manual lists which peripheral each AF selects per pin. <see cref="NONE"/> means "no alternate function set".</remarks>
             public enum Alternate : int {
                 AF0 = 0, AF1 = 1, AF2 = 2, AF3 = 3, AF4 = 4, AF5 = 5, AF6 = 6, AF7 = 7,
                 AF8 = 8, AF9 = 9, AF10 = 10, AF11 = 11, AF12 = 12, AF13 = 13, AF14 = 14, AF15 = 15,
                 NONE = -1
             }
 
+            /// <summary>GPIO ports on EPM815 (A..I plus the always-on Z bank).</summary>
             public enum Port : uint { A = 0, B = 1, C = 2, D = 3, E = 4, F = 5, G = 6, H = 7, I = 8, Z = 9 }
 
-            public enum Moder : int { Input = 0, Output = 1, Alternate = 2, Analog = 3, NONE = -1 }
+            /// <summary>Values for the GPIO MODER register.</summary>
+            public enum Moder : int {
+                /// <summary>Digital input.</summary>
+                Input = 0,
+                /// <summary>Digital output driven by ODR.</summary>
+                Output = 1,
+                /// <summary>Alternate function (controlled by a peripheral).</summary>
+                Alternate = 2,
+                /// <summary>Analog mode (input to ADC/DAC, disconnected from the digital Schmitt trigger).</summary>
+                Analog = 3,
+                /// <summary>No mode selected.</summary>
+                NONE = -1
+            }
 
-            public enum OutputType : int { PushPull = 0, OpenDrain = 1 }
+            /// <summary>Values for the GPIO OTYPER register.</summary>
+            public enum OutputType : int {
+                /// <summary>Push-pull output (actively drives both high and low).</summary>
+                PushPull = 0,
+                /// <summary>Open-drain output (actively drives low; released for the external pull-up to drive high).</summary>
+                OpenDrain = 1
+            }
 
-            public enum Pull : int { None = 0, Up = 1, Down = 2 }
+            /// <summary>Values for the GPIO PUPDR register.</summary>
+            public enum Pull : int {
+                /// <summary>No pull resistor.</summary>
+                None = 0,
+                /// <summary>Internal pull-up resistor enabled.</summary>
+                Up = 1,
+                /// <summary>Internal pull-down resistor enabled.</summary>
+                Down = 2
+            }
 
-            public enum Speed : int { Low = 0, Medium = 1, High = 2, VeryHigh = 3 }
+            /// <summary>Values for the GPIO OSPEEDR register (slew rate).</summary>
+            public enum Speed : int {
+                /// <summary>Low speed, slowest slew rate.</summary>
+                Low = 0,
+                /// <summary>Medium speed.</summary>
+                Medium = 1,
+                /// <summary>High speed.</summary>
+                High = 2,
+                /// <summary>Very high speed, fastest slew rate.</summary>
+                VeryHigh = 3
+            }
 
+            /// <summary>Edge-trigger direction for pin change events.</summary>
             public enum Edge : int {
+                /// <summary>Low-to-high transition.</summary>
                 Rising = PinEventTypes.Rising,
+                /// <summary>High-to-low transition.</summary>
                 Falling = PinEventTypes.Falling,
             }
 
             /// <summary>The EPM815's pins (ports A to I and Z)</summary>
+            /// <remarks>Each constant is packed as <c>port * 16 + line</c>. The letter after P is the
+            /// <see cref="Port"/> (A..I, Z) and the digits 0..15 are the pin within that port.</remarks>
             public static class Pin {
                 public const int PA0 = 0; public const int PA1 = 1; public const int PA2 = 2; public const int PA3 = 3; public const int PA4 = 4; public const int PA5 = 5; public const int PA6 = 6; public const int PA7 = 7;
                 public const int PA8 = 8; public const int PA9 = 9; public const int PA10 = 10; public const int PA11 = 11; public const int PA12 = 12; public const int PA13 = 13; public const int PA14 = 14; public const int PA15 = 15;
@@ -57,6 +107,9 @@ namespace GHIElectronics.Endpoint.Core {
                 public const int NONE = -1;
             }
 
+            /// <summary>Writes the pin's MODER register field.</summary>
+            /// <param name="pin">EPM815 pin number.</param>
+            /// <param name="moder">The mode to apply; <see cref="Moder.NONE"/> is not allowed.</param>
             public static void SetModer(int pin, Moder moder) {
                 if (moder == Moder.NONE) {
                     throw new ArgumentOutOfRangeException(nameof(moder));
@@ -65,6 +118,9 @@ namespace GHIElectronics.Endpoint.Core {
                 Stm32Mp1Pins.SetMode(port, line, (Stm32Mp1Pins.Mode)moder);
             }
 
+            /// <summary>Writes the pin's alternate function (AFRL / AFRH).</summary>
+            /// <param name="pin">EPM815 pin number.</param>
+            /// <param name="alternate">The AF to select; <see cref="Alternate.NONE"/> is not allowed.</param>
             public static void SetAlternate(int pin, Alternate alternate) {
                 if (alternate == Alternate.NONE) {
                     throw new ArgumentOutOfRangeException(nameof(alternate));
@@ -73,16 +129,19 @@ namespace GHIElectronics.Endpoint.Core {
                 Stm32Mp1Pins.SetAlternate(port, line, (int)alternate);
             }
 
+            /// <summary>Writes the pin's OTYPER register bit (push-pull or open-drain).</summary>
             public static void SetOutputType(int pin, OutputType type) {
                 var (port, line) = ChipPin(pin);
                 Stm32Mp1Pins.SetOutputType(port, line, (Stm32Mp1Pins.OutputType)type);
             }
 
+            /// <summary>Writes the pin's PUPDR register field (pull-up / pull-down).</summary>
             public static void SetPull(int pin, Pull pull) {
                 var (port, line) = ChipPin(pin);
                 Stm32Mp1Pins.SetPull(port, line, (Stm32Mp1Pins.Pull)pull);
             }
 
+            /// <summary>Writes the pin's OSPEEDR register field (slew rate).</summary>
             public static void SetSpeed(int pin, Speed speed) {
                 var (port, line) = ChipPin(pin);
                 Stm32Mp1Pins.SetSpeed(port, line, (Stm32Mp1Pins.Speed)speed);
@@ -91,12 +150,16 @@ namespace GHIElectronics.Endpoint.Core {
             /// <summary>Marks the pin as used by the app, so the libraries do not use it too</summary>
             public static void PinReserve(int pin) => PinReservations.Reserve("the application", Check(pin));
 
+            /// <summary>Releases a reservation made with <see cref="PinReserve"/>.</summary>
             public static void PinRelease(int pin) => PinReservations.Release(Check(pin));
 
+            /// <summary>True if the pin is currently reserved (by the app or by any library).</summary>
             public static bool IsPinReserved(int pin) => PinReservations.IsReserved(Check(pin));
 
+            /// <summary>The port index for the pin (0 = A ... 8 = I; 9 = Z).</summary>
             public static int GetPort(int pin) => Check(pin) / 16;
 
+            /// <summary>The line within the port for the pin (0 to 15).</summary>
             public static int GetPin(int pin) => Check(pin) % 16;
 
             /// <summary>The pin's name, for example "PC0"</summary>

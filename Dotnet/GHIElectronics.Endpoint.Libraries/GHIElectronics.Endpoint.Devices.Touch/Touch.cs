@@ -17,23 +17,41 @@ namespace GHIElectronics.Endpoint.Devices.Touch {
 
     /// <summary>One finger on the touchscreen.</summary>
     public readonly struct TouchPoint {
+        /// <summary>Builds a touch point.</summary>
+        /// <param name="id">Tracking id, stable per finger across moves within one gesture.</param>
+        /// <param name="x">X coordinate in pixels, 0 at the left of the panel.</param>
+        /// <param name="y">Y coordinate in pixels, 0 at the top of the panel.</param>
         public TouchPoint(int id, int x, int y) { this.Id = id; this.X = x; this.Y = y; }
         /// <summary>Tracking ID, stable per finger across moves within one gesture.</summary>
         public int Id { get; }
+        /// <summary>X coordinate in pixels, 0 at the left of the panel.</summary>
         public int X { get; }
+        /// <summary>Y coordinate in pixels, 0 at the top of the panel.</summary>
         public int Y { get; }
     }
 
+    /// <summary>Event data for <see cref="Touch.OnChangedEvent"/>: how the fingers changed since the last event.</summary>
     public sealed class TouchEventArgs : EventArgs {
+        /// <summary>Builds a touch-event payload.</summary>
+        /// <param name="eventType">What changed (pressed, moved, released).</param>
+        /// <param name="points">Every finger currently on the screen; empty when <paramref name="eventType"/> is <see cref="TouchEventType.Released"/>.</param>
         public TouchEventArgs(TouchEventType eventType, TouchPoint[] points) {
             this.EventType = eventType;
             this.Points = points;
         }
+        /// <summary>Kind of change this event represents.</summary>
         public TouchEventType EventType { get; }
         /// <summary>Every finger currently on the screen. Empty for Released.</summary>
         public TouchPoint[] Points { get; }
     }
 
+    /// <summary>
+    /// Handler for <see cref="Touch.OnChangedEvent"/>. Called on the touch reader thread
+    /// (<see cref="InputTouch"/> uses the kernel evdev reader thread; custom subclasses
+    /// decide their own).
+    /// </summary>
+    /// <param name="sender">The touchscreen that saw the change.</param>
+    /// <param name="e">Which fingers are on the screen now and what changed.</param>
     public delegate void TouchChangedEventHandler(Touch sender, TouchEventArgs e);
 
     /// <summary>
@@ -72,6 +90,7 @@ namespace GHIElectronics.Endpoint.Devices.Touch {
             }
         }
 
+        /// <summary>Releases the touchscreen handle and stops the reader thread.</summary>
         public abstract void Dispose();
 
         /// <summary>
@@ -93,12 +112,18 @@ namespace GHIElectronics.Endpoint.Devices.Touch {
         private readonly int width, height;
         private bool connected;
 
+        /// <inheritdoc />
         public override int Width => this.width;
+        /// <inheritdoc />
         public override int Height => this.height;
+        /// <inheritdoc />
         public override bool Connected => this.connected;
 
+        /// <summary>The <c>/dev/input/eventN</c> path the touchscreen was opened on.</summary>
         public string DeviceName { get; }
+        /// <summary>USB vendor id (0 if the touchscreen is not a USB device).</summary>
         public int VendorId { get; }
+        /// <summary>USB product id (0 if the touchscreen is not a USB device).</summary>
         public int ProductId { get; }
 
         /// <summary>Opens a specific /dev/input/eventN path.</summary>
@@ -134,6 +159,7 @@ namespace GHIElectronics.Endpoint.Devices.Touch {
             return new InputTouch(path);
         }
 
+        /// <summary>Closes the kernel input device and stops the reader thread.</summary>
         public override void Dispose() {
             var old = Interlocked.Exchange(ref this.handle, 0);
             if (old != 0) {

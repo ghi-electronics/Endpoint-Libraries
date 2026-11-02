@@ -32,7 +32,7 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
         /// <summary>A serial port, for System.IO.Ports.SerialPort ("/dev/ttyUSB0", "/dev/ttyACM0")</summary>
         Serial = 8,
 
-        /// <summary>"/dev/video0": open it with Camera (GHIElectronics.Endpoint.Devices.Media)</summary>
+        /// <summary>"/dev/video0": open it with UsbCamera (GHIElectronics.Endpoint.Devices.Camera)</summary>
         Webcam = 9,
 
         /// <summary>A sound card: speaker, microphone ("hw:1"), for Iot.Device.Media.SoundDevice</summary>
@@ -48,6 +48,7 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
         Touch = 13,
     }
 
+    /// <summary>Event data for <see cref="UsbHostController.ConnectionChanged"/>: one USB device attached or detached.</summary>
     public sealed class UsbDeviceConnectionEventArgs : EventArgs {
         internal UsbDeviceConnectionEventArgs(DeviceConnectionStatus deviceStatus, uint id, DeviceType type, ushort vendorId,
                                               ushort productId, string deviceName, string manufacturer, string product,
@@ -63,15 +64,19 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
             this.SerialNumber = serialNumber;
         }
 
+        /// <summary>Whether the device was just connected or just disconnected.</summary>
         public DeviceConnectionStatus DeviceStatus { get; }
 
         /// <summary>The device's number: the same for all its events, a new one when it is plugged in again</summary>
         public uint Id { get; }
 
+        /// <summary>What the device gives (see <see cref="DeviceType"/>); hints what to open <see cref="DeviceName"/> with.</summary>
         public DeviceType Type { get; }
 
+        /// <summary>USB vendor id (VID) from the device descriptor.</summary>
         public ushort VendorId { get; }
 
+        /// <summary>USB product id (PID) from the device descriptor.</summary>
         public ushort ProductId { get; }
 
         /// <summary>What to open: "/dev/ttyUSB0", "eth1"... (see DeviceType)</summary>
@@ -87,13 +92,29 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
         public string SerialNumber { get; }
     }
 
+    /// <summary>
+    /// Handler for <see cref="UsbHostController.ConnectionChanged"/>. Called on the
+    /// library's USB thread when a device is attached or detached; the devices already
+    /// plugged in at <see cref="UsbHostController.Enable"/> time are reported too.
+    /// </summary>
+    /// <param name="sender">The controller that saw the change.</param>
+    /// <param name="e">Details about the device and whether it was attached or detached.</param>
     public delegate void UsbConnectionChangedEventHandler(UsbHostController sender, UsbDeviceConnectionEventArgs e);
 
     /// <summary>
-    /// The USB devices plugged into the board, directly or through hubs:
+    /// The USB devices plugged into the board, directly or through hubs. One
+    /// event for each thing a device gives: a keyboard with a touchpad gives
+    /// Keyboard and Mouse, a webcam gives Webcam and Audio (its microphone).
+    /// <c>DeviceName</c> is what to open it with (see <see cref="DeviceType"/>).
+    /// The events come on the library's USB thread. USB drives come as
+    /// MassStorage: use <c>StorageController</c>
+    /// (<c>GHIElectronics.Endpoint.Devices.Storage</c>) for them. A controller
+    /// stays alive until it is disposed.
+    /// </summary>
+    /// <example>
     /// <code>
     /// var usb = UsbHostController.GetDefault();
-    /// usb.OnConnectionChangedEvent += (sender, e) => {
+    /// usb.ConnectionChanged += (sender, e) => {
     ///     if (e.DeviceStatus == DeviceConnectionStatus.Connected &amp;&amp; e.Type == DeviceType.Serial) {
     ///         var port = new SerialPort(e.DeviceName, 115200);   // "/dev/ttyUSB0"
     ///         port.Open();
@@ -101,13 +122,7 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
     /// };
     /// usb.Enable();   // the devices already plugged in are reported too
     /// </code>
-    /// One event for each thing a device gives: a keyboard with a touchpad gives
-    /// Keyboard and Mouse, a webcam gives Webcam and Audio (its microphone).
-    /// DeviceName is what to open it with (see DeviceType). The events come on
-    /// the library's USB thread. USB drives come as MassStorage: use
-    /// StorageController (GHIElectronics.Endpoint.Devices.Storage) for them.
-    /// A controller stays alive until it is disposed.
-    /// </summary>
+    /// </example>
     public sealed unsafe class UsbHostController : IDisposable {
         private readonly GCHandle self;
         private nint handle;
@@ -123,14 +138,16 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
             }
         }
 
+        /// <summary>A new USB host controller for the board. Call <see cref="Enable"/> to start seeing devices.</summary>
         public static UsbHostController GetDefault() => new();
 
         /// <summary>A device connected or disconnected</summary>
-        public event UsbConnectionChangedEventHandler? OnConnectionChangedEvent;
+        public event UsbConnectionChangedEventHandler? ConnectionChanged;
 
         /// <summary>Starts reporting devices: first the ones already plugged in</summary>
         public void Enable() => Libendpoint.Check(Libendpoint.UsbHostEnable(this.Handle()));
 
+        /// <summary>Stops reporting devices. Already-reported devices stay accessible until they are unplugged.</summary>
         public void Disable() => Libendpoint.Check(Libendpoint.UsbHostDisable(this.Handle()));
 
         /// <summary>Stops the events (one being delivered finishes first)</summary>
@@ -153,13 +170,13 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
                                     byte* manufacturer, byte* product, byte* serialNumber) {
             try {
                 if (GCHandle.FromIntPtr(context).Target is UsbHostController controller) {
-                    controller.OnConnectionChangedEvent?.Invoke(controller, new UsbDeviceConnectionEventArgs(
+                    controller.ConnectionChanged?.Invoke(controller, new UsbDeviceConnectionEventArgs(
                         (DeviceConnectionStatus)status, id, (DeviceType)type, (ushort)vendorId, (ushort)productId,
                         Text(deviceName), Text(manufacturer), Text(product), Text(serialNumber)));
                 }
             }
             catch (Exception e) {
-                Console.Error.WriteLine($"Unhandled exception in OnConnectionChangedEvent: {e}");
+                Console.Error.WriteLine($"Unhandled exception in ConnectionChanged: {e}");
             }
         }
     }

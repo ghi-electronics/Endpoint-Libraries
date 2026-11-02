@@ -11,6 +11,8 @@ public class Dropdown : Widget {
     private EventHandler? _valueChanged;
     private GCHandle _valueChangedHandle;
 
+    /// <summary>Create a dropdown inside <paramref name="parent"/>.</summary>
+    /// <param name="parent">Containing widget.</param>
     public unsafe Dropdown(Widget parent) : base(0) {
         Libendpoint.Check(Libendpoint.UiDropdownCreate(parent.Native, out var n));
         this.Native = n;
@@ -26,11 +28,13 @@ public class Dropdown : Widget {
     public void SetOptions(IEnumerable<string> options) =>
         Libendpoint.Check(Libendpoint.UiDropdownSetOptions(this.Native, string.Join('\n', options)));
 
+    /// <summary>0-based index of the currently selected item.</summary>
     public int Selected {
         get { Libendpoint.Check(Libendpoint.UiDropdownGetSelected(this.Native, out var v)); return v; }
         set => Libendpoint.Check(Libendpoint.UiDropdownSetSelected(this.Native, value));
     }
 
+    /// <summary>Fires when the user picks a different item. Runs on the UI thread.</summary>
     public event EventHandler ValueChanged {
         add => this._valueChanged += value;
         remove => this._valueChanged -= value;

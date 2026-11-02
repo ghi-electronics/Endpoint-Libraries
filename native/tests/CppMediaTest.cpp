@@ -64,15 +64,15 @@ int main() {
         Check(true, std::string("Printer(/dev/null): ") + e.what());
     }
 
-    Media::SoundConnectionSettings playing;
+    Sound::SoundConnectionSettings playing;
     playing.PlaybackDeviceName = "hw:Loopback,0";
     playing.MixerDeviceName = "hw:Dummy";
-    auto player = Media::SoundDevice::Create(playing);
-    Media::SoundConnectionSettings recording;
+    auto player = Sound::SoundDevice::Create(playing);
+    Sound::SoundConnectionSettings recording;
     recording.RecordingDeviceName = "hw:Loopback,1";
     recording.RecordingSampleRate = 16000;
     recording.RecordingChannels = 1;
-    auto recorder = Media::SoundDevice::Create(recording, false);
+    auto recorder = Sound::SoundDevice::Create(recording, false);
 
     struct Case {
         const char* name;

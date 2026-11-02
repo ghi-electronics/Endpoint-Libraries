@@ -24,13 +24,15 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
     /// for label printers, PCL or PostScript for office printers) go to it as they are.
     /// </summary>
     /// <remarks>
-    /// Open it with the DeviceName of a Printer from UsbHostController ("/dev/usb/lp0").
+    /// Open it with the DeviceName of a Printer from <c>UsbHostController</c> ("/dev/usb/lp0").
+    /// </remarks>
+    /// <example>
     /// <code>
     /// var printer = new Printer(e.DeviceName);
     /// printer.Write("Hello\n\n\n");
     /// printer.Write([0x1D, 0x56, 0x00]);          // ESC/POS: cut the paper
     /// </code>
-    /// </remarks>
+    /// </example>
     public unsafe class Printer : BaseDevice {
         /// <summary>Opens the printer that UsbHostController reported ("/dev/usb/lp0").</summary>
         public Printer(string deviceName) : base(deviceName, DeviceType.Printer) {

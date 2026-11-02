@@ -6,13 +6,15 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
     /// By default, the reported range for position is between -512 and 512, as on
     /// TinyCLR. Cursor1 is the left stick; Cursor2 is the right stick of a game pad.
     /// Buttons are numbered from 0. The events come on the joystick's own thread.
+    /// </remarks>
+    /// <example>
     /// <code>
     /// var joystick = new Joystick(e.DeviceName);    // from UsbHostController, DeviceType.Joystick
     /// joystick.CursorMoved += (sender, a) => Console.WriteLine($"{a.Which} at {a.NewPosition.X}, {a.NewPosition.Y}");
     /// joystick.ButtonChanged += (sender, a) => Console.WriteLine($"Button {a.Which} {a.State}");
     /// joystick.HatSwitchPressed += (sender, a) => Console.WriteLine($"Hat {a.Direction}");
     /// </code>
-    /// </remarks>
+    /// </example>
     public class Joystick : BaseDevice {
         /// <summary>The delegate for when one of the joystick's button is pressed or released.</summary>
         public delegate void ButtonChangedEventHandler(Joystick sender, ButtonChangedEventArgs e);

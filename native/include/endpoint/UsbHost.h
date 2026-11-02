@@ -5,7 +5,7 @@
 //   using namespace GHIElectronics::Endpoint::Devices::UsbHost;
 //
 //   auto usb = UsbHostController::GetDefault();
-//   usb.OnConnectionChangedEvent += [](UsbHostController& sender, const UsbDeviceConnectionEventArgs& e) {
+//   usb.ConnectionChanged += [](UsbHostController& sender, const UsbDeviceConnectionEventArgs& e) {
 //       if (e.DeviceStatus() == DeviceConnectionStatus::Connected && e.Type() == DeviceType::Serial) {
 //           std::printf("USB serial port %s\n", e.DeviceName().c_str());   // "/dev/ttyUSB0"
 //       }
@@ -49,8 +49,8 @@ enum class DeviceType {
     MassStorage = 6,  // a drive: use StorageController (no name)
     Printer = 7,      // "/dev/usb/lp0": open it with Printer
     Serial = 8,       // a serial port, for SerialPort ("/dev/ttyUSB0", "/dev/ttyACM0")
-    Webcam = 9,       // "/dev/video0": open it with Media::Camera
-    Audio = 10,       // a sound card: speaker, microphone ("hw:1"), for Media::SoundDevice
+    Webcam = 9,       // "/dev/video0": open it with Camera::UsbCamera
+    Audio = 10,       // a sound card: speaker, microphone ("hw:1"), for Sound::SoundDevice
     Network = 11,     // an Ethernet, WiFi or cellular adapter: the network interface ("eth1", "wlan1")
     Bluetooth = 12,   // "hci0"
     Touch = 13,       // "/dev/input/eventN": open it with Touch (built-in or USB touchscreen)
@@ -103,7 +103,7 @@ public:
     UsbHostController& operator=(const UsbHostController&) = delete;
 
     // A device connected or disconnected. += gives an id for -=.
-    Core::Event<UsbHostController&, const UsbDeviceConnectionEventArgs&> OnConnectionChangedEvent;
+    Core::Event<UsbHostController&, const UsbDeviceConnectionEventArgs&> ConnectionChanged;
 
     // Starts reporting devices: first the ones already plugged in
     void Enable() { Core::detail::Check(endpoint_usbhost_enable(handle_.Get("UsbHostController"))); }
@@ -126,7 +126,7 @@ private:
                         const char* serialNumber) {
         auto self = static_cast<UsbHostController*>(context);
         try {
-            self->OnConnectionChangedEvent(
+            self->ConnectionChanged(
                 *self, UsbDeviceConnectionEventArgs(static_cast<DeviceConnectionStatus>(status), id,
                                                     static_cast<DeviceType>(type), static_cast<uint16_t>(vendorId),
                                                     static_cast<uint16_t>(productId), deviceName ? deviceName : "",
@@ -134,7 +134,7 @@ private:
                                                     serialNumber ? serialNumber : ""));
         }
         catch (const std::exception& e) {
-            std::fprintf(stderr, "Unhandled exception in OnConnectionChangedEvent: %s\n", e.what());
+            std::fprintf(stderr, "Unhandled exception in ConnectionChanged: %s\n", e.what());
         }
     }
 
@@ -383,7 +383,7 @@ private:
 // (a US keyboard; Ctrl+A to Ctrl+Z give 1 to 26). A key held down gives one KeyDown.
 //
 //   auto keyboard = std::make_unique<Keyboard>(e.DeviceName());   // DeviceType::Keyboard
-//   keyboard->CharDown += [](Keyboard&, const Keyboard::KeyboardEventArgs& a) { std::putchar(a.ASCII()); };
+//   keyboard->CharDown += [](Keyboard&, const Keyboard::KeyboardEventArgs& a) { std::putchar(a.Ascii()); };
 class Keyboard : public BaseDevice {
 public:
     class KeyboardEventArgs {
@@ -391,7 +391,7 @@ public:
         KeyboardEventArgs(Key which, char ascii) : which_(which), ascii_(ascii) {}
         Key Which() const { return which_; }
         // The ASCII character, 0 if the key has none
-        char ASCII() const { return ascii_; }
+        char Ascii() const { return ascii_; }
 
     private:
         Key which_;

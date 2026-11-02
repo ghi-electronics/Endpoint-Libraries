@@ -7,15 +7,17 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
     /// UPS...): its reports, as hidapi gives them.
     /// </summary>
     /// <remarks>
-    /// Open it with the DeviceName of a HID device from UsbHostController ("/dev/hidraw0").
+    /// Open it with the DeviceName of a HID device from <c>UsbHostController</c> ("/dev/hidraw0").
     /// A report's first byte is its report ID: 0 for a device that does not number its reports.
+    /// </remarks>
+    /// <example>
     /// <code>
     /// var hid = new HidDevice(e.DeviceName);
-    /// hid.Write([0x00, 0x01, 0x02]);                    // report ID 0, then the report
+    /// hid.Write([0x00, 0x01, 0x02]);              // report ID 0, then the report
     /// var buffer = new byte[64];
-    /// var count = hid.Read(buffer, 1000);              // an input report, 0 after 1 s without one
+    /// var count = hid.Read(buffer, 1000);         // an input report, 0 after 1 s without one
     /// </code>
-    /// </remarks>
+    /// </example>
     public unsafe class HidDevice : BaseDevice {
         /// <summary>Opens the HID device that UsbHostController reported ("/dev/hidraw0").</summary>
         public HidDevice(string deviceName) : base(deviceName, DeviceType.HID) {

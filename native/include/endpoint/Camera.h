@@ -1,50 +1,32 @@
-// Webcams and sound for Endpoint.
+// Camera for Endpoint.
 //
-// Camera: any USB webcam (the DeviceName of a Webcam from UsbHostController).
+// UsbCamera: any USB webcam (the DeviceName of a Webcam from UsbHostController).
 // Pictures come as JPEG files, whether the camera sends MJPEG or raw YUYV:
 //
-//   using namespace GHIElectronics::Endpoint::Devices::Media;
+//   using namespace GHIElectronics::Endpoint::Devices::Camera;
 //
-//   auto camera = std::make_unique<Camera>(e.DeviceName());   // "/dev/video0"
+//   auto camera = std::make_unique<UsbCamera>(e.DeviceName());   // "/dev/video0"
 //   camera->SetResolution(1280, 720);
 //   camera->Capture("/media/usb0/photo.jpg");
-//   camera->FrameReceived += [](Camera&, const FrameReceivedEventArgs& frame) { Send(frame.Jpeg()); };
+//   camera->FrameReceived += [](UsbCamera&, const FrameReceivedEventArgs& frame) { Send(frame.Jpeg()); };
 //   camera->StartStreaming();
 //
 // The first picture waits until the camera's automatic exposure has settled
 // (about a second); while pictures are taken the camera keeps running, so the
 // next ones come at once. The events come on the camera's own thread.
-//
-// Sound, with the API of .NET IoT's SoundDevice (Iot.Device.Media): play WAV
-// and MP3, record WAV, volume and mute, on any sound card of the board.
-//
-//   auto sound = SoundDevice::Create(SoundConnectionSettings());   // the first sound card
-//   sound.Play("/media/usb0/beep.wav");
-//   sound.PlayMp3("/media/usb0/song.mp3");
-//   sound.Record(5, "/data/voice.wav");                            // 5 s from the microphone
-//
-// A USB sound card is "hw:1" (the DeviceName of its UsbHostController event):
-// with more than one card, give it as PlaybackDeviceName, RecordingDeviceName
-// and MixerDeviceName ("hw:" names are opened as "plughw:", which converts any
-// WAV to what the card plays). Play, PlayMp3 and Record wait until they are
-// done. Volumes are in the card's own units, as on .NET.
 #pragma once
 
 #include <cstdint>
 #include <cstdio>
-#include <cstdlib>
 #include <exception>
 #include <fstream>
-#include <iterator>
-#include <istream>
-#include <ostream>
 #include <span>
 #include <string>
 #include <vector>
 
 #include "detail/Handle.h"
 
-namespace GHIElectronics::Endpoint::Devices::Media {
+namespace GHIElectronics::Endpoint::Devices::Camera {
 
 // What a camera sends (pictures always come out as JPEG)
 enum class CameraPixelFormat { Mjpeg = 0, Yuyv = 1 };
@@ -96,10 +78,10 @@ private:
 
 // A webcam: any USB Video Class camera. It cannot be copied or moved: keep it
 // in a std::unique_ptr (or a variable that lives long enough).
-class Camera {
+class UsbCamera {
 public:
     // The camera UsbHostController reported ("/dev/video0"; the number can change when it is plugged in again)
-    explicit Camera(const std::string& deviceName) : deviceName_(deviceName) {
+    explicit UsbCamera(const std::string& deviceName) : deviceName_(deviceName) {
         Core::detail::Check(endpoint_camera_open(deviceName.c_str(), &Frame, &Unplugged, this, &handle_));
         char name[256];
         int connected = 0, count = 0;
@@ -111,9 +93,9 @@ public:
             formats_.push_back({width, height, static_cast<CameraPixelFormat>(pixelFormat), rate});
         }
     }
-    ~Camera() { Dispose(); }
-    Camera(const Camera&) = delete;
-    Camera& operator=(const Camera&) = delete;
+    ~UsbCamera() { Dispose(); }
+    UsbCamera(const UsbCamera&) = delete;
+    UsbCamera& operator=(const UsbCamera&) = delete;
 
     const std::string& DeviceName() const { return deviceName_; }
     // The camera's name ("USB 2.0 Camera: USB Camera")
@@ -173,8 +155,8 @@ public:
     }
 
     // A frame while streaming; the camera was unplugged. += gives an id for -=.
-    Core::Event<Camera&, const FrameReceivedEventArgs&> FrameReceived;
-    Core::Event<Camera&> Disconnected;
+    Core::Event<UsbCamera&, const FrameReceivedEventArgs&> FrameReceived;
+    Core::Event<UsbCamera&> Disconnected;
 
     // Every frame comes as a JPEG in FrameReceived
     void StartStreaming() {
@@ -223,7 +205,7 @@ public:
 private:
     void* Get() const {
         if (handle_ == nullptr) {
-            throw Core::ObjectDisposedException("The Camera is disposed");
+            throw Core::ObjectDisposedException("The UsbCamera is disposed");
         }
         return handle_;
     }
@@ -245,7 +227,7 @@ private:
     // From the camera's threads. A handler's error must not stop the frames: it
     // is printed, as .NET prints an unhandled exception.
     static void Frame(void* context, const uint8_t* jpeg, int length, int width, int height) {
-        auto self = static_cast<Camera*>(context);
+        auto self = static_cast<UsbCamera*>(context);
         try {
             self->FrameReceived(*self, FrameReceivedEventArgs({jpeg, static_cast<size_t>(length)}, width, height));
         }
@@ -255,7 +237,7 @@ private:
     }
 
     static void Unplugged(void* context) {
-        auto self = static_cast<Camera*>(context);
+        auto self = static_cast<UsbCamera*>(context);
         try {
             self->Disconnected(*self);
         }
@@ -271,102 +253,4 @@ private:
     void* handle_ = nullptr;
 };
 
-// Which sound card plays, records and has the volume controls, and how recordings sound
-struct SoundConnectionSettings {
-    std::string PlaybackDeviceName = "default";
-    std::string RecordingDeviceName = "default";
-    std::string MixerDeviceName = "default";
-    uint32_t RecordingSampleRate = 8000;
-    uint16_t RecordingChannels = 2;
-    uint16_t RecordingBitsPerSample = 16;
-};
-
-class SoundDevice {
-public:
-    // unmute: turn the sound on (playback and recording), as .NET does
-    static SoundDevice Create(const SoundConnectionSettings& settings, bool unmute = true) {
-        return SoundDevice(settings, unmute);
-    }
-
-    SoundDevice(const SoundConnectionSettings& settings, bool unmute = true) : settings_(settings) {
-        void* handle = nullptr;
-        Core::detail::Check(endpoint_sound_create(settings.PlaybackDeviceName.c_str(), settings.RecordingDeviceName.c_str(),
-                                                  settings.MixerDeviceName.c_str(), static_cast<int>(settings.RecordingSampleRate),
-                                                  settings.RecordingChannels, settings.RecordingBitsPerSample, unmute ? 1 : 0,
-                                                  &handle));
-        handle_ = Handle(handle);
-    }
-
-    const SoundConnectionSettings& Settings() const { return settings_; }
-
-    // The card's volumes, in its own units, and mute switches
-    long PlaybackVolume() const { return GetVolume(0); }
-    void PlaybackVolume(long volume) { Core::detail::Check(endpoint_sound_set_volume(Get(), 0, volume)); }
-    bool PlaybackMute() const { return GetMute(0); }
-    void PlaybackMute(bool mute) { Core::detail::Check(endpoint_sound_set_mute(Get(), 0, mute ? 1 : 0)); }
-    long RecordingVolume() const { return GetVolume(1); }
-    void RecordingVolume(long volume) { Core::detail::Check(endpoint_sound_set_volume(Get(), 1, volume)); }
-    bool RecordingMute() const { return GetMute(1); }
-    void RecordingMute(bool mute) { Core::detail::Check(endpoint_sound_set_mute(Get(), 1, mute ? 1 : 0)); }
-
-    // Plays a WAV file, or a WAV from a stream (read to its end first)
-    void Play(const std::string& wavPath) { Core::detail::Check(endpoint_sound_play_file(Get(), wavPath.c_str(), 0)); }
-    void Play(std::istream& wavStream) { PlayBytes(ReadAll(wavStream), 0); }
-    void Play(std::span<const uint8_t> wav) { PlayBytes(wav, 0); }
-
-    // Plays an MP3 file, or an MP3 from a stream (read to its end first)
-    void PlayMp3(const std::string& mp3Path) { Core::detail::Check(endpoint_sound_play_file(Get(), mp3Path.c_str(), 1)); }
-    void PlayMp3(std::istream& mp3Stream) { PlayBytes(ReadAll(mp3Stream), 1); }
-    void PlayMp3(std::span<const uint8_t> mp3) { PlayBytes(mp3, 1); }
-
-    // Records a WAV for the given seconds, with the recording settings
-    void Record(uint32_t recordTimeSeconds, const std::string& outputFilePath) {
-        Core::detail::Check(endpoint_sound_record_file(Get(), static_cast<int>(recordTimeSeconds), outputFilePath.c_str()));
-    }
-    void Record(uint32_t recordTimeSeconds, std::ostream& outputStream) {
-        std::vector<uint8_t> wav(44 + static_cast<size_t>(recordTimeSeconds) * settings_.RecordingSampleRate *
-                                          settings_.RecordingChannels * settings_.RecordingBitsPerSample / 8);
-        int length = 0;
-        Core::detail::Check(endpoint_sound_record_buffer(Get(), static_cast<int>(recordTimeSeconds), wav.data(),
-                                                         static_cast<int>(wav.size()), &length));
-        outputStream.write(reinterpret_cast<const char*>(wav.data()), length);
-    }
-
-    // Records a WAV file in the background until StopRecording
-    void StartRecording(const std::string& outputFilePath) {
-        Core::detail::Check(endpoint_sound_start_recording(Get(), outputFilePath.c_str()));
-    }
-    void StopRecording() { Core::detail::Check(endpoint_sound_stop_recording(Get())); }
-
-    void Dispose() { handle_.Reset(); }
-
-private:
-    using Handle = Core::detail::Handle<endpoint_sound_dispose>;
-
-    void* Get() const { return handle_.Get("SoundDevice"); }
-
-    long GetVolume(int capture) const {
-        int64_t volume = 0;
-        Core::detail::Check(endpoint_sound_get_volume(Get(), capture, &volume));
-        return static_cast<long>(volume);
-    }
-
-    bool GetMute(int capture) const {
-        int mute = 0;
-        Core::detail::Check(endpoint_sound_get_mute(Get(), capture, &mute));
-        return mute != 0;
-    }
-
-    void PlayBytes(std::span<const uint8_t> data, int mp3) {
-        Core::detail::Check(endpoint_sound_play_buffer(Get(), data.data(), static_cast<int>(data.size()), mp3));
-    }
-
-    static std::vector<uint8_t> ReadAll(std::istream& stream) {
-        return std::vector<uint8_t>(std::istreambuf_iterator<char>(stream), std::istreambuf_iterator<char>());
-    }
-
-    SoundConnectionSettings settings_;
-    Handle handle_;
-};
-
-}  // namespace GHIElectronics::Endpoint::Devices::Media
+}  // namespace GHIElectronics::Endpoint::Devices::Camera

@@ -227,18 +227,18 @@ int main() {
         std::mutex lock;
         std::vector<intptr_t> connected;
         int calls = 0;
-        int first = (usb.OnConnectionChangedEvent += [&](Storage::StorageController& sender, const Storage::DeviceConnectionEventArgs& e) {
+        int first = (usb.ConnectionChanged += [&](Storage::StorageController& sender, const Storage::DeviceConnectionEventArgs& e) {
             std::lock_guard guard(lock);
             calls++;
             if (e.DeviceStatus() == Storage::DeviceConnectionStatus::Connected && &sender == &usb) {
                 connected.push_back(e.Hdc());
             }
         });
-        int second = (usb.OnConnectionChangedEvent += [&](Storage::StorageController&, const Storage::DeviceConnectionEventArgs&) {
+        int second = (usb.ConnectionChanged += [&](Storage::StorageController&, const Storage::DeviceConnectionEventArgs&) {
             std::lock_guard guard(lock);
             calls++;
         });
-        usb.OnConnectionChangedEvent -= second;
+        usb.ConnectionChanged -= second;
         Check(first != second, "+= gives an id for -=");
         usb.Enable();
         std::this_thread::sleep_for(1s);
@@ -281,7 +281,7 @@ int main() {
         auto host = UsbHostController::GetDefault();
         std::mutex mutex;
         std::vector<UsbDeviceConnectionEventArgs> things;
-        host.OnConnectionChangedEvent += [&](UsbHostController&, const UsbDeviceConnectionEventArgs& e) {
+        host.ConnectionChanged += [&](UsbHostController&, const UsbDeviceConnectionEventArgs& e) {
             std::lock_guard lock(mutex);
             things.push_back(e);
         };

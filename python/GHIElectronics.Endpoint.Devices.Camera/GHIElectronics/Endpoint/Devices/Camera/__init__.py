@@ -1,5 +1,14 @@
-"""Webcams: any USB Video Class camera. Pictures come as JPEG files, whether
-the camera sends MJPEG or raw YUYV pictures."""
+"""Camera of Endpoint.
+
+UsbCamera: any USB Video Class webcam (the DeviceName of a Webcam from
+UsbHostController). Pictures come as JPEG files, whether the camera sends
+MJPEG or raw YUYV pictures:
+
+    from GHIElectronics.Endpoint.Devices.Camera import UsbCamera
+
+    with UsbCamera(e.DeviceName) as camera:
+        camera.Capture("/media/usb0/photo.jpg")      # a JPEG
+"""
 
 import ctypes
 import os
@@ -7,6 +16,9 @@ from enum import IntEnum
 
 from GHIElectronics.Endpoint.Core._event import Event
 from GHIElectronics.Endpoint.Core._native import CameraFrameCallback, UnpluggedCallback, native
+
+__all__ = ["UsbCamera", "CameraControl", "CameraControlValue", "CameraFormat", "CameraPixelFormat",
+           "FrameReceivedEventArgs"]
 
 
 class CameraPixelFormat(IntEnum):
@@ -94,14 +106,14 @@ class _EventProperty:
             raise TypeError("Use += and -= to add and remove an event handler")
 
 
-class Camera:
+class UsbCamera:
     """A webcam: any USB Video Class camera, opened with the DeviceName of a Webcam
     from UsbHostController ("/dev/video0"; the number can change when it is
     plugged in again). The first picture waits until the camera's automatic
     exposure has settled (about a second); while pictures are taken the camera
     keeps running, so the next ones come at once. At first the size is 640x480.
 
-        with Camera(e.DeviceName) as camera:
+        with UsbCamera(e.DeviceName) as camera:
             camera.SetResolution(1280, 720)
             camera.Capture("/media/usb0/photo.jpg")
 
@@ -144,7 +156,7 @@ class Camera:
 
     def _h(self):
         if self._handle is None:
-            raise native.disposed("Camera")
+            raise native.disposed("UsbCamera")
         return self._handle
 
     def _frame(self, context, jpeg, length, width, height):
@@ -268,4 +280,4 @@ class Camera:
         self.Dispose()
 
     def __repr__(self):
-        return f"Camera({self.DeviceName!r})"
+        return f"UsbCamera({self.DeviceName!r})"

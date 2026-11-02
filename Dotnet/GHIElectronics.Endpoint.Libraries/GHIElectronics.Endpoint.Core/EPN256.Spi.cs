@@ -3,22 +3,20 @@ using System.Diagnostics;
 namespace GHIElectronics.Endpoint.Core {
     public static partial class EPN256 {
         /// <summary>
-        /// MA35D1 SPI controllers. Kernel driver is
-        /// <c>CONFIG_SPI_MA35D1_SPI=m</c> (modular), DT nodes stay
-        /// <c>status = "okay"</c>: at boot nothing probes, so pins stay free
-        /// GPIO; Initialize modprobes <c>spi-ma35d1-spi</c> + <c>spidev</c>,
-        /// which triggers probe + pinctrl mux and makes <c>/dev/spidev&lt;N&gt;.0</c>
-        /// appear for userspace.
+        /// SPI controllers bundled with EPN256. At boot nothing probes, so
+        /// pins stay free GPIO; <see cref="Initialize"/> brings up the bus
+        /// and <c>/dev/spidev&lt;N&gt;.0</c> appears for userspace.
+        /// Pin assignments are chosen so none collide with the EPN256 bundled
+        /// hardware, the console UART, or the resistive touch pins.
+        /// </summary>
+        /// <example>
         /// <code>
         /// EPN256.Spi.Initialize(EPN256.Spi.Spi0);
         /// using var device = SpiDevice.Create(new SpiConnectionSettings(EPN256.Spi.Spi0, 0) {
         ///     ClockFrequency = 1_000_000,
         /// });
         /// </code>
-        /// <para>Pin assignments (from Nuvoton's ma35d1-iot / ma35d1-hmi
-        /// reference designs — picked so none collide with the EPN256 bundled
-        /// hardware, console UART0, or the resistive touch pins):</para>
-        /// </summary>
+        /// </example>
         public static class Spi {
             /// <summary>SPI0: PB8 (SS1), PB9 (CLK), PB10 (MOSI), PB11 (MISO); /dev/spidev0.0.</summary>
             public const int Spi0 = 0;
@@ -39,6 +37,12 @@ namespace GHIElectronics.Endpoint.Core {
             private static readonly Dictionary<int, int> openCount = new();
             private static bool moduleLoaded;
 
+            /// <summary>
+            /// Brings up the SPI controller and userspace glue so
+            /// <c>/dev/spidev{bus}.0</c> appears for the chosen bus. The bus's
+            /// SS / CLK / MOSI / MISO pins are muxed as part of the probe.
+            /// </summary>
+            /// <param name="bus"><see cref="Spi0"/>, <see cref="Spi1"/>, <see cref="Spi2"/> or <see cref="Spi3"/>.</param>
             public static void Initialize(int bus) {
                 ValidateBus(bus);
                 lock (gate) {
@@ -55,11 +59,17 @@ namespace GHIElectronics.Endpoint.Core {
                 }
                 if (!File.Exists(dev)) {
                     throw new InvalidOperationException(
-                        $"spi-ma35d1 loaded but {dev} did not appear within 1 s. " +
+                        $"SPI controller loaded but {dev} did not appear within 1 s. " +
                         "Have you added a pinctrl_spi group to the device tree for your board?");
                 }
             }
 
+            /// <summary>
+            /// Reverse of <see cref="Initialize"/>. When the last outstanding
+            /// <see cref="Initialize"/> for any bus is matched, the spidev and
+            /// controller drivers are unloaded and the pins return to free
+            /// GPIO.
+            /// </summary>
             public static void UnInitialize(int bus) {
                 ValidateBus(bus);
                 lock (gate) {

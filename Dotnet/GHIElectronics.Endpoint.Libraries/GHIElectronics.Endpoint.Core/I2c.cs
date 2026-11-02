@@ -5,14 +5,18 @@ using static GHIElectronics.Endpoint.Core.Chips.Stm32Mp1Pins;
 namespace GHIElectronics.Endpoint.Core {
     public static partial class EPM815 {
         /// <summary>
-        /// The I2C buses, for .NET's System.Device.I2c. Initialize connects the
-        /// bus's pins and sets its speed; then use .NET's I2cDevice as usual:
+        /// The I2C buses bundled with EPM815. Use with .NET's
+        /// <c>System.Device.I2c</c>. <see cref="Initialize"/> connects the
+        /// bus's pins and sets its speed; then use <c>I2cDevice</c> as usual.
+        /// Each constant is the bus number for <c>I2cConnectionSettings</c>
+        /// (<c>/dev/i2c-N</c>), fixed by the firmware.
+        /// </summary>
+        /// <example>
         /// <code>
         /// EPM815.I2c.Initialize(EPM815.I2c.I2c1);
         /// using var device = I2cDevice.Create(new I2cConnectionSettings(EPM815.I2c.I2c1, 0x50));
         /// </code>
-        /// Each constant is the bus number for I2cConnectionSettings (/dev/i2c-N), fixed by the firmware.
-        /// </summary>
+        /// </example>
         public static class I2c {
             /// <summary>I2C1: PD12 (SCL), PD13 (SDA); /dev/i2c-0</summary>
             public const int I2c1 = 0;
@@ -25,6 +29,7 @@ namespace GHIElectronics.Endpoint.Core {
 
             /// <summary>The speed when none is given: 400 kHz (fast mode)</summary>
             public const int DefaultFrequency = 400_000;
+            /// <summary>The slowest supported bus speed: 10 kHz.</summary>
             public const int MinFrequency = 10_000;
             /// <summary>1 MHz (fast mode plus)</summary>
             public const int MaxFrequency = 1_000_000;

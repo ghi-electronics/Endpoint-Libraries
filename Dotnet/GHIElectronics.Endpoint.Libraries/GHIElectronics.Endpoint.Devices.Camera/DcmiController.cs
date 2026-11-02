@@ -2,17 +2,27 @@ using System.Collections;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 using GHIElectronics.Endpoint.Core;
-using GHIElectronics.Endpoint.Devices.Camera;
 using static GHIElectronics.Endpoint.Core.EPM815;
 
-namespace GHIElectronics.Endpoint.Devices.Dcmi {
+namespace GHIElectronics.Endpoint.Devices.Camera {
 
+    /// <summary>
+    /// Base controller for the board's parallel camera-interface port. Reserves the
+    /// camera data and sync pins, drives the pixel clock, loads the backing kernel
+    /// module, and exposes single-frame capture and streaming. Concrete sensor
+    /// drivers derive from this type.
+    /// </summary>
     public abstract class DcmiController : IDisposable {
 
         private const string LibNativeDcmi = "nativecamera.so";
         internal static IntPtr InvalidHandleValue;
 
         private CameraConfiguration setting = null;
+        /// <summary>
+        /// Resolution, pixel format and frame rate for subsequent captures.
+        /// Assigning a value re-initializes the native device at the new size, FPS and JPEG quality,
+        /// and reallocates the internal frame buffer.
+        /// </summary>
         public CameraConfiguration Setting {
             get => this.setting;
             set {
@@ -24,26 +34,32 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
                 NativeDeviceInit(this.setting.Width, this.setting.Height, this.setting.FrameRate, this.ImageQuality);
 
                 this.buffer = new byte[GetBufferSize()];
-               
+
             }
 
         }
 
+        /// <summary>Frame width in pixels, taken from the last applied <see cref="Setting"/>.</summary>
         public int Width { get; private set; }
+        /// <summary>Frame height in pixels, taken from the last applied <see cref="Setting"/>.</summary>
         public int Height { get; private set; }
 
         private string devicePath;
 
         private byte[] buffer;
 
+        /// <summary><c>true</c> while <see cref="VideoStreamStart"/> is delivering frames via <see cref="FrameReceived"/>.</summary>
         public bool IsVideoStreaming { get; private set; }
 
         static object lockObj = new object();
 
         const int CLOCK_PIN = EPM815.Gpio.Pin.PA13;
 
-        public delegate void FrameReceived(DcmiController sender, byte[] data);
-        private FrameReceived onFrameReceivedCallbacks;
+        /// <summary>Handler for a single captured frame from the sensor.</summary>
+        /// <param name="sender">The controller that produced the frame.</param>
+        /// <param name="data">Frame bytes in the format of <see cref="CameraConfiguration.ImageFormat"/>. Raised from the streaming worker thread.</param>
+        public delegate void FrameReceivedEventHandler(DcmiController sender, byte[] data);
+        private FrameReceivedEventHandler onFrameReceivedCallbacks;
 
         private static int initializeCount = 0;
 
@@ -51,6 +67,11 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
 
         private int ImageQuality { get; set; } = 70;
 
+        /// <summary>
+        /// Reserves the camera-interface pins, starts the pixel clock, and loads the backing
+        /// capture driver. The V4L2 node is not opened until <see cref="Open"/> is called.
+        /// </summary>
+        /// <param name="devicePath">V4L2 device node for the capture, defaulting to <c>/dev/video0</c>.</param>
         public DcmiController(string devicePath= "/dev/video0") {
 
             InvalidHandleValue = new IntPtr(-1);
@@ -68,9 +89,9 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
 
             this.devicePath = devicePath;
             this.Acquire();
-           
 
-            
+
+
         }
 
         private void Acquire() {
@@ -173,7 +194,7 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
 
             var script_insmod = new Script("modprobe", "/.", $"stm32-dcmi");
             script_insmod.Start();
-           
+
             Gpio.PinReserve(pinConfig.DcmiHsync);
             Gpio.PinReserve(pinConfig.DcmiVsync);
             Gpio.PinReserve(pinConfig.DcmiPixclk);
@@ -247,10 +268,13 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
         }
 
         private bool disposed;
+        /// <summary>Closes the device, releases the camera-interface pins, stops the pixel clock and unloads the backing capture driver.</summary>
         public void Dispose() {
             this.Dispose(true);
             GC.SuppressFinalize(this);
         }
+        /// <summary>Releases held resources. See <see cref="Dispose()"/>.</summary>
+        /// <param name="disposing"><c>true</c> when called from <see cref="Dispose()"/>; <c>false</c> from a finalizer.</param>
         protected void Dispose(bool disposing) {
             if (this.disposed)
                 return;
@@ -264,7 +288,11 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
         }
 
 
-        public event FrameReceived FrameReceivedEvent {
+        /// <summary>
+        /// Fires on the streaming worker thread for every frame captured by <see cref="VideoStreamStart"/>.
+        /// Not raised by <see cref="Capture"/>.
+        /// </summary>
+        public event FrameReceivedEventHandler FrameReceived {
             add => this.onFrameReceivedCallbacks += value;
             remove {
                 if (this.onFrameReceivedCallbacks != null) {
@@ -273,8 +301,10 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
             }
         }
 
+        /// <summary>Lists every <c>WIDTHxHEIGHT</c> resolution the capture driver reports from <c>v4l2-ctl --list-formats-ext</c>, or <c>null</c> if none are found.</summary>
         public string[] GetResolution() => CameraConfiguration.GetResolution();
 
+        /// <summary>Opens the V4L2 device for capture. Throws if the device is already open or the node does not exist.</summary>
         protected void Open() {
 
             if (this.isOpened) {
@@ -307,6 +337,7 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
             this.isOpened = true;
         }
 
+        /// <summary>Stops streaming (if active) and closes the V4L2 device. Safe to call when already closed.</summary>
         protected void Close() {
 
             if (!this.isOpened)
@@ -328,6 +359,11 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
         }
 
 
+        /// <summary>
+        /// Captures a single frame synchronously and returns it in the format set by <see cref="CameraConfiguration.ImageFormat"/>.
+        /// Throws if <see cref="Setting"/> is unset, the device is not open, or a video stream is already running.
+        /// </summary>
+        /// <returns>Frame bytes, or <c>null</c> if the sensor returned no valid JPEG.</returns>
         public byte[] Capture() {
             if (this.setting == null || this.Width == 0 || this.Height == 0) {
                 throw new Exception($"Invalid configuration.");
@@ -357,12 +393,16 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
                 if (0 != error)
                     throw new Exception($"Could not stop. Error: {error}");
 
-                return ConvertImage.Convert(this.buffer, this.Width, this.Height, Format.Jpeg, this.setting.ImageFormat); ;
+                return ImageConverter.Convert(this.buffer, this.Width, this.Height, PixelFormat.Jpeg, this.setting.ImageFormat); ;
             }
 
         }
 
         bool videostreamstart = false;
+        /// <summary>
+        /// Begins continuous capture on a background task; each frame is delivered through <see cref="FrameReceived"/>.
+        /// Throws if <see cref="Setting"/> is unset or the device is not open. Call <see cref="VideoStreamStop"/> to end streaming.
+        /// </summary>
         public void VideoStreamStart() {
             if (this.setting == null || this.Width == 0 || this.Height == 0) {
                 throw new Exception($"Invalid configuration.");
@@ -395,7 +435,7 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
                         if (0 != error)
                             throw new Exception($"Could not progress image. Error: {error}");
 
-                        var data = ConvertImage.Convert(this.buffer, this.Width, this.Height, Format.Jpeg, this.setting.ImageFormat); ;
+                        var data = ImageConverter.Convert(this.buffer, this.Width, this.Height, PixelFormat.Jpeg, this.setting.ImageFormat); ;
 
                         if (data != null) {
                             this.onFrameReceivedCallbacks?.Invoke(this, data);
@@ -417,6 +457,7 @@ namespace GHIElectronics.Endpoint.Devices.Dcmi {
 
         }
 
+        /// <summary>Signals the streaming worker to stop and blocks until it has exited.</summary>
         public void VideoStreamStop() {
             this.IsVideoStreaming = false;
 

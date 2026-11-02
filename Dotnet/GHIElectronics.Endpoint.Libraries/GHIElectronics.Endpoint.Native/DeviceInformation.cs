@@ -4,24 +4,38 @@ using GHIElectronics.Endpoint.Core;
 
 namespace GHIElectronics.Endpoint.Native {
 
+    /// <summary>Reboot, shutdown and wake-up control for the Endpoint board.</summary>
     public static class Power {
 
+        /// <summary>GPIO pins the power block can monitor to wake the system from standby.</summary>
         public enum WakeupPin : uint {
+            /// <summary>Wake-up input 1 (PA0).</summary>
             PA0 = 0,
+            /// <summary>Wake-up input 2 (PA2).</summary>
             PA2 = 1,
+            /// <summary>Wake-up input 3 (PC13).</summary>
             PC13 = 2,
+            /// <summary>Wake-up input 4 (PI8).</summary>
             PI8 = 3,
+            /// <summary>Wake-up input 5 (PI11).</summary>
             PI11 = 4,
+            /// <summary>Wake-up input 6 (PC1).</summary>
             PC1 = 5,
+            /// <summary>No wake-up pin selected; only an RTC alarm can wake the system.</summary>
             None = 0xFF
 
 
         }
+        /// <summary>Reboots the board by invoking <c>reboot</c>. The call does not return once the system restarts.</summary>
         public static void Reboot() {
             var script = new Script("reboot", "./", "");
             script.Start();
         }
 
+        /// <summary>
+        /// Puts the board into standby by programming the power and clock registers directly.
+        /// Blocks forever in a wait-for-interrupt loop; execution resumes only after a wake-up event resets the processor.
+        /// </summary>
         public static void Shutdown() {
             const uint RCC_BASE = 0x50000000U; // page 157
             const uint RCC_MP_SREQSETR = RCC_BASE + 0x104U; 
@@ -62,12 +76,22 @@ namespace GHIElectronics.Endpoint.Native {
             Register.Write(RCC_MP_SREQSETR, 1 << 0 | 1 << 1);//RCC_MP_SREQSETR_STPREQ
 
             for (; ; )
-                NativeUtils.WFI();
+                NativeUtils.WaitForInterrupt();
         }
 
+        /// <summary>Arms a GPIO wake-up input so a transition on it brings the system out of standby.</summary>
+        /// <param name="wakeupPin">The pin to monitor. See <see cref="WakeupPin"/>.</param>
+        /// <param name="edge"><see cref="PinEventTypes.Rising"/> wakes on a high level with pull-down enabled; <see cref="PinEventTypes.Falling"/> wakes on a low level with pull-up enabled. <see cref="PinEventTypes.None"/> is not supported and throws.</param>
         public static void EnableWakeup(WakeupPin wakeupPin, PinEventTypes edge) {
             EnableWakeup(System.DateTime.MaxValue, wakeupPin, edge); ;
         }
+        /// <summary>
+        /// Arms an RTC alarm and, optionally, a GPIO wake-up input so either event brings the system out of standby.
+        /// The RTC alarm is scheduled via <c>rtcwake</c>; pass <see cref="System.DateTime.MaxValue"/> to skip the RTC and arm only the pin.
+        /// </summary>
+        /// <param name="dtWakeup">Absolute time at which to wake. Use <see cref="System.DateTime.MaxValue"/> for no RTC alarm.</param>
+        /// <param name="wakeupPin">Optional wake-up pin; defaults to <see cref="WakeupPin.None"/> (no pin wake).</param>
+        /// <param name="edge">Active edge for the pin wake. Defaults to <see cref="PinEventTypes.Rising"/>. <see cref="PinEventTypes.None"/> is not supported and throws.</param>
         public static void EnableWakeup(System.DateTime dtWakeup, WakeupPin wakeupPin = WakeupPin.None, PinEventTypes edge = PinEventTypes.Rising) {
             var flag = true;
             var message = string.Empty;
@@ -131,8 +155,10 @@ namespace GHIElectronics.Endpoint.Native {
             }
         }
     }
+    /// <summary>Board identity, firmware version, and boot/auto-run configuration helpers.</summary>
     public static class DeviceInformation {
 
+        /// <summary>Firmware version string as reported by <c>get_version.sh</c>, with any trailing newline stripped.</summary>
         public static string Version => GetVersion();
         private static string GetVersion() {
 
@@ -145,20 +171,30 @@ namespace GHIElectronics.Endpoint.Native {
 
         }
 
+        /// <summary>
+        /// Installs an init.d entry (<c>/etc/init.d/S29custom</c>) that starts the given deployed .NET application at boot.
+        /// The application is expected at <c>/root/.epdata/{applicationName}/{applicationName}.dll</c>.
+        /// </summary>
+        /// <param name="applicationName">Folder and assembly name (without <c>.dll</c>) under <c>/root/.epdata/</c>.</param>
         public static void EnableAutoRun(string applicationName) {
             var application_fullpath = "/root/.epdata/" + applicationName + "/" + applicationName + ".dll";
-            
+
                 var script = new Script("csharp_generate_startup.sh", "./", "1 /etc/init.d/S29custom " + application_fullpath);
 
-                script.Start();                                                
+                script.Start();
         }
 
+        /// <summary>Removes the auto-run init.d entry installed by <see cref="EnableAutoRun(string)"/>.</summary>
         public static void DisableAutoRun() {
             var script = new Script("csharp_generate_startup.sh", "./", "0 /etc/init.d/S29custom");
 
             script.Start();
         }
 
+        /// <summary>
+        /// Permanently removes the SSH (<c>S50dropbear</c>) and USB gadget (<c>S30usbgadget</c>) init.d entries,
+        /// so neither service starts at the next boot. Intended for release builds only.
+        /// </summary>
         public static void DisableSSH() {
 
             var script = new Script("rm", "./", "/etc/init.d/S50dropbear");
@@ -182,6 +218,10 @@ namespace GHIElectronics.Endpoint.Native {
         //}
 
         
+        /// <summary>
+        /// Returns <c>true</c> when the board booted from the SD card, detected by scanning
+        /// <c>/boot/extlinux/extlinux.conf</c> for the <c>mmcblk1</c> root device.
+        /// </summary>
         public static bool SdBoot() {
             var script = new Script("cat", "./", "/boot/extlinux/extlinux.conf");
 

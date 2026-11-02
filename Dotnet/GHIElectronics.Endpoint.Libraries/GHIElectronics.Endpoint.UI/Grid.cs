@@ -10,11 +10,20 @@ namespace GHIElectronics.Endpoint.UI;
 /// -2 = "2*", ...).
 /// </summary>
 public class Grid : Widget {
+    /// <summary>Create a grid inside <paramref name="parent"/>.</summary>
+    /// <param name="parent">Containing widget.</param>
     public Grid(Widget parent) : base(0) {
         Libendpoint.Check(Libendpoint.UiGridCreate(parent.Native, out var n));
         this.Native = n;
     }
 
+    /// <summary>
+    /// Define column and row sizes. Positive values are fixed pixel widths;
+    /// a negative value <c>-n</c> is a star share of weight <c>n</c>
+    /// (<c>-1</c> = <c>*</c>, <c>-2</c> = <c>2*</c>, ...). Zero is treated as star.
+    /// </summary>
+    /// <param name="columns">Column size definitions, left to right.</param>
+    /// <param name="rows">Row size definitions, top to bottom.</param>
     public unsafe void SetDefinitions(int[] columns, int[] rows) {
         fixed (int* c = columns)
         fixed (int* r = rows) {

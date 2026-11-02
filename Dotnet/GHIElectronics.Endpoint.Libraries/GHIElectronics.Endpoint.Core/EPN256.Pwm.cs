@@ -3,21 +3,22 @@ using System.Diagnostics;
 namespace GHIElectronics.Endpoint.Core {
     public static partial class EPN256 {
         /// <summary>
-        /// MA35D1 enhanced PWM channels, for System.Device.Pwm. Keeping the
-        /// kernel driver (<c>CONFIG_PWM_MA35D1=m</c>) modular means the PWM
-        /// controller stays unprobed and its pins stay free GPIO until
-        /// <see cref="Initialize"/> loads the driver. Reverse with
-        /// <see cref="UnInitialize"/>.
+        /// PWM channels bundled with EPN256, for <c>System.Device.Pwm</c>. The
+        /// PWM controller stays unprobed and its pins stay free GPIO until
+        /// <see cref="Initialize"/> loads its driver. Reverse with
+        /// <see cref="UnInitialize"/>. The <c>EPWM_</c> number is the instance
+        /// number; the sysfs <c>pwmchipN</c> is probe-order and is resolved at
+        /// <see cref="Initialize"/> time, so application code never has to deal
+        /// with it.
+        /// </summary>
+        /// <example>
         /// <code>
         /// EPN256.Pwm.Initialize(EPN256.Pwm.Epwm1);
         /// var chipId = EPN256.Pwm.GetChipId(EPN256.Pwm.Epwm1);
         /// using var pwm = System.Device.Pwm.PwmChannel.Create(chipId, 0, 1000, 0.5);
         /// pwm.Start();
         /// </code>
-        /// The <c>EPWM_</c> number IS the DT instance number; the sysfs
-        /// <c>pwmchipN</c> is probe-order and resolved at Initialize time via
-        /// of_node lookup, so customer code never has to deal with it.
-        /// </summary>
+        /// </example>
         public static class Pwm {
             /// <summary>EPWM0 (reserved — not wired on EPN256 reference board).</summary>
             public const int Epwm0 = 0;
@@ -38,9 +39,9 @@ namespace GHIElectronics.Endpoint.Core {
             private static bool moduleLoaded;
 
             /// <summary>
-            /// Loads the EPWM controller driver so <c>/sys/class/pwm/pwmchipN</c>
-            /// for the chosen controller appears. The kernel pinctrl framework
-            /// mux's the PWM output pins as part of probe.
+            /// Loads the PWM controller driver so <c>/sys/class/pwm/pwmchipN</c>
+            /// for the chosen controller appears. The PWM output pins are muxed
+            /// as part of probe.
             /// </summary>
             public static void Initialize(int controller) {
                 ValidateController(controller);
@@ -57,11 +58,11 @@ namespace GHIElectronics.Endpoint.Core {
                     Thread.Sleep(20);
                 }
                 throw new InvalidOperationException(
-                    $"pwm-ma35d1 loaded but no pwmchip matched {PlatformDevices[controller]} within 1 s.");
+                    $"PWM driver loaded but no pwmchip matched {PlatformDevices[controller]} within 1 s.");
             }
 
-            /// <summary>Reverse of Initialize. When no controller remains open,
-            /// the module is unloaded and the pins return to GPIO.</summary>
+            /// <summary>Reverse of <see cref="Initialize"/>. When no controller remains open,
+            /// the driver is unloaded and the pins return to GPIO.</summary>
             public static void UnInitialize(int controller) {
                 ValidateController(controller);
                 lock (gate) {
@@ -77,8 +78,8 @@ namespace GHIElectronics.Endpoint.Core {
 
             /// <summary>
             /// Returns the Linux <c>pwmchipN</c> id for the chosen controller,
-            /// which System.Device.Pwm.PwmChannel.Create takes as its first
-            /// argument. Only valid after Initialize.
+            /// which <c>System.Device.Pwm.PwmChannel.Create</c> takes as its
+            /// first argument. Only valid after <see cref="Initialize"/>.
             /// </summary>
             public static int GetChipId(int controller) {
                 ValidateController(controller);

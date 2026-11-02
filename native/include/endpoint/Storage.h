@@ -5,7 +5,7 @@
 //   using namespace GHIElectronics::Endpoint::Devices::Storage;
 //
 //   auto usb = StorageController::FromName(EPM815::StorageController::UsbHostMassStorage);
-//   usb.OnConnectionChangedEvent += [](StorageController& sender, const DeviceConnectionEventArgs& e) {
+//   usb.ConnectionChanged += [](StorageController& sender, const DeviceConnectionEventArgs& e) {
 //       if (e.DeviceStatus() == DeviceConnectionStatus::Connected) {
 //           auto drive = FileSystem::Mount(e.Hdc());          // "/media/usb0/", usb1, ...
 //           std::ofstream(drive.Name() + "log.txt") << "Hello";
@@ -104,7 +104,7 @@ public:
     const std::string& Name() const { return name_; }
 
     // A drive connected or disconnected. += gives an id for -=.
-    Core::Event<StorageController&, const DeviceConnectionEventArgs&> OnConnectionChangedEvent;
+    Core::Event<StorageController&, const DeviceConnectionEventArgs&> ConnectionChanged;
 
     // Starts reporting drives: first the ones already plugged in
     void Enable() { Core::detail::Check(endpoint_storage_enable(handle_.Get("StorageController"))); }
@@ -125,11 +125,11 @@ private:
     static void Changed(void* context, intptr_t hdc, int status, const char* volumeLabel) {
         auto self = static_cast<StorageController*>(context);
         try {
-            self->OnConnectionChangedEvent(*self, DeviceConnectionEventArgs(static_cast<DeviceConnectionStatus>(status),
+            self->ConnectionChanged(*self, DeviceConnectionEventArgs(static_cast<DeviceConnectionStatus>(status),
                                                                            hdc, volumeLabel ? volumeLabel : ""));
         }
         catch (const std::exception& e) {
-            std::fprintf(stderr, "Unhandled exception in OnConnectionChangedEvent: %s\n", e.what());
+            std::fprintf(stderr, "Unhandled exception in ConnectionChanged: %s\n", e.what());
         }
     }
 

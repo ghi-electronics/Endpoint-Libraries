@@ -11,10 +11,8 @@ namespace GHIElectronics.Endpoint.Devices.Network {
     /// <summary>
     /// One of the board's network interfaces, by type (Ethernet, WiFi,
     /// PC-shared). The system takes care of the hardware - an Ethernet
-    /// controller matches the built-in PHY or any USB Ethernet adapter;
-    /// a WiFi controller matches a built-in WiFi module or any WiFi USB
-    /// stick.
-    ///
+    /// controller matches the built-in PHY or any USB Ethernet adapter; a
+    /// WiFi controller matches a built-in WiFi module or any WiFi USB stick.
     /// Enable / Disable apply synchronously and throw on failure (no
     /// interface present, bad settings, wpa_supplicant / udhcpc failure).
     /// Settings persist in <c>/config/network.json</c> through
@@ -22,7 +20,8 @@ namespace GHIElectronics.Endpoint.Devices.Network {
     /// Status (addresses, link, DNS, speed) is the standard
     /// <see cref="System.Net.NetworkInformation.NetworkInterface"/> this
     /// controller exposes.
-    ///
+    /// </summary>
+    /// <example>
     /// <code>
     /// var eth = NetworkController.FromType(NetworkType.Ethernet);
     /// if (eth != null) {
@@ -33,7 +32,7 @@ namespace GHIElectronics.Endpoint.Devices.Network {
     ///     Console.WriteLine(eth.IsConnected);
     /// }
     /// </code>
-    /// </summary>
+    /// </example>
     public sealed unsafe class NetworkController {
         private const string ConfigPath = "/config/network.json";
 
@@ -78,6 +77,7 @@ namespace GHIElectronics.Endpoint.Devices.Network {
             return length == 0 ? string.Empty : Encoding.ASCII.GetString(buffer[..length]);
         }
 
+        /// <summary>Which kind of interface this controller represents (<see cref="NetworkType.Ethernet"/> or <see cref="NetworkType.Wifi"/>).</summary>
         public NetworkType Type { get; }
 
         /// <summary>System identifier (eth0, wlan0, ...), or empty string if

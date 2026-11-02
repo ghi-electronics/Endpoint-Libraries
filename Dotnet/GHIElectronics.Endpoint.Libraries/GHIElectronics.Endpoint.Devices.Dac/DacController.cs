@@ -6,16 +6,18 @@ using Microsoft.Win32.SafeHandles;
 
 namespace GHIElectronics.Endpoint.Devices.Dac {
     /// <summary>
-    /// Endpoint's DAC (analog outputs), with the same API as TinyCLR:
+    /// Endpoint's DAC (analog outputs), with the same API as TinyCLR. Opening
+    /// a channel makes its pin an analog output; closing it switches the
+    /// output off and puts the pin back as it was.
+    /// </summary>
+    /// <example>
     /// <code>
     /// var dac = DacController.FromName(EPM815.Dac.Id);
     /// using var output = dac.OpenChannel(EPM815.Dac.PA5);
     /// output.WriteValue(0.5);    // half of 3.3 V
     /// output.WriteValue(4095);   // 3.3 V
     /// </code>
-    /// Opening a channel makes its pin an analog output; closing it switches
-    /// the output off and puts the pin back as it was.
-    /// </summary>
+    /// </example>
     public class DacController : IDisposable {
         private DacController() {
         }

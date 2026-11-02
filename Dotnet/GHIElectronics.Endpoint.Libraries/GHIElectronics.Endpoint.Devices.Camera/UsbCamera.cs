@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 using GHIElectronics.Endpoint.Core.Internal;
 
-namespace GHIElectronics.Endpoint.Devices.Media {
+namespace GHIElectronics.Endpoint.Devices.Camera {
     /// <summary>What a camera sends (pictures always come out as JPEG).</summary>
     public enum CameraPixelFormat {
         /// <summary>Motion JPEG: small and fast, the way most webcams send large pictures.</summary>
@@ -20,33 +20,47 @@ namespace GHIElectronics.Endpoint.Devices.Media {
             this.MaxFrameRate = maxFrameRate;
         }
 
+        /// <summary>Picture width in pixels.</summary>
         public int Width { get; }
+        /// <summary>Picture height in pixels.</summary>
         public int Height { get; }
+        /// <summary>What the camera sends for this size.</summary>
         public CameraPixelFormat PixelFormat { get; }
 
         /// <summary>Frames per second</summary>
         public int MaxFrameRate { get; }
 
+        /// <summary>Returns a human-readable description like "640x480 Mjpeg 30 fps".</summary>
         public override string ToString() => $"{this.Width}x{this.Height} {this.PixelFormat} {this.MaxFrameRate} fps";
     }
 
     /// <summary>A camera's picture controls (each camera has some of them).</summary>
     public enum CameraControl {
+        /// <summary>Overall picture brightness.</summary>
         Brightness,
+        /// <summary>Difference between dark and light areas.</summary>
         Contrast,
+        /// <summary>Colour intensity (0 is grayscale).</summary>
         Saturation,
+        /// <summary>Colour shift around the colour wheel.</summary>
         Hue,
+        /// <summary>Non-linear brightness correction.</summary>
         Gamma,
+        /// <summary>Sensor amplification; higher means brighter but noisier.</summary>
         Gain,
+        /// <summary>Edge-enhancement strength.</summary>
         Sharpness,
+        /// <summary>Compensates when the subject is backlit.</summary>
         BacklightCompensation,
 
         /// <summary>1: on, 0: off (then WhiteBalanceTemperature counts)</summary>
         AutoWhiteBalance,
+        /// <summary>White-balance colour temperature in kelvin; used when <see cref="AutoWhiteBalance"/> is off.</summary>
         WhiteBalanceTemperature,
 
         /// <summary>1: on, 0: off (then Exposure counts)</summary>
         AutoExposure,
+        /// <summary>Shutter time in the camera's own units; used when <see cref="AutoExposure"/> is off.</summary>
         Exposure,
 
         /// <summary>0: off, 1: 50 Hz, 2: 60 Hz (against flicker from lights)</summary>
@@ -54,9 +68,13 @@ namespace GHIElectronics.Endpoint.Devices.Media {
 
         /// <summary>1: on, 0: off (then Focus counts)</summary>
         AutoFocus,
+        /// <summary>Lens focus position; used when <see cref="AutoFocus"/> is off.</summary>
         Focus,
+        /// <summary>Digital or optical zoom (if the camera has one).</summary>
         Zoom,
+        /// <summary>Horizontal camera-head position (motorised cameras only).</summary>
         Pan,
+        /// <summary>Vertical camera-head position (motorised cameras only).</summary>
         Tilt,
     }
 
@@ -71,13 +89,20 @@ namespace GHIElectronics.Endpoint.Devices.Media {
             this.Value = value;
         }
 
+        /// <summary>Which control this value describes.</summary>
         public CameraControl Control { get; }
+        /// <summary>Lowest value the camera accepts.</summary>
         public int Minimum { get; }
+        /// <summary>Highest value the camera accepts.</summary>
         public int Maximum { get; }
+        /// <summary>Granularity between accepted values.</summary>
         public int Step { get; }
+        /// <summary>Camera's own default for this control.</summary>
         public int DefaultValue { get; }
+        /// <summary>Current value.</summary>
         public int Value { get; }
 
+        /// <summary>Returns a human-readable description like "Brightness 128 (0 to 255, default 128)".</summary>
         public override string ToString() => $"{this.Control} {this.Value} ({this.Minimum} to {this.Maximum}, default {this.DefaultValue})";
     }
 
@@ -89,8 +114,11 @@ namespace GHIElectronics.Endpoint.Devices.Media {
             this.Height = height;
         }
 
+        /// <summary>The frame as a JPEG byte buffer.</summary>
         public byte[] Jpeg { get; }
+        /// <summary>Frame width in pixels.</summary>
         public int Width { get; }
+        /// <summary>Frame height in pixels.</summary>
         public int Height { get; }
     }
 
@@ -99,29 +127,31 @@ namespace GHIElectronics.Endpoint.Devices.Media {
     /// sends MJPEG or raw YUYV pictures.
     /// </summary>
     /// <remarks>
-    /// Open it with the DeviceName of a Webcam from UsbHostController ("/dev/video0").
+    /// Open it with the DeviceName of a Webcam from <c>UsbHostController</c> ("/dev/video0").
     /// The first picture waits until the camera's automatic exposure has settled (about
     /// a second); while pictures are taken the camera keeps running, so the next ones
-    /// come at once. At first the size is 640x480.
+    /// come at once. At first the size is 640x480. The events come on the camera's own
+    /// thread. A camera stays alive until it is disposed.
+    /// </remarks>
+    /// <example>
     /// <code>
-    /// using var camera = new Camera(e.DeviceName);
+    /// using var camera = new UsbCamera(e.DeviceName);
     /// camera.SetResolution(1280, 720);
     /// camera.Capture("/media/usb0/photo.jpg");
     ///
     /// camera.FrameReceived += (sender, frame) => SendToBrowser(frame.Jpeg);
     /// camera.StartStreaming();
     /// </code>
-    /// The events come on the camera's own thread. A camera stays alive until it is disposed.
-    /// </remarks>
-    public sealed unsafe class Camera : IDisposable {
+    /// </example>
+    public sealed unsafe class UsbCamera : IDisposable {
         private readonly GCHandle self;
         private nint handle;
 
         /// <summary>The handler of FrameReceived</summary>
-        public delegate void FrameReceivedEventHandler(Camera sender, FrameReceivedEventArgs e);
+        public delegate void FrameReceivedEventHandler(UsbCamera sender, FrameReceivedEventArgs e);
 
         /// <summary>The handler of Disconnected</summary>
-        public delegate void DisconnectedEventHandler(Camera sender, EventArgs e);
+        public delegate void DisconnectedEventHandler(UsbCamera sender, EventArgs e);
 
         /// <summary>A frame while streaming (StartStreaming)</summary>
         public event FrameReceivedEventHandler? FrameReceived;
@@ -130,7 +160,7 @@ namespace GHIElectronics.Endpoint.Devices.Media {
         public event DisconnectedEventHandler? Disconnected;
 
         /// <summary>Opens the camera that UsbHostController reported ("/dev/video0").</summary>
-        public Camera(string deviceName) {
+        public UsbCamera(string deviceName) {
             ArgumentNullException.ThrowIfNull(deviceName);
             this.DeviceName = deviceName;
             this.self = GCHandle.Alloc(this);
@@ -165,6 +195,7 @@ namespace GHIElectronics.Endpoint.Devices.Media {
         /// <summary>The sizes the camera has, with what it sends for each</summary>
         public IReadOnlyList<CameraFormat> SupportedFormats { get; }
 
+        /// <summary><c>true</c> while the camera is physically present on the USB bus.</summary>
         public bool Connected {
             get {
                 var camera = this.handle;
@@ -238,6 +269,7 @@ namespace GHIElectronics.Endpoint.Devices.Media {
             this.IsStreaming = true;
         }
 
+        /// <summary>Stops streaming; <see cref="FrameReceived"/> no longer fires. A frame being delivered finishes first.</summary>
         public void StopStreaming() {
             Libendpoint.Check(Libendpoint.CameraStopStreaming(this.Handle()));
             this.IsStreaming = false;
@@ -277,14 +309,14 @@ namespace GHIElectronics.Endpoint.Devices.Media {
             return (width, height, (CameraPixelFormat)pixelFormat, rate);
         }
 
-        private nint Handle() => this.handle != 0 ? this.handle : throw new ObjectDisposedException(nameof(Camera));
+        private nint Handle() => this.handle != 0 ? this.handle : throw new ObjectDisposedException(nameof(UsbCamera));
 
         // From the camera's thread. A handler's exception must not stop the
         // frames (it cannot go back into the library): it is printed.
         [UnmanagedCallersOnly]
         private static void Frame(nint context, byte* jpeg, int length, int width, int height) {
             try {
-                if (GCHandle.FromIntPtr(context).Target is Camera camera && camera.FrameReceived is { } handler) {
+                if (GCHandle.FromIntPtr(context).Target is UsbCamera camera && camera.FrameReceived is { } handler) {
                     handler(camera, new FrameReceivedEventArgs(new ReadOnlySpan<byte>(jpeg, length).ToArray(), width, height));
                 }
             }
@@ -296,7 +328,7 @@ namespace GHIElectronics.Endpoint.Devices.Media {
         [UnmanagedCallersOnly]
         private static void Unplugged(nint context) {
             try {
-                if (GCHandle.FromIntPtr(context).Target is Camera camera) {
+                if (GCHandle.FromIntPtr(context).Target is UsbCamera camera) {
                     camera.Disconnected?.Invoke(camera, EventArgs.Empty);
                 }
             }

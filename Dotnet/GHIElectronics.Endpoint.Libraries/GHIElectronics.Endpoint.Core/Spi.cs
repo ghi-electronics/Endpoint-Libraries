@@ -5,16 +5,21 @@ using static GHIElectronics.Endpoint.Core.Chips.Stm32Mp1Pins;
 namespace GHIElectronics.Endpoint.Core {
     public static partial class EPM815 {
         /// <summary>
-        /// The SPI buses, for .NET's System.Device.Spi. Initialize connects the
-        /// bus's pins and loads the SPI driver; then use .NET's SpiDevice as
-        /// usual:
-        /// <code>
-        /// EPM815.Spi.Initialize(EPM815.Spi.Spi4);
-        /// using var device = SpiDevice.Create(new SpiConnectionSettings(EPM815.Spi.Spi4, 0) { ClockFrequency = 1_000_000 });
-        /// </code>
-        /// Each constant is the bus number for SpiConnectionSettings (/dev/spidevN.0), fixed by the
+        /// The SPI buses bundled with EPM815, for .NET's
+        /// <c>System.Device.Spi</c>. <see cref="Initialize"/> connects the
+        /// bus's pins and loads the SPI driver; then use <c>SpiDevice</c> as
+        /// usual. Each constant is the bus number for
+        /// <c>SpiConnectionSettings</c> (<c>/dev/spidevN.0</c>), fixed by the
         /// firmware. Chip select is not driven by the bus: use any GPIO pin.
         /// </summary>
+        /// <example>
+        /// <code>
+        /// EPM815.Spi.Initialize(EPM815.Spi.Spi4);
+        /// using var device = SpiDevice.Create(new SpiConnectionSettings(EPM815.Spi.Spi4, 0) {
+        ///     ClockFrequency = 1_000_000,
+        /// });
+        /// </code>
+        /// </example>
         public static class Spi {
             /// <summary>SPI1: PZ0 (SCK), PZ1 (MISO), PZ2 (MOSI); /dev/spidev0.0</summary>
             public const int Spi1 = 0;

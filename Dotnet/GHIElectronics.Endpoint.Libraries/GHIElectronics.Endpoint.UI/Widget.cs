@@ -6,8 +6,21 @@ using GHIElectronics.Endpoint.Core.Internal;
 
 namespace GHIElectronics.Endpoint.UI;
 
-public enum GradientDirection { Vertical = 0, Horizontal = 1 }
+/// <summary>Direction of a linear background gradient.</summary>
+public enum GradientDirection {
+    /// <summary>Top to bottom.</summary>
+    Vertical = 0,
+    /// <summary>Left to right.</summary>
+    Horizontal = 1
+}
 
+/// <summary>
+/// Abstract base class for every UI widget. Holds the opaque libendpoint
+/// handle and exposes geometry, visibility, and background styling shared by
+/// all widget types. All setters and events run on the UI thread; do not
+/// touch widgets from background threads (LVGL is built with
+/// <c>LV_USE_OS=LV_OS_NONE</c>).
+/// </summary>
 public abstract class Widget : IDisposable {
     internal nint Native;
     private readonly List<GCHandle> _eventHandles = new();
@@ -20,34 +33,44 @@ public abstract class Widget : IDisposable {
     // Setters forward to the single-axis C API: LVGL's getters return 0 until
     // the first layout pass, so a read-then-write-both would zero out the
     // untouched axis.
+    /// <summary>X coordinate in pixels relative to the parent's top-left corner.</summary>
     public int X {
         get { Libendpoint.Check(Libendpoint.UiWidgetGetPos(this.Native, out var x, out _)); return x; }
         set { Libendpoint.Check(Libendpoint.UiWidgetSetX(this.Native, value)); }
     }
 
+    /// <summary>Y coordinate in pixels relative to the parent's top-left corner.</summary>
     public int Y {
         get { Libendpoint.Check(Libendpoint.UiWidgetGetPos(this.Native, out _, out var y)); return y; }
         set { Libendpoint.Check(Libendpoint.UiWidgetSetY(this.Native, value)); }
     }
 
+    /// <summary>Width in pixels.</summary>
     public int Width {
         get { Libendpoint.Check(Libendpoint.UiWidgetGetSize(this.Native, out var w, out _)); return w; }
         set { Libendpoint.Check(Libendpoint.UiWidgetSetWidth(this.Native, value)); }
     }
 
+    /// <summary>Height in pixels.</summary>
     public int Height {
         get { Libendpoint.Check(Libendpoint.UiWidgetGetSize(this.Native, out _, out var h)); return h; }
         set { Libendpoint.Check(Libendpoint.UiWidgetSetHeight(this.Native, value)); }
     }
 
+    /// <summary>Whether the widget (and its subtree) is drawn. Setting <c>false</c> hides but does not destroy it.</summary>
     public bool Visible {
         get { Libendpoint.Check(Libendpoint.UiWidgetGetVisible(this.Native, out var v)); return v != 0; }
         set { Libendpoint.Check(Libendpoint.UiWidgetSetVisible(this.Native, value ? 1 : 0)); }
     }
 
-    // Solid background color (0x00RRGGBB).
-    public uint BackgroundColor {
-        set => Libendpoint.Check(Libendpoint.UiWidgetSetBgColor(this.Native, value));
+    private uint _backgroundColor;
+    /// <summary>
+    /// Solid background color as <c>0x00RRGGBB</c>. Getter returns the last
+    /// value set (LVGL has no read-back); returns <c>0</c> if never set.
+    /// </summary>
+    public virtual uint BackgroundColor {
+        get => this._backgroundColor;
+        set { this._backgroundColor = value; Libendpoint.Check(Libendpoint.UiWidgetSetBgColor(this.Native, value)); }
     }
 
     /// <summary>Linear gradient background. direction: Vertical = top->bottom, Horizontal = left->right.</summary>
@@ -70,6 +93,7 @@ public abstract class Widget : IDisposable {
         Libendpoint.Check(Libendpoint.UiWidgetSetBgImage(this.Native, p, rgb565Pixels.Length, width, height));
     }
 
+    /// <summary>Destroy the native widget and release pinned event handles. Idempotent.</summary>
     public virtual void Dispose() {
         if (this._disposed) return;
         this._disposed = true;

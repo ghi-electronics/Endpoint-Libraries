@@ -4,7 +4,7 @@
 
   <PropertyGroup>
     <PackageId>GHIElectronics.Endpoint.Devices.Camera</PackageId>
-    <Description>Camera settings and image conversion for Endpoint.</Description>
+    <Description>USB webcams, parallel-port cameras (DCMI), and shared camera settings and image conversion for Endpoint.</Description>
     <Nullable>disable</Nullable>
   </PropertyGroup>
 

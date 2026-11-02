@@ -1,4 +1,4 @@
-# Board test of the Python SoundDevice (GHIElectronics.Endpoint.Devices.Media)
+# Board test of the Python SoundDevice (GHIElectronics.Endpoint.Devices.Sound)
 # and Printer's errors, with the kernel's test sound cards (snd-aloop: played on
 # "hw:Loopback,0", recorded on "hw:Loopback,1"; snd-dummy: a mixer). Run as root
 # on the board with the packages on the path, next to tone440.wav (1 s, 440 Hz)
@@ -11,7 +11,7 @@ import threading
 import time
 
 from GHIElectronics.Endpoint.Core import ArgumentException, NotSupportedException
-from GHIElectronics.Endpoint.Devices.Media import SoundConnectionSettings, SoundDevice
+from GHIElectronics.Endpoint.Devices.Sound import SoundConnectionSettings, SoundDevice
 from GHIElectronics.Endpoint.Devices.UsbHost import Printer
 
 here = os.path.dirname(os.path.abspath(__file__))

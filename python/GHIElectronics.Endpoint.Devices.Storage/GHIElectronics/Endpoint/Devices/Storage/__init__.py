@@ -13,7 +13,7 @@ GHIElectronics.Endpoint.Devices.Storage:
                 f.write("Hello")
             FileSystem.Flush(e.Hdc)                      # before the drive is pulled out
 
-    usb.OnConnectionChangedEvent += changed
+    usb.ConnectionChanged += changed
     usb.Enable()   # the drives already plugged in are reported too
 
 The events come on the library's storage thread. A drive that is pulled out
@@ -139,12 +139,12 @@ class StorageController:
         return self._name
 
     @property
-    def OnConnectionChangedEvent(self):
+    def ConnectionChanged(self):
         """A drive connected or disconnected: handler(sender, e). Add with +=, remove with -="""
         return self._event
 
-    @OnConnectionChangedEvent.setter
-    def OnConnectionChangedEvent(self, value):
+    @ConnectionChanged.setter
+    def ConnectionChanged(self, value):
         if value is not self._event:
             raise TypeError("Use += and -= to add and remove an event handler")
 

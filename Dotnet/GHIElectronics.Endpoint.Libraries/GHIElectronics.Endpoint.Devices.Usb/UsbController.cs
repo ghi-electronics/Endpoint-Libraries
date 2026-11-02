@@ -1,5 +1,6 @@
 namespace GHIElectronics.Endpoint.Devices.Usb
 {
+    /// <summary>USB device class as classified by the host stack.</summary>
     public enum DeviceType : byte
     {
 

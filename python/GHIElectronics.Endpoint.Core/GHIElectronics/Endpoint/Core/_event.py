@@ -1,8 +1,8 @@
 """A .NET-style event, for the Endpoint packages: handlers are added with +=
 and removed with -=, as in .NET:
 
-    controller.OnConnectionChangedEvent += handler
-    controller.OnConnectionChangedEvent -= handler
+    controller.ConnectionChanged += handler
+    controller.ConnectionChanged -= handler
 
 The handlers run on the thread that raises the event (the library's).
 """

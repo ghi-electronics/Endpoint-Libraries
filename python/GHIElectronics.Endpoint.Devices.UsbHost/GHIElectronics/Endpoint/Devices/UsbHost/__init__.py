@@ -11,7 +11,7 @@ GHIElectronics.Endpoint.Devices.UsbHost:
         if e.DeviceStatus == DeviceConnectionStatus.Connected and e.Type == DeviceType.Serial:
             port = serial.Serial(e.DeviceName, 115200)   # "/dev/ttyUSB0"
 
-    usb.OnConnectionChangedEvent += changed
+    usb.ConnectionChanged += changed
     usb.Enable()   # the devices already plugged in are reported too
 
 One event for each thing a device gives: a keyboard with a touchpad gives
@@ -99,12 +99,12 @@ class UsbHostController:
         native.keep_alive(self)
 
     @property
-    def OnConnectionChangedEvent(self):
+    def ConnectionChanged(self):
         """A device connected or disconnected: handler(sender, e). Add with +=, remove with -="""
         return self._event
 
-    @OnConnectionChangedEvent.setter
-    def OnConnectionChangedEvent(self, value):
+    @ConnectionChanged.setter
+    def ConnectionChanged(self, value):
         if value is not self._event:
             raise TypeError("Use += and -= to add and remove an event handler")
 

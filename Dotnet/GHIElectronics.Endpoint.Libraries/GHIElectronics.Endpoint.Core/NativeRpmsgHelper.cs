@@ -8,20 +8,32 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace GHIElectronics.Endpoint.Core {
+    /// <summary>
+    /// Low-level helper used by other libraries to talk to the firmware's
+    /// hardware timing helper. Data is exchanged as 32-bit words in fixed-size
+    /// blocks of <see cref="BlockSize"/> words. Most applications never call
+    /// this directly; <see cref="GHIElectronics.Endpoint.Core.EPM815"/>-based
+    /// classes such as <c>DigitalSignalController</c> use it internally.
+    /// </summary>
     public static partial class NativeRpmsgHelper {
 
         private const string LibNativeRpmsgHelper = "nativerpmsghelper.so";
         internal static IntPtr InvalidHandleValue;
 
 
-        public static int BlockDelay = 5;
+        /// <summary>Delay in milliseconds between consecutive <see cref="Send"/> blocks (default 5).</summary>
+        public static int BlockDelay { get; set; } = 5;
 
         private const int CMD_RAW_DATA_START_OFFSET = 64;
+        /// <summary>Number of 32-bit words in one message block (64).</summary>
         public static int BlockSize { get; } = CMD_RAW_DATA_START_OFFSET;
 
+        /// <summary>Signature for the <see cref="DataReceived"/> event.</summary>
+        /// <param name="data">The received payload, 32-bit words.</param>
         public delegate void DataReceivedEventHandler(uint[] data);
         static private DataReceivedEventHandler dataReceivedEventHandlerCallback;
 
+        /// <summary>Raised from the receive loop started by <see cref="StartReceiving"/>.</summary>
         static public event DataReceivedEventHandler DataReceived {
             add => dataReceivedEventHandlerCallback += value;
             remove {
@@ -48,7 +60,14 @@ namespace GHIElectronics.Endpoint.Core {
 
         }
 
-      
+
+        /// <summary>
+        /// Sends <paramref name="count"/> 32-bit words from
+        /// <paramref name="data"/> starting at <paramref name="offset"/>. The
+        /// transfer is split into blocks of <see cref="BlockSize"/> words with
+        /// <see cref="BlockDelay"/> milliseconds between blocks.
+        /// </summary>
+        /// <returns>The number of words actually written.</returns>
         public static int Send(uint[] data, int offset, int count) {
             var block = count / BlockSize;
             var remain = count % BlockSize;
@@ -89,7 +108,13 @@ namespace GHIElectronics.Endpoint.Core {
 
         private static uint[] internalBuffer;
         static bool started = false;
-        public static Task TaskReceive() {
+        /// <summary>
+        /// Starts the background receive loop. The loop reads whole messages
+        /// from the helper endpoint and raises <see cref="DataReceived"/> for
+        /// each. Safe to call more than once: only the first call starts a
+        /// loop; subsequent calls return a completed task.
+        /// </summary>
+        public static Task StartReceiving() {
             if (started) return Task.CompletedTask;
 
             started = true;
@@ -163,16 +188,28 @@ namespace GHIElectronics.Endpoint.Core {
 
 
 
+        /// <summary>
+        /// Opens the helper endpoint and reserves it for this process.
+        /// Call before <see cref="Send"/> or <see cref="StartReceiving"/>.
+        /// </summary>
+        /// <returns>Zero on success, a negative error code otherwise.</returns>
         public static int Acquire() {
             return native_rpmsg_acquire(); ;
         }
 
+        /// <summary>Releases the helper endpoint previously opened by <see cref="Acquire"/>.</summary>
+        /// <returns>Zero on success, a negative error code otherwise.</returns>
         public static int Release() {
             return native_rpmsg_release(); ;
         }
 
-        public static int Test() {
-            return native_rpmsg_test(); ;
+        /// <summary>
+        /// Sends a ping message to the remote core and waits for a reply, as a
+        /// quick link check.
+        /// </summary>
+        /// <returns>Zero when the remote responds, a negative error code otherwise.</returns>
+        public static int Ping() {
+            return native_rpmsg_test();
         }
 
         [DllImport(LibNativeRpmsgHelper)]

@@ -14,8 +14,12 @@ namespace GHIElectronics.Endpoint.Devices.Rtc {
     }
 
     /// <summary>
-    /// The chip's real-time clock, for .NET IoT's RtcBase (Iot.Device.Rtc).
-    /// It counts UTC: at boot, the system time is set from it.
+    /// The board's real-time clock, for .NET IoT's <c>RtcBase</c>
+    /// (<c>Iot.Device.Rtc</c>). It counts UTC: at boot, the system time is set
+    /// from it. <see cref="IsValid"/> and <see cref="SetChargeMode"/> are the
+    /// same as TinyCLR's.
+    /// </summary>
+    /// <example>
     /// <code>
     /// using var rtc = new RtcController();
     /// if (!rtc.IsValid) {
@@ -23,8 +27,7 @@ namespace GHIElectronics.Endpoint.Devices.Rtc {
     /// }
     /// Console.WriteLine(rtc.DateTime);
     /// </code>
-    /// <see cref="IsValid"/> and <see cref="SetChargeMode"/> are the same as TinyCLR's.
-    /// </summary>
+    /// </example>
     public class RtcController : RtcBase {
         // Linux's RTC calls (linux/rtc.h)
         private const nuint ReadTimeRequest = 0x80247009;  // RTC_RD_TIME

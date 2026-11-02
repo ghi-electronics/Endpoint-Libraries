@@ -46,8 +46,8 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost.Descriptors {
     /// <summary>Device descriptor.</summary>
     public class Device : BaseDescriptor {
 
-        /// <summary>The length of the descriptor in bytes.</summary>
-        public const byte LENGTH = 18;
+        /// <summary>The fixed length of this descriptor type in bytes.</summary>
+        public const byte FixedLength = 18;
 
         /// <summary>USB specification number that the device implements as a BCD.</summary>
         public ushort UsbSpecificationNumber { get; set; }
@@ -115,15 +115,15 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost.Descriptors {
 
         /// <summary>Constructs a new descriptor.</summary>
         protected Device()
-            : base(DescriptorType.Device, Device.LENGTH) {
+            : base(DescriptorType.Device, Device.FixedLength) {
         }
     }
 
     /// <summary>Configuration descriptor.</summary>
     public class Configuration : BaseDescriptor {
 
-        /// <summary>The length of the descriptor in bytes.</summary>
-        public const byte LENGTH = 9;
+        /// <summary>The fixed length of this descriptor type in bytes.</summary>
+        public const byte FixedLength = 9;
 
         /// <summary>Total length of the the data returned in bytes.</summary>
         public ushort TotalLength { get; set; }
@@ -173,12 +173,12 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost.Descriptors {
 
         /// <summary>Constructs a new descriptor.</summary>
         protected Configuration()
-            : base(DescriptorType.Configuration, Configuration.LENGTH) {
+            : base(DescriptorType.Configuration, Configuration.FixedLength) {
         }
 
         /// <summary>Walks a config-descriptor blob from <paramref name="offset"/> to the end and fills <see cref="Interfaces"/>, the nested endpoints, and <see cref="AuxiliaryDescriptors"/>.</summary>
         /// <param name="bytes">The full configuration-descriptor blob (length = <see cref="TotalLength"/>).</param>
-        /// <param name="offset">Byte offset to start parsing children — typically <see cref="LENGTH"/> when the blob starts with the configuration header.</param>
+        /// <param name="offset">Byte offset to start parsing children — typically <see cref="FixedLength"/> when the blob starts with the configuration header.</param>
         public void FillChildren(byte[] bytes, int offset) {
             var auxiliaries = new System.Collections.Generic.List<Auxiliary>();
             var interfaces = new System.Collections.Generic.List<Interface>();
@@ -189,7 +189,7 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost.Descriptors {
                 if (type == DescriptorType.Interface) {
                     var newInterface = new Interface(bytes, offset);
                     interfaces.Add(newInterface);
-                    offset += Interface.LENGTH;
+                    offset += Interface.FixedLength;
                     newInterface.FillChildren(bytes, ref offset);
                 }
                 else {
@@ -207,8 +207,8 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost.Descriptors {
     /// <summary>Interface descriptor.</summary>
     public class Interface : BaseDescriptor {
 
-        /// <summary>The length of the descriptor in bytes.</summary>
-        public const byte LENGTH = 9;
+        /// <summary>The fixed length of this descriptor type in bytes.</summary>
+        public const byte FixedLength = 9;
 
         /// <summary>The number of the interface.</summary>
         public byte Number { get; set; }
@@ -262,7 +262,7 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost.Descriptors {
 
         /// <summary>Constructs a new descriptor.</summary>
         protected Interface()
-            : base(DescriptorType.Interface, Interface.LENGTH) {
+            : base(DescriptorType.Interface, Interface.FixedLength) {
         }
 
         internal void FillChildren(byte[] bytes, ref int offset) {
@@ -278,7 +278,7 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost.Descriptors {
                 else if (type == DescriptorType.Endpoint) {
                     var newEndpoint = new Endpoint(bytes, offset);
                     endpoints.Add(newEndpoint);
-                    offset += Endpoint.LENGTH;
+                    offset += Endpoint.FixedLength;
                     newEndpoint.FillChildren(bytes, ref offset);
                 }
                 else {
@@ -296,8 +296,8 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost.Descriptors {
     /// <summary>Endpoint descriptor.</summary>
     public class Endpoint : BaseDescriptor {
 
-        /// <summary>The length of the descriptor in bytes.</summary>
-        public const byte LENGTH = 7;
+        /// <summary>The fixed length of this descriptor type in bytes.</summary>
+        public const byte FixedLength = 7;
 
         /// <summary>The endpoint address.</summary>
         public byte Address { get; set; }
@@ -336,7 +336,7 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost.Descriptors {
 
         /// <summary>Constructs a new descriptor.</summary>
         protected Endpoint()
-            : base(DescriptorType.Endpoint, Endpoint.LENGTH) {
+            : base(DescriptorType.Endpoint, Endpoint.FixedLength) {
         }
 
         internal void FillChildren(byte[] bytes, ref int offset) {

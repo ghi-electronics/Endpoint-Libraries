@@ -2,20 +2,28 @@ using System.Collections;
 using System.Runtime.CompilerServices;
 using GHIElectronics.Endpoint.Core;
 
-[assembly: InternalsVisibleToAttribute("GHIElectronics.Endpoint.Devices.Dcmi")]
 [assembly: InternalsVisibleToAttribute("GHIElectronics.Endpoint.Devices.UsbHost")]
 namespace GHIElectronics.Endpoint.Devices.Camera {
-    public enum Format {
+    /// <summary>Pixel layout of a camera frame.</summary>
+    public enum PixelFormat {
+        /// <summary>16-bit RGB, 5 bits red, 6 bits green, 5 bits blue, two bytes per pixel.</summary>
         Rgb565 = 0,
+        /// <summary>24-bit RGB, 8 bits per channel, three bytes per pixel.</summary>
         Rgb888 = 1,
+        /// <summary>JPEG-compressed frame, size varies per frame.</summary>
         Jpeg = 2,
     }
 
+    /// <summary>Resolution, pixel format and frame rate requested from a camera.</summary>
     public class CameraConfiguration {
+        /// <summary>Frame width in pixels.</summary>
         public int Width { get; set; }
-        public int Height { get; set; }        
-        public Format ImageFormat { get; set; } = Format.Rgb565;
+        /// <summary>Frame height in pixels.</summary>
+        public int Height { get; set; }
+        /// <summary>Pixel format each frame is delivered in. Defaults to <see cref="PixelFormat.Rgb565"/>.</summary>
+        public PixelFormat ImageFormat { get; set; } = PixelFormat.Rgb565;
 
+        /// <summary>Target frame rate in frames per second. Defaults to 15.</summary>
         public int FrameRate { get; set; } = 15;
 
         internal static string[] GetResolution() {
@@ -57,11 +65,19 @@ namespace GHIElectronics.Endpoint.Devices.Camera {
         }
     }
 
-    public static class ConvertImage {
-        public static byte[] Convert(byte[] imageData, int width, int height, Format inPixelFormat, Format outPixelFormat) {
+    /// <summary>Converts a camera frame between pixel formats. Only JPEG input is supported today.</summary>
+    public static class ImageConverter {
+        /// <summary>Decodes a JPEG frame into the requested pixel format.</summary>
+        /// <param name="imageData">Raw JPEG bytes. The buffer may be longer than the actual JPEG; the end-of-image marker (<c>FF D9</c>) is located automatically.</param>
+        /// <param name="width">Decoded frame width in pixels.</param>
+        /// <param name="height">Decoded frame height in pixels.</param>
+        /// <param name="inPixelFormat">Must be <see cref="PixelFormat.Jpeg"/>; other formats throw <see cref="ArgumentException"/>.</param>
+        /// <param name="outPixelFormat">Target format: <see cref="PixelFormat.Jpeg"/> returns the trimmed JPEG, <see cref="PixelFormat.Rgb888"/> returns 3 bytes per pixel, <see cref="PixelFormat.Rgb565"/> returns 2 bytes per pixel.</param>
+        /// <returns>The converted frame, or <c>null</c> if the input does not start with the JPEG SOI marker (<c>FF D8</c>) or no end-of-image marker is found.</returns>
+        public static byte[] Convert(byte[] imageData, int width, int height, PixelFormat inPixelFormat, PixelFormat outPixelFormat) {
             // inBuffer is jpeg format
 
-            if (inPixelFormat != Format.Jpeg) {
+            if (inPixelFormat != PixelFormat.Jpeg) {
                 throw new ArgumentException("Support inPixelFormat jpeg only");
             }
 
@@ -90,16 +106,16 @@ namespace GHIElectronics.Endpoint.Devices.Camera {
                     Array.Copy(imageData, 0, dataJpeg, 0, dataJpeg.Length);
 
                     switch (outPixelFormat) {
-                        case Format.Jpeg:
+                        case PixelFormat.Jpeg:
                             return dataJpeg;
 
-                        case Format.Rgb888:
-                        case Format.Rgb565:
+                        case PixelFormat.Rgb888:
+                        case PixelFormat.Rgb565:
 
                             var data888 = new byte[width * height * 3];
 
                             NativeUtils.JpegtoRGB888(dataJpeg, jpeg_size, data888);
-                            if (outPixelFormat == Format.Rgb888) {
+                            if (outPixelFormat == PixelFormat.Rgb888) {
                                 return data888;
                             }
 

@@ -5,9 +5,11 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
     /// Provides low level access functionalities for the connected USB device. This is useful if there is not already a predefined driver for that device.
     /// </summary>
     /// <remarks>
-    /// Open it with the DeviceName of an Unknown device from UsbHostController ("/dev/bus/usb/001/005").
+    /// Open it with the DeviceName of an Unknown device from <c>UsbHostController</c> ("/dev/bus/usb/001/005").
     /// An interface that a driver of the board has is taken from it while the program uses it, and
     /// given back when the device is disposed.
+    /// </remarks>
+    /// <example>
     /// <code>
     /// var device = new RawDevice(e.DeviceName);
     /// var configuration = device.GetConfigurationDescriptor(0);
@@ -15,7 +17,7 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
     /// using var pipe = device.OpenPipe(input);
     /// var count = pipe.Transfer(buffer);
     /// </code>
-    /// </remarks>
+    /// </example>
     public unsafe class RawDevice : BaseDevice {
         /// <summary>Opens the device that UsbHostController reported ("/dev/bus/usb/001/005").</summary>
         public RawDevice(string deviceName) : base(deviceName, DeviceType.Unknown) {
@@ -67,7 +69,7 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
         /// <summary>Gets the device descriptor.</summary>
         /// <returns>The device descriptor.</returns>
         public Descriptors.Device GetDeviceDescriptor() {
-            var bytes = new byte[Descriptors.Device.LENGTH];
+            var bytes = new byte[Descriptors.Device.FixedLength];
             this.SendSetupPacket(0x80, 0x06, 0x0100, 0, bytes, 0, bytes.Length);
             return new Descriptors.Device(bytes);
         }
@@ -76,12 +78,12 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost {
         /// <param name="configurationIndex">The configuration index.</param>
         /// <returns>The configuration descriptor.</returns>
         public Descriptors.Configuration GetConfigurationDescriptor(byte configurationIndex) {
-            var bytes = new byte[Descriptors.Configuration.LENGTH];
+            var bytes = new byte[Descriptors.Configuration.FixedLength];
             this.SendSetupPacket(0x80, 0x06, (ushort)(0x0200 | configurationIndex), 0, bytes, 0, bytes.Length);
             var descriptor = new Descriptors.Configuration(bytes);
             bytes = new byte[descriptor.TotalLength];
             this.SendSetupPacket(0x80, 0x06, (ushort)(0x0200 | configurationIndex), 0, bytes, 0, bytes.Length);
-            descriptor.FillChildren(bytes, Descriptors.Configuration.LENGTH);
+            descriptor.FillChildren(bytes, Descriptors.Configuration.FixedLength);
             return descriptor;
         }
 

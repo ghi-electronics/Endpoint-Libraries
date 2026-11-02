@@ -5,6 +5,11 @@ using System.Text;
 using System.Threading.Tasks;
 
 namespace GHIElectronics.Endpoint.Core {
+    /// <summary>
+    /// System event hooks used by the device libraries. Placeholder: the kernel
+    /// log scanner that fed this class is parked; the class stays as the
+    /// cross-library event sink for future use.
+    /// </summary>
     public static class Events {
 
         //static int start_count = 0;

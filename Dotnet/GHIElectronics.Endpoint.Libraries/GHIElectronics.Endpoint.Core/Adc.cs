@@ -1,14 +1,17 @@
 namespace GHIElectronics.Endpoint.Core {
     public static partial class EPM815 {
         /// <summary>
-        /// The analog inputs, for .NET's System.Device.Analog through the
-        /// GHIElectronics.Endpoint.Devices.Adc package:
+        /// The analog inputs bundled with EPM815. Use with .NET's
+        /// <c>System.Device.Analog</c> through the
+        /// <c>GHIElectronics.Endpoint.Devices.Adc</c> package.
+        /// </summary>
+        /// <example>
         /// <code>
         /// using var adc = new AdcController();
         /// using var input = adc.OpenPin(EPM815.Adc.Pin.PA0);
         /// Console.WriteLine(input.ReadVoltage().Volts);
         /// </code>
-        /// </summary>
+        /// </example>
         public static class Adc {
             /// <summary>The pins with an analog input (the converter and channel are in the comments)</summary>
             public static class Pin {

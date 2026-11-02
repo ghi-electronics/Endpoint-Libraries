@@ -17,12 +17,14 @@ namespace GHIElectronics.Endpoint.Devices.Display {
     /// <summary>
     /// A display on the board. This class is abstract: the library ships one
     /// concrete subclass, <see cref="ParallelDisplayController"/>, for the
-    /// SoC's parallel RGB panel into <c>/dev/fb0</c>. Customers wiring any
-    /// other kind of panel (SPI, I2C, custom) subclass this directly and
-    /// drive the hardware through the Core Spi/I2c/Gpio APIs. The abstract
-    /// contract is: open the panel on <see cref="Enable"/>, close it on
-    /// <see cref="Disable"/>, push pixels on <see cref="Flush(ReadOnlySpan{byte})"/>.
-    ///
+    /// built-in parallel RGB panel into <c>/dev/fb0</c>. Customers wiring any
+    /// other kind of panel (SPI, I2C, custom) subclass this directly and drive
+    /// the hardware through the Core <c>Spi</c>/<c>I2c</c>/<c>Gpio</c> APIs.
+    /// The abstract contract is: open the panel on <see cref="Enable"/>,
+    /// close it on <see cref="Disable"/>, push pixels on
+    /// <see cref="Flush(ReadOnlySpan{byte})"/>.
+    /// </summary>
+    /// <example>
     /// <code>
     /// using var display = DisplayController.GetDefault();
     /// if (display != null) {
@@ -31,7 +33,7 @@ namespace GHIElectronics.Endpoint.Devices.Display {
     ///     display.Flush(bitmapBytes, PixelFormat.Format32bppArgb);
     /// }
     /// </code>
-    /// </summary>
+    /// </example>
     public abstract class DisplayController : IDisposable {
         private const string ConfigPath = "/config/display.json";
 
@@ -84,6 +86,7 @@ namespace GHIElectronics.Endpoint.Devices.Display {
             Flush(pixels, PixelFormat.Format24bppRgb, 0, 0, Math.Min(w, Width), Math.Min(h, Height));
         }
 
+        /// <summary>Calls <see cref="Disable"/> and releases any resources the subclass holds.</summary>
         public abstract void Dispose();
 
         /// <summary>
@@ -244,11 +247,14 @@ namespace GHIElectronics.Endpoint.Devices.Display {
         private int width;
         private int height;
 
+        /// <inheritdoc />
         public override int Width => this.width == 0
             ? GetSettings().Parallel?.Width ?? 0 : this.width;
+        /// <inheritdoc />
         public override int Height => this.height == 0
             ? GetSettings().Parallel?.Height ?? 0 : this.height;
 
+        /// <inheritdoc />
         public override bool IsEnabled {
             get {
                 Libendpoint.Check(Libendpoint.DisplayIsEnabled(out int r));
@@ -256,6 +262,12 @@ namespace GHIElectronics.Endpoint.Devices.Display {
             }
         }
 
+        /// <summary>
+        /// Programs the parallel-RGB controller from <c>/config/display.json</c>, opens
+        /// <c>/dev/fb0</c>, and reads the live stride and bits-per-pixel from
+        /// <c>/sys/class/graphics/fb0</c> (overriding the configured values if the kernel
+        /// pinned a different format).
+        /// </summary>
         public override void Enable() {
             Libendpoint.Check(Libendpoint.DisplayEnable());
             var p = GetSettings().Parallel ?? new ParallelLcdSettings();
@@ -277,12 +289,27 @@ namespace GHIElectronics.Endpoint.Devices.Display {
             } catch { /* keep the fallback */ }
         }
 
+        /// <summary>Closes <c>/dev/fb0</c> and turns the parallel-RGB controller off.</summary>
         public override void Disable() {
             this.framebuffer?.Dispose();
             this.framebuffer = null;
             Libendpoint.Check(Libendpoint.DisplayDisable());
         }
 
+        /// <summary>
+        /// Writes <paramref name="pixels"/> to the region (<paramref name="x"/>, <paramref name="y"/>,
+        /// <paramref name="width"/>, <paramref name="height"/>), converting from <paramref name="format"/>
+        /// to the framebuffer's native depth (16, 24, or 32 bpp) one row at a time.
+        /// </summary>
+        /// <param name="pixels">Source pixels in <paramref name="format"/>, laid out row by row with no padding.</param>
+        /// <param name="format">Source pixel format: Rgb565, Rgb24, Rgb32 or Argb32.</param>
+        /// <param name="x">Left edge of the target region in pixels.</param>
+        /// <param name="y">Top edge of the target region in pixels.</param>
+        /// <param name="width">Region width in pixels.</param>
+        /// <param name="height">Region height in pixels.</param>
+        /// <exception cref="InvalidOperationException">Called before <see cref="Enable"/>.</exception>
+        /// <exception cref="ArgumentException">The region extends outside the panel or the buffer is too small.</exception>
+        /// <exception cref="NotSupportedException">The requested source-to-target format conversion is not implemented.</exception>
         public override void Flush(ReadOnlySpan<byte> pixels, PixelFormat format,
                                     int x, int y, int width, int height) {
             if (this.framebuffer == null) {
@@ -326,6 +353,7 @@ namespace GHIElectronics.Endpoint.Devices.Display {
             }
         }
 
+        /// <summary>Calls <see cref="Disable"/> (best-effort - swallows any exception).</summary>
         public override void Dispose() {
             try { Disable(); } catch { /* best effort */ }
         }

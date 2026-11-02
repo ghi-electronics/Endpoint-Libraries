@@ -6,17 +6,22 @@ namespace GHIElectronics.Endpoint.Devices.Watchdog {
     /// <summary>
     /// Endpoint's watchdog, with the same API as TinyCLR. After
     /// <see cref="Enable(TimeSpan)"/>, <see cref="Reset"/> must be called more
-    /// often than the timeout, or the board restarts:
+    /// often than the timeout, or the board restarts. The watchdog cannot
+    /// be stopped once it runs. <see cref="Disable"/> hands it to the system,
+    /// which then keeps it fed. If the program ends or crashes without
+    /// <see cref="Disable"/>, the board restarts after the timeout, also when
+    /// debugging stops.
+    /// </summary>
+    /// <example>
     /// <code>
     /// var watchdog = WatchdogController.FromName(EPM815.Watchdog.Id);
     /// watchdog.Enable(TimeSpan.FromSeconds(10));
-    /// while (true) { DoWork(); watchdog.Reset(); }
+    /// while (true) {
+    ///     DoWork();
+    ///     watchdog.Reset();
+    /// }
     /// </code>
-    /// The chip's watchdog cannot be stopped once it runs. <see cref="Disable"/>
-    /// hands it to the system, which then keeps it fed. If the program ends or
-    /// crashes without Disable, the board restarts after the timeout, also
-    /// when debugging stops.
-    /// </summary>
+    /// </example>
     public class WatchdogController : IDisposable {
         // Linux's watchdog calls (linux/watchdog.h)
         private const nuint KeepAlive = 0x80045705;   // WDIOC_KEEPALIVE
@@ -38,7 +43,7 @@ namespace GHIElectronics.Endpoint.Devices.Watchdog {
                 ? new WatchdogController()
                 : throw new ArgumentException($"There is no watchdog named \"{name}\": use EPM815.Watchdog.Id", nameof(name));
 
-        /// <summary>The longest timeout: 131 seconds (4096 × 1024 ticks of the chip's 32 kHz clock)</summary>
+        /// <summary>The longest timeout the hardware supports.</summary>
         public TimeSpan MaxTimeout => TimeSpan.FromSeconds(131);
 
         /// <summary>Whether this controller has enabled the watchdog (and not disabled it)</summary>

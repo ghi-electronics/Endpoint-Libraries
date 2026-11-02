@@ -164,7 +164,7 @@ namespace GHIElectronics.Endpoint.Core.Internal {
         [LibraryImport(Library, EntryPoint = "endpoint_printer_read")]
         public static partial int PrinterRead(nint device, byte* buffer, int size, int timeoutMs, out int length);
 
-        // MP3 decoding, for PlayMp3 (GHIElectronics.Endpoint.Devices.Media)
+        // MP3 decoding, for PlayMp3 (GHIElectronics.Endpoint.Devices.Sound)
 
         [LibraryImport(Library, EntryPoint = "endpoint_mp3_open", StringMarshalling = StringMarshalling.Utf8)]
         public static partial int Mp3Open(string? path, byte* data, int length, out nint decoder, out int sampleRate, out int channels, out long samples);
@@ -175,7 +175,7 @@ namespace GHIElectronics.Endpoint.Core.Internal {
         [LibraryImport(Library, EntryPoint = "endpoint_mp3_close")]
         public static partial int Mp3Close(nint decoder);
 
-        // Webcams (Camera, GHIElectronics.Endpoint.Devices.Media): frame (context, jpeg, length, width, height) and
+        // Webcams (UsbCamera, GHIElectronics.Endpoint.Devices.Camera): frame (context, jpeg, length, width, height) and
         // unplugged (context) run on the camera's own threads
 
         [LibraryImport(Library, EntryPoint = "endpoint_camera_open", StringMarshalling = StringMarshalling.Utf8)]

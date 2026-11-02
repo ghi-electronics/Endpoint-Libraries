@@ -55,8 +55,8 @@ public:
 // A .NET-style event: handlers are added with += and removed with -=.
 // C++ cannot compare functions, so += gives an id for -=:
 //
-//   int id = (usb.OnConnectionChangedEvent += handler);
-//   usb.OnConnectionChangedEvent -= id;
+//   int id = (usb.ConnectionChanged += handler);
+//   usb.ConnectionChanged -= id;
 //
 // The handlers run on the thread that raises the event (the library's).
 template <typename... Args>

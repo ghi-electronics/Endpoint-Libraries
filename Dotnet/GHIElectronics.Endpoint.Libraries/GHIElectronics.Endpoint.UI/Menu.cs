@@ -9,18 +9,34 @@ namespace GHIElectronics.Endpoint.UI;
 /// listed on click.
 /// </summary>
 public class Menu : Widget {
+    /// <summary>Create a menu bar inside <paramref name="parent"/>.</summary>
+    /// <param name="parent">Containing widget.</param>
     public Menu(Widget parent) : base(0) {
         Libendpoint.Check(Libendpoint.UiMenuCreate(parent.Native, out var n));
         this.Native = n;
     }
 
-    public uint Background { set => Libendpoint.Check(Libendpoint.UiMenuSetBackground(this.Native, value)); }
+    private uint _background;
+    /// <summary>Menu-bar background color as <c>0x00RRGGBB</c>. Getter returns the last value set.</summary>
+    public uint Background {
+        get => this._background;
+        set { this._background = value; Libendpoint.Check(Libendpoint.UiMenuSetBackground(this.Native, value)); }
+    }
 
+    /// <summary>Append a leaf menu item.</summary>
+    /// <param name="header">Button text shown on the bar.</param>
+    /// <param name="itemWidth">Fixed width in pixels; <c>0</c> fits the text.</param>
+    /// <returns>Handle for subscribing to <see cref="MenuItem.Clicked"/>.</returns>
     public MenuItem AddItem(string header, int itemWidth = 0) {
         Libendpoint.Check(Libendpoint.UiMenuItemCreate(this.Native, header, itemWidth, out var h));
         return new MenuItem(h);
     }
 
+    /// <summary>Append a dropdown menu item that opens a sub-list when tapped.</summary>
+    /// <param name="header">Button text shown on the bar.</param>
+    /// <param name="subItems">Sub-item strings; <c>null</c> is treated as empty.</param>
+    /// <param name="itemWidth">Fixed width in pixels; <c>0</c> fits the text.</param>
+    /// <returns>Handle for subscribing to <see cref="MenuItem.ValueChanged"/> and reading <see cref="MenuItem.Selected"/>.</returns>
     public MenuItem AddDropdown(string header, string[] subItems, int itemWidth = 0) {
         var joined = subItems is null ? string.Empty : string.Join("\n", subItems);
         Libendpoint.Check(Libendpoint.UiMenuItemCreateDropdown(this.Native, header, joined, itemWidth, out var h));
@@ -54,11 +70,13 @@ public class MenuItem {
             this.Native, EventTrampolines.Pointer(), GCHandle.ToIntPtr(this._valueChangedHandle)));
     }
 
+    /// <summary>Fires when a leaf item is tapped. Runs on the UI thread.</summary>
     public event EventHandler Clicked {
         add => this._clicked += value;
         remove => this._clicked -= value;
     }
 
+    /// <summary>Fires when the user picks a sub-item from a dropdown item. Runs on the UI thread.</summary>
     public event EventHandler ValueChanged {
         add => this._valueChanged += value;
         remove => this._valueChanged -= value;

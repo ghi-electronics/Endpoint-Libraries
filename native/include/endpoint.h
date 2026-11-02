@@ -17,6 +17,7 @@
 #pragma once
 
 #include "endpoint/Adc.h"
+#include "endpoint/Camera.h"
 #include "endpoint/Can.h"
 #include "endpoint/Core.h"
 #include "endpoint/Dac.h"
@@ -29,11 +30,11 @@
 #include "endpoint/EPN256.h"
 #include "endpoint/Gpio.h"
 #include "endpoint/I2c.h"
-#include "endpoint/Media.h"
 #include "endpoint/Network.h"
 #include "endpoint/Ports.h"
 #include "endpoint/Pwm.h"
 #include "endpoint/Rtc.h"
+#include "endpoint/Sound.h"
 #include "endpoint/Spi.h"
 #include "endpoint/Storage.h"
 #include "endpoint/Touch.h"

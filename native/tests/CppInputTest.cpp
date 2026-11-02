@@ -103,7 +103,7 @@ int main() {
 
     auto keyboard = std::make_unique<Keyboard>(keyboardName);
     auto keyLine = [&](const char* what, const Keyboard::KeyboardEventArgs& e) {
-        add("keyboard", text("%s %s %d", what, Name(e.Which()), static_cast<int>(e.ASCII())));
+        add("keyboard", text("%s %s %d", what, Name(e.Which()), static_cast<int>(e.Ascii())));
     };
     keyboard->KeyDown += [&](Keyboard&, const Keyboard::KeyboardEventArgs& e) { keyLine("KeyDown", e); };
     keyboard->KeyUp += [&](Keyboard&, const Keyboard::KeyboardEventArgs& e) { keyLine("KeyUp", e); };

@@ -3,21 +3,22 @@ using System.Diagnostics;
 namespace GHIElectronics.Endpoint.Core {
     public static partial class EPN256 {
         /// <summary>
-        /// MA35D1 CAN interfaces (Bosch M_CAN IP). The kernel driver is loaded
-        /// on first Initialize; the kernel pinctrl framework mux's the CAN
-        /// TX / RX pins at probe. UnInitialize releases them.
+        /// CAN interfaces bundled with EPN256. <see cref="Initialize"/> claims a
+        /// port's pins and starts it; <see cref="UnInitialize"/> releases them.
+        /// Interface names are stable, so <see cref="Can0"/> is always
+        /// <c>can0</c>.
+        /// </summary>
+        /// <example>
         /// <code>
         /// EPN256.Can.Initialize(EPN256.Can.Can0, bitrate: 500_000);
         /// // The interface is up as "can0" and can be used by any Linux
         /// // CAN library (SocketCAN).
         /// </code>
-        /// Interface names are stable via the DT aliases (can0 = &amp;can1,
-        /// can1 = &amp;can3), so <see cref="Can0"/> is always <c>can0</c>.
-        /// </summary>
+        /// </example>
         public static class Can {
-            /// <summary>CAN0: TX, RX pins per the MA35D1 pinctrl_can1 group.</summary>
+            /// <summary>CAN0 interface name (TX, RX on the first CAN pin group).</summary>
             public const string Can0 = "can0";
-            /// <summary>CAN1: TX, RX pins per the MA35D1 pinctrl_can3 group.</summary>
+            /// <summary>CAN1 interface name (TX, RX on the second CAN pin group).</summary>
             public const string Can1 = "can1";
 
             private const string ModuleName = "m_can_platform";
@@ -26,8 +27,8 @@ namespace GHIElectronics.Endpoint.Core {
             private static bool moduleLoaded;
 
             /// <summary>
-            /// Loads the M_CAN driver, probes the chosen interface, sets its
-            /// bitrate, and brings it up. After this call the SocketCAN
+            /// Loads the CAN driver, probes the chosen interface, sets its
+            /// bitrate and brings it up. After this call the SocketCAN
             /// interface is ready for any linux-can library (e.g.
             /// <c>SocketCANSharp</c>).
             /// </summary>

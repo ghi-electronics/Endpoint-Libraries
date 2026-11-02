@@ -1,16 +1,7 @@
-"""Webcams and sound of Endpoint.
+"""Sound of Endpoint, with the API of .NET IoT's SoundDevice (Iot.Device.Media):
+play WAV and MP3, record WAV, volume and mute, on any sound card of the board.
 
-Camera: any USB webcam (the DeviceName of a Webcam from UsbHostController):
-
-    from GHIElectronics.Endpoint.Devices.Media import Camera
-
-    with Camera(e.DeviceName) as camera:
-        camera.Capture("/media/usb0/photo.jpg")      # a JPEG
-
-Sound, with the API of .NET IoT's SoundDevice (Iot.Device.Media): play WAV and
-MP3, record WAV, volume and mute, on any sound card of the board.
-
-    from GHIElectronics.Endpoint.Devices.Media import SoundConnectionSettings, SoundDevice
+    from GHIElectronics.Endpoint.Devices.Sound import SoundConnectionSettings, SoundDevice
 
     with SoundDevice.Create(SoundConnectionSettings()) as sound:   # the first sound card
         sound.Play("/media/usb0/beep.wav")
@@ -29,11 +20,7 @@ import os
 
 from GHIElectronics.Endpoint.Core._native import native
 
-from ._camera import (Camera, CameraControl, CameraControlValue, CameraFormat, CameraPixelFormat,
-                      FrameReceivedEventArgs)
-
-__all__ = ["Camera", "CameraControl", "CameraControlValue", "CameraFormat", "CameraPixelFormat",
-           "FrameReceivedEventArgs", "SoundConnectionSettings", "SoundDevice"]
+__all__ = ["SoundConnectionSettings", "SoundDevice"]
 
 
 class SoundConnectionSettings:
