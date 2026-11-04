@@ -40,7 +40,10 @@
  * - LV_STDLIB_RTTHREAD:    RT-Thread implementation
  * - LV_STDLIB_CUSTOM:      Implement the functions externally
  */
-#define LV_USE_STDLIB_MALLOC    LV_STDLIB_BUILTIN
+// Use the system allocator (malloc/free). The built-in pool is for MCUs
+// with no heap; this board has 256 MB of DDR, so a fixed pool just caps
+// widget creation arbitrarily (~145 lv_objs in 64 KB, then NULL and crash).
+#define LV_USE_STDLIB_MALLOC    LV_STDLIB_CLIB
 #define LV_USE_STDLIB_STRING    LV_STDLIB_BUILTIN
 #define LV_USE_STDLIB_SPRINTF   LV_STDLIB_BUILTIN
 
@@ -274,8 +277,10 @@
  * Logging
  *-----------*/
 
-/*Enable the log module*/
-#define LV_USE_LOG 0
+/*Enable the log module — we route LVGL warn/error to stderr in UI::Initialize
+ so allocation and style failures show up in the Endpoint output pane instead
+ of the process dying silently.*/
+#define LV_USE_LOG 1
 #if LV_USE_LOG
 
     /*How important log should be added:

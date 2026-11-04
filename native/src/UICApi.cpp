@@ -28,6 +28,15 @@ lv_obj_t* AsObj(void* handle) {
     return static_cast<lv_obj_t*>(handle);
 }
 
+// LVGL create functions return nullptr when the system allocator fails
+// (see LV_USE_STDLIB_MALLOC = LV_STDLIB_CLIB in lv_conf.h). Without this
+// check the next lv_obj_set_style_* would dereference nullptr and the
+// process would die with no managed exception.
+void ThrowIfNull(void* obj, const char* what) {
+    if (!obj) throw EndpointError(ErrorKind::IO,
+        std::string("Could not create ") + what + ": out of memory");
+}
+
 lv_color_t ColorFromRgb(uint32_t rgb) {
     return lv_color_hex(rgb & 0x00FFFFFF);
 }
@@ -238,6 +247,7 @@ ENDPOINT_API int endpoint_ui_screen_create(void** out) {
     return Call([&] {
         if (!out) ThrowInvalidOperation("out is null");
         *out = lv_obj_create(nullptr);
+        ThrowIfNull(*out, "screen");
     });
 }
 
@@ -260,6 +270,7 @@ ENDPOINT_API int endpoint_ui_container_create(void* parent, void** out) {
     return Call([&] {
         if (!parent || !out) ThrowInvalidOperation("parent or out is null");
         auto* obj = lv_obj_create(AsObj(parent));
+        ThrowIfNull(obj, "container");
         lv_obj_set_scrollbar_mode(obj, LV_SCROLLBAR_MODE_OFF);
         lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_set_style_pad_all(obj, 0, LV_PART_MAIN);
@@ -280,6 +291,7 @@ ENDPOINT_API int endpoint_ui_border_create(void* parent, void** out) {
     return Call([&] {
         if (!parent || !out) ThrowInvalidOperation("parent or out is null");
         auto* obj = lv_obj_create(AsObj(parent));
+        ThrowIfNull(obj, "border");
         lv_obj_set_scrollbar_mode(obj, LV_SCROLLBAR_MODE_OFF);
         lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_set_style_pad_all(obj, 0, LV_PART_MAIN);
@@ -318,6 +330,7 @@ ENDPOINT_API int endpoint_ui_stackpanel_create(void* parent, void** out) {
     return Call([&] {
         if (!parent || !out) ThrowInvalidOperation("parent or out is null");
         auto* obj = lv_obj_create(AsObj(parent));
+        ThrowIfNull(obj, "stackpanel");
         lv_obj_set_scrollbar_mode(obj, LV_SCROLLBAR_MODE_OFF);
         lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_set_style_pad_all(obj, 0, LV_PART_MAIN);
@@ -390,6 +403,7 @@ ENDPOINT_API int endpoint_ui_grid_create(void* parent, void** out) {
     return Call([&] {
         if (!parent || !out) ThrowInvalidOperation("parent or out is null");
         auto* obj = lv_obj_create(AsObj(parent));
+        ThrowIfNull(obj, "grid");
         lv_obj_set_scrollbar_mode(obj, LV_SCROLLBAR_MODE_OFF);
         lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_set_style_pad_all(obj, 0, LV_PART_MAIN);
@@ -446,6 +460,7 @@ ENDPOINT_API int endpoint_ui_dockpanel_create(void* parent, void** out) {
     return Call([&] {
         if (!parent || !out) ThrowInvalidOperation("parent or out is null");
         auto* obj = lv_obj_create(AsObj(parent));
+        ThrowIfNull(obj, "dockpanel");
         lv_obj_set_scrollbar_mode(obj, LV_SCROLLBAR_MODE_OFF);
         lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_set_style_pad_all(obj, 0, LV_PART_MAIN);
@@ -466,6 +481,7 @@ ENDPOINT_API int endpoint_ui_menu_create(void* parent, void** out) {
     return Call([&] {
         if (!parent || !out) ThrowInvalidOperation("parent or out is null");
         auto* obj = lv_obj_create(AsObj(parent));
+        ThrowIfNull(obj, "menu");
         lv_obj_set_scrollbar_mode(obj, LV_SCROLLBAR_MODE_OFF);
         lv_obj_remove_flag(obj, LV_OBJ_FLAG_SCROLLABLE);
         lv_obj_set_style_pad_all(obj, 0, LV_PART_MAIN);
@@ -491,12 +507,14 @@ ENDPOINT_API int endpoint_ui_menuitem_create(void* parent, const char* header, i
     return Call([&] {
         if (!parent || !out) ThrowInvalidOperation("parent or out is null");
         auto* btn = lv_button_create(AsObj(parent));
+        ThrowIfNull(btn, "menu item");
         lv_obj_set_size(btn, item_width > 0 ? item_width : LV_SIZE_CONTENT, LV_SIZE_CONTENT);
         lv_obj_set_style_bg_opa(btn, LV_OPA_TRANSP, LV_PART_MAIN);
         lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
         lv_obj_set_style_pad_hor(btn, 10, LV_PART_MAIN);
         lv_obj_set_style_pad_ver(btn, 4, LV_PART_MAIN);
         auto* label = lv_label_create(btn);
+        ThrowIfNull(label, "menu item label");
         lv_label_set_text(label, header ? header : "");
         lv_obj_set_user_data(btn, label);
         *out = btn;
@@ -518,6 +536,7 @@ ENDPOINT_API int endpoint_ui_menuitem_create_dropdown(void* parent, const char* 
     return Call([&] {
         if (!parent || !out) ThrowInvalidOperation("parent or out is null");
         auto* dd = lv_dropdown_create(AsObj(parent));
+        ThrowIfNull(dd, "menu item dropdown");
         if (item_width > 0) lv_obj_set_width(dd, item_width);
         lv_obj_set_style_bg_opa(dd, LV_OPA_TRANSP, LV_PART_MAIN);
 
@@ -549,6 +568,7 @@ ENDPOINT_API int endpoint_ui_calendar_create(void* parent, void** out) {
     return Call([&] {
         if (!parent || !out) ThrowInvalidOperation("parent or out is null");
         *out = lv_calendar_create(AsObj(parent));
+        ThrowIfNull(*out, "calendar");
     });
 }
 
@@ -568,6 +588,7 @@ ENDPOINT_API int endpoint_ui_datagrid_create(void* parent, void** out) {
     return Call([&] {
         if (!parent || !out) ThrowInvalidOperation("parent or out is null");
         *out = lv_table_create(AsObj(parent));
+        ThrowIfNull(*out, "datagrid");
     });
 }
 
@@ -594,6 +615,7 @@ ENDPOINT_API int endpoint_ui_treeview_create(void* parent, void** out) {
     return Call([&] {
         if (!parent || !out) ThrowInvalidOperation("parent or out is null");
         *out = lv_list_create(AsObj(parent));
+        ThrowIfNull(*out, "treeview");
     });
 }
 
@@ -607,6 +629,7 @@ ENDPOINT_API int endpoint_ui_treeview_add_node(void* tree, int depth, int is_exp
         const char* glyph = has_children ? (is_expanded ? "- " : "+ ") : "  ";
         snprintf(buf, sizeof(buf), "%s%s", glyph, header ? header : "");
         auto* btn = lv_list_add_button(list, NULL, buf);
+        ThrowIfNull(btn, "treeview node");
         lv_obj_set_style_pad_left(btn, depth * 20, LV_PART_MAIN);
         if (out_node) *out_node = btn;
     });
@@ -635,6 +658,7 @@ ENDPOINT_API int endpoint_ui_chart_create(void* parent, void** out) {
     return Call([&] {
         if (!parent || !out) ThrowInvalidOperation("parent or out is null");
         auto* chart = lv_chart_create(AsObj(parent));
+        ThrowIfNull(chart, "chart");
         lv_chart_set_type(chart, LV_CHART_TYPE_LINE);
         lv_chart_set_update_mode(chart, LV_CHART_UPDATE_MODE_SHIFT);
         auto* st = new ChartState{};
@@ -751,6 +775,7 @@ ENDPOINT_API int endpoint_ui_gauge_create(void* parent, int width, int height, v
     return Call([&] {
         if (!parent || !out) ThrowInvalidOperation("parent or out is null");
         auto* holder = lv_obj_create(AsObj(parent));
+        ThrowIfNull(holder, "gauge");
         lv_obj_set_size(holder, width, height);
         lv_obj_set_scrollbar_mode(holder, LV_SCROLLBAR_MODE_OFF);
         lv_obj_remove_flag(holder, LV_OBJ_FLAG_SCROLLABLE);
@@ -759,6 +784,7 @@ ENDPOINT_API int endpoint_ui_gauge_create(void* parent, int width, int height, v
         lv_obj_set_style_bg_opa(holder, LV_OPA_TRANSP, LV_PART_MAIN);
 
         auto* scale = lv_scale_create(holder);
+        ThrowIfNull(scale, "gauge scale");
         lv_obj_set_size(scale, width, height);
         lv_scale_set_mode(scale, LV_SCALE_MODE_ROUND_INNER);
         lv_scale_set_total_tick_count(scale, 11);
@@ -769,6 +795,7 @@ ENDPOINT_API int endpoint_ui_gauge_create(void* parent, int width, int height, v
         lv_scale_set_rotation(scale, 135);
 
         auto* needle = lv_line_create(holder);
+        ThrowIfNull(needle, "gauge needle");
         lv_obj_set_style_line_color(needle, lv_color_hex(0xD32F2F), LV_PART_MAIN);
         lv_obj_set_style_line_width(needle, 3, LV_PART_MAIN);
         lv_obj_set_style_line_rounded(needle, true, LV_PART_MAIN);
@@ -857,6 +884,7 @@ lv_obj_t* ButtonLabel(lv_obj_t* btn) {
     auto* label = static_cast<lv_obj_t*>(lv_obj_get_user_data(btn));
     if (!label) {
         label = lv_label_create(btn);
+        ThrowIfNull(label, "button label");
         lv_obj_center(label);
         lv_obj_set_user_data(btn, label);
     }
@@ -868,6 +896,7 @@ ENDPOINT_API int endpoint_ui_button_create(void* parent, void** out) {
     return Call([&] {
         if (!parent || !out) ThrowInvalidOperation("parent or out is null");
         auto* btn = lv_button_create(AsObj(parent));
+        ThrowIfNull(btn, "button");
         // Default LVGL button has a drop shadow that leaves a visible gap at
         // the bottom. Our customers expect a flat button; opt out of it.
         lv_obj_set_style_shadow_width(btn, 0, LV_PART_MAIN);
@@ -910,6 +939,7 @@ ENDPOINT_API int endpoint_ui_label_create(void* parent, void** out) {
     return Call([&] {
         if (!parent || !out) ThrowInvalidOperation("parent or out is null");
         *out = lv_label_create(AsObj(parent));
+        ThrowIfNull(*out, "label");
     });
 }
 
@@ -950,6 +980,7 @@ ENDPOINT_API int endpoint_ui_image_create(void* parent, void** out) {
     return Call([&] {
         if (!parent || !out) ThrowInvalidOperation("parent or out is null");
         *out = lv_image_create(AsObj(parent));
+        ThrowIfNull(*out, "image");
     });
 }
 
@@ -982,6 +1013,7 @@ ENDPOINT_API int endpoint_ui_textbox_create(void* parent, void** out) {
     return Call([&] {
         if (!parent || !out) ThrowInvalidOperation("parent or out is null");
         auto* ta = lv_textarea_create(AsObj(parent));
+        ThrowIfNull(ta, "textbox");
         lv_textarea_set_one_line(ta, true);
         *out = ta;
     });
@@ -1011,6 +1043,7 @@ ENDPOINT_API int endpoint_ui_slider_create(void* parent, void** out) {
     return Call([&] {
         if (!parent || !out) ThrowInvalidOperation("parent or out is null");
         *out = lv_slider_create(AsObj(parent));
+        ThrowIfNull(*out, "slider");
     });
 }
 
@@ -1036,6 +1069,7 @@ ENDPOINT_API int endpoint_ui_checkbox_create(void* parent, void** out) {
     return Call([&] {
         if (!parent || !out) ThrowInvalidOperation("parent or out is null");
         *out = lv_checkbox_create(AsObj(parent));
+        ThrowIfNull(*out, "checkbox");
     });
 }
 
@@ -1076,6 +1110,7 @@ ENDPOINT_API int endpoint_ui_keyboard_create(void* parent, void** out) {
     return Call([&] {
         if (!parent || !out) ThrowInvalidOperation("parent or out is null");
         auto* kb = lv_keyboard_create(AsObj(parent));
+        ThrowIfNull(kb, "keyboard");
         lv_obj_add_event_cb(kb, KeyboardHideOnReadyOrCancel, LV_EVENT_READY, nullptr);
         lv_obj_add_event_cb(kb, KeyboardHideOnReadyOrCancel, LV_EVENT_CANCEL, nullptr);
         *out = kb;
@@ -1097,6 +1132,7 @@ ENDPOINT_API int endpoint_ui_switch_create(void* parent, void** out) {
     return Call([&] {
         if (!parent || !out) ThrowInvalidOperation("parent or out is null");
         *out = lv_switch_create(AsObj(parent));
+        ThrowIfNull(*out, "switch");
     });
 }
 
@@ -1121,6 +1157,7 @@ ENDPOINT_API int endpoint_ui_progressbar_create(void* parent, void** out) {
     return Call([&] {
         if (!parent || !out) ThrowInvalidOperation("parent or out is null");
         auto* bar = lv_bar_create(AsObj(parent));
+        ThrowIfNull(bar, "progressbar");
         *out = bar;
     });
 }
@@ -1148,6 +1185,7 @@ ENDPOINT_API int endpoint_ui_dropdown_create(void* parent, void** out) {
     return Call([&] {
         if (!parent || !out) ThrowInvalidOperation("parent or out is null");
         *out = lv_dropdown_create(AsObj(parent));
+        ThrowIfNull(*out, "dropdown");
     });
 }
 
@@ -1179,6 +1217,7 @@ ENDPOINT_API int endpoint_ui_radiobutton_create(void* parent, void** out) {
     return Call([&] {
         if (!parent || !out) ThrowInvalidOperation("parent or out is null");
         auto* rb = lv_checkbox_create(AsObj(parent));
+        ThrowIfNull(rb, "radiobutton");
         // Make the indicator a circle instead of a square.
         lv_obj_set_style_radius(rb, LV_RADIUS_CIRCLE, LV_PART_INDICATOR);
         *out = rb;
@@ -1212,6 +1251,7 @@ ENDPOINT_API int endpoint_ui_messagebox_create(void* parent, void** out) {
     return Call([&] {
         if (!parent || !out) ThrowInvalidOperation("parent or out is null");
         *out = lv_msgbox_create(AsObj(parent));
+        ThrowIfNull(*out, "messagebox");
     });
 }
 
@@ -1230,6 +1270,7 @@ ENDPOINT_API int endpoint_ui_messagebox_add_button(void* mb, const char* text, v
     return Call([&] {
         if (!outButton) ThrowInvalidOperation("outButton is null");
         *outButton = lv_msgbox_add_footer_button(AsObj(mb), text ? text : "");
+        ThrowIfNull(*outButton, "messagebox button");
     });
 }
 
@@ -1245,6 +1286,7 @@ ENDPOINT_API int endpoint_ui_listbox_create(void* parent, void** out) {
     return Call([&] {
         if (!parent || !out) ThrowInvalidOperation("parent or out is null");
         *out = lv_list_create(AsObj(parent));
+        ThrowIfNull(*out, "listbox");
     });
 }
 
@@ -1254,6 +1296,7 @@ ENDPOINT_API int endpoint_ui_listbox_add_item(void* lb, const char* text, void**
     return Call([&] {
         if (!outItem) ThrowInvalidOperation("outItem is null");
         *outItem = lv_list_add_button(AsObj(lb), nullptr, text ? text : "");
+        ThrowIfNull(*outItem, "listbox item");
     });
 }
 

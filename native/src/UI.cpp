@@ -2,6 +2,7 @@
 
 #include <atomic>
 #include <chrono>
+#include <cstdio>
 #include <fcntl.h>
 #include <thread>
 #include <unistd.h>
@@ -45,12 +46,22 @@ void HideFbconCursor() {
     }
 }
 
+// LV_USE_LOG = 1 in lv_conf.h; LVGL calls this for every warning or error
+// (level filter is LV_LOG_LEVEL_WARN). Prefix so it is obvious where the
+// line came from when it shows up alongside the customer's own output.
+void LvglLogToStderr(lv_log_level_t level, const char* msg) {
+    const char* tag = level >= LV_LOG_LEVEL_ERROR ? "error" : "warn";
+    std::fprintf(stderr, "libendpoint-ui: LVGL %s: %s", tag, msg ? msg : "");
+    std::fflush(stderr);
+}
+
 }  // namespace
 
 void Initialize() {
     if (g_initialized.exchange(true)) return;
 
     HideFbconCursor();
+    lv_log_register_print_cb(LvglLogToStderr);
     lv_init();
     lv_tick_set_cb(TickNowMs);
 
