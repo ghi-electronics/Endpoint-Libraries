@@ -2,20 +2,30 @@
     "version": 3,
     "configurePresets": [
         {
-            "name": "endpoint",
-            "displayName": "Endpoint board (Zig)",
+            "name": "endpoint-arm64",
+            "displayName": "Endpoint aarch64 (MA35D1 / MA35D0)",
             "generator": "Ninja",
-            "binaryDir": "${sourceDir}/build",
+            "binaryDir": "${sourceDir}/build/linux-arm64",
             "toolchainFile": "${sourceDir}/cmake/endpoint-toolchain.cmake",
             "cacheVariables": {
-                "CMAKE_BUILD_TYPE": "Release"
+                "CMAKE_BUILD_TYPE": "Release",
+                "ENDPOINT_ARCH": "aarch64"
+            }
+        },
+        {
+            "name": "endpoint-arm",
+            "displayName": "Endpoint arm (STM32MP153)",
+            "generator": "Ninja",
+            "binaryDir": "${sourceDir}/build/linux-arm",
+            "toolchainFile": "${sourceDir}/cmake/endpoint-toolchain.cmake",
+            "cacheVariables": {
+                "CMAKE_BUILD_TYPE": "Release",
+                "ENDPOINT_ARCH": "arm"
             }
         }
     ],
     "buildPresets": [
-        {
-            "name": "endpoint",
-            "configurePreset": "endpoint"
-        }
+        { "name": "endpoint-arm64", "configurePreset": "endpoint-arm64" },
+        { "name": "endpoint-arm",   "configurePreset": "endpoint-arm"   }
     ]
 }

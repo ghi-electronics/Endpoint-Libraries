@@ -1,13 +1,39 @@
-# Builds C and C++ for Endpoint boards (Nuvoton MA35D1: Cortex-A35, aarch64)
-# with Zig's clang, the same compiler "endpoint-cli c++" uses:
+# Builds C and C++ for Endpoint boards with Zig's clang, the same compiler
+# that "endpoint-cli c++" uses. One toolchain covers both architectures;
+# pick via the ENDPOINT_ARCH cache variable:
 #
-#   cmake -G Ninja -S . -B build -DCMAKE_TOOLCHAIN_FILE=cmake/endpoint-toolchain.cmake
+#   aarch64 (default) — Nuvoton MA35D1 / MA35D0 (Cortex-A35, 64-bit)
+#   arm               — ST STM32MP153       (Cortex-A7,  32-bit, hard float)
+#
+# Use through the matching preset:
+#
+#   cmake --preset endpoint-arm64
+#   cmake --build --preset endpoint-arm64
+#
+#   cmake --preset endpoint-arm
+#   cmake --build --preset endpoint-arm
 #
 # Zig is found in ENDPOINT_ZIG (the zig program), or in the tools folder
 # endpoint-cli downloads it to (ENDPOINT_TOOLS, or %LOCALAPPDATA%\Endpoint\tools).
 
+if(NOT DEFINED ENDPOINT_ARCH)
+    set(ENDPOINT_ARCH "aarch64" CACHE STRING "Target architecture: aarch64 (MA35) or arm (STM32MP1)")
+endif()
+
+if(ENDPOINT_ARCH STREQUAL "aarch64")
+    set(CMAKE_SYSTEM_PROCESSOR aarch64)
+    # Cortex-A35 (MA35D1 / MA35D0) with glibc 2.34 to match endpoint-cli.
+    set(_target "-target aarch64-linux-gnu.2.34 -mcpu=cortex_a35")
+elseif(ENDPOINT_ARCH STREQUAL "arm")
+    set(CMAKE_SYSTEM_PROCESSOR arm)
+    # Cortex-A7 (STM32MP153) with hard float + glibc 2.34.
+    set(_target "-target arm-linux-gnueabihf.2.34 -mcpu=cortex_a7")
+else()
+    message(FATAL_ERROR "ENDPOINT_ARCH='${ENDPOINT_ARCH}' is not supported: use 'aarch64' or 'arm'")
+endif()
+message(STATUS "libendpoint target: ${ENDPOINT_ARCH}")
+
 set(CMAKE_SYSTEM_NAME Linux)
-set(CMAKE_SYSTEM_PROCESSOR aarch64)
 
 set(ENDPOINT_ZIG_VERSION 0.17.0)
 
@@ -38,8 +64,6 @@ endif()
 set(CMAKE_C_COMPILER "${ENDPOINT_ZIG}" cc)
 set(CMAKE_CXX_COMPILER "${ENDPOINT_ZIG}" c++)
 
-# The board's processor, and the oldest glibc the program may need (as endpoint-cli)
-set(_target "-target aarch64-linux-gnu.2.34 -mcpu=cortex_a35")
 set(CMAKE_C_FLAGS_INIT "${_target}")
 set(CMAKE_CXX_FLAGS_INIT "${_target}")
 set(CMAKE_EXE_LINKER_FLAGS_INIT "${_target}")
