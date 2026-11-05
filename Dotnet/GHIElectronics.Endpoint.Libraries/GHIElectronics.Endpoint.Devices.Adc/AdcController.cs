@@ -45,12 +45,18 @@ namespace GHIElectronics.Endpoint.Devices.Adc {
         }
 
         // Chip-dispatched access to the pin table. The whole rest of this
-        // class only touches these two members, so a third chip adds one case.
-        private static AnalogInput[] Inputs =>
-            ChipDetect.IsMa35 ? EPN256.Adc.Inputs : EPM815.Adc.Inputs;
+        // class only touches these two members, so a new chip adds one case.
+        private static AnalogInput[] Inputs => ChipDetect.Current switch {
+            Chip.Epn128 => EPN128.Adc.Inputs,
+            Chip.Epn256 => EPN256.Adc.Inputs,
+            _           => EPM815.Adc.Inputs,
+        };
 
-        private static AnalogInput? Find(int pin) =>
-            ChipDetect.IsMa35 ? EPN256.Adc.Find(pin) : EPM815.Adc.Find(pin);
+        private static AnalogInput? Find(int pin) => ChipDetect.Current switch {
+            Chip.Epn128 => EPN128.Adc.Find(pin),
+            Chip.Epn256 => EPN256.Adc.Find(pin),
+            _           => EPM815.Adc.Find(pin),
+        };
 
         private static AnalogInput Get(int pin) =>
             Find(pin) ?? throw new ArgumentException(

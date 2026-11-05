@@ -20,14 +20,20 @@ namespace GHIElectronics.Endpoint.Core {
         /// is set, RTS and (where bonded out) CTS are muxed too.
         /// </summary>
         public static void Initialize(string portName, bool enableHardwareFlowControl = false) {
-            if (ChipDetect.IsMa35) EPN256.SerialPort.Initialize(portName, enableHardwareFlowControl);
-            else                   EPM815.SerialPort.Initialize(portName, enableHardwareFlowControl);
+            switch (ChipDetect.Current) {
+                case Chip.Epn128: EPN128.SerialPort.Initialize(portName, enableHardwareFlowControl); break;
+                case Chip.Epn256: EPN256.SerialPort.Initialize(portName, enableHardwareFlowControl); break;
+                default:          EPM815.SerialPort.Initialize(portName, enableHardwareFlowControl); break;
+            }
         }
 
         /// <summary>Releases the port's pins back to free GPIO.</summary>
         public static void UnInitialize(string portName) {
-            if (ChipDetect.IsMa35) EPN256.SerialPort.UnInitialize(portName);
-            else                   EPM815.SerialPort.UnInitialize(portName);
+            switch (ChipDetect.Current) {
+                case Chip.Epn128: EPN128.SerialPort.UnInitialize(portName); break;
+                case Chip.Epn256: EPN256.SerialPort.UnInitialize(portName); break;
+                default:          EPM815.SerialPort.UnInitialize(portName); break;
+            }
         }
     }
 }
