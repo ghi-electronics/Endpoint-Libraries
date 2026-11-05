@@ -3,9 +3,9 @@ using GHIElectronics.Endpoint.Core.Chips;
 namespace GHIElectronics.Endpoint.Core.Internal {
     /// <summary>One pin of a peripheral (I2C, SPI, PWM, UART...) and how to set it up</summary>
     internal readonly record struct PinFunction(int Pin, int Alternate,
-        Stm32Mp1Pins.Pull Pull = Stm32Mp1Pins.Pull.None,
-        Stm32Mp1Pins.OutputType Type = Stm32Mp1Pins.OutputType.PushPull,
-        Stm32Mp1Pins.Speed Speed = Stm32Mp1Pins.Speed.Low) {
+        Pull Pull = Pull.None,
+        OutputType Type = OutputType.PushPull,
+        Speed Speed = Speed.Low) {
         /// <summary>The Alternate value that means analog mode instead of a function</summary>
         public const int AnalogFunction = -1;
 
@@ -17,9 +17,19 @@ namespace GHIElectronics.Endpoint.Core.Internal {
     /// Connects pins to a peripheral, and gives them back as they were found.
     /// The device tree leaves these pins alone (empty pinctrl), so the kernel
     /// does not change them behind our back.
+    ///
+    /// Dispatches to the right chip helper (<see cref="Stm32Mp1Pins"/> for
+    /// EPM815, <see cref="Ma35dPins"/> for EPN256 / EPN128) based on the
+    /// chip detected at startup (see <see cref="ChipDetect"/>). Both helpers
+    /// expose the same shape of SetFunction / Save / Restore; the per-chip
+    /// State object is boxed in <see cref="Saved"/> so this file can stay
+    /// chip-neutral.
     /// </summary>
     internal static class PeripheralPins {
-        private readonly record struct Saved(int Pin, int Port, int Line, Stm32Mp1Pins.State State);
+        // State is held as object because each chip helper has its own
+        // State record (different register layouts). Boxing happens once per
+        // pin, on Connect; restored via cast on Disconnect.
+        private readonly record struct Saved(int Pin, int Port, int Line, object State);
 
         private static readonly object Gate = new();
         private static readonly Dictionary<string, Saved[]> Connected = new();
@@ -39,14 +49,14 @@ namespace GHIElectronics.Endpoint.Core.Internal {
                 var saved = new List<Saved>();
                 try {
                     foreach (var p in pins) {
-                        var (port, line) = EPM815.Gpio.ChipPin(p.Pin);
-                        saved.Add(new Saved(p.Pin, port, line, Stm32Mp1Pins.Save(port, line)));
+                        // Both chips use the same (port, line) decode: port * 16 + line
+                        var (port, line) = (p.Pin / 16, p.Pin % 16);
+                        saved.Add(new Saved(p.Pin, port, line, ChipSave(port, line)));
                         if (p.Alternate == PinFunction.AnalogFunction) {
-                            Stm32Mp1Pins.SetPull(port, line, Stm32Mp1Pins.Pull.None);
-                            Stm32Mp1Pins.SetMode(port, line, Stm32Mp1Pins.Mode.Analog);
+                            ChipSetAnalog(port, line);
                         }
                         else {
-                            Stm32Mp1Pins.SetFunction(port, line, p.Alternate, p.Pull, p.Type, p.Speed);
+                            ChipSetFunction(port, line, p.Alternate, p.Pull, p.Type, p.Speed);
                         }
                     }
                 }
@@ -78,7 +88,43 @@ namespace GHIElectronics.Endpoint.Core.Internal {
 
         private static void Restore(IEnumerable<Saved> saved) {
             foreach (var s in saved) {
-                Stm32Mp1Pins.Restore(s.Port, s.Line, s.State);
+                ChipRestore(s.Port, s.Line, s.State);
+            }
+        }
+
+        // ============== Chip dispatch ==============
+
+        private static object ChipSave(int port, int line) => ChipDetect.IsMa35
+            ? Ma35dPins.Save(port, line)
+            : Stm32Mp1Pins.Save(port, line);
+
+        private static void ChipSetFunction(int port, int line, int function,
+                                            Pull pull, OutputType type, Speed speed) {
+            if (ChipDetect.IsMa35) {
+                Ma35dPins.SetFunction(port, line, function, pull, type, speed);
+            }
+            else {
+                Stm32Mp1Pins.SetFunction(port, line, function, pull, type, speed);
+            }
+        }
+
+        private static void ChipSetAnalog(int port, int line) {
+            // STM32: Analog is a MODE value. MA35: no analog mode — ADC pins
+            // are picked by MFP like any other peripheral function (callers
+            // for Adc on Nuvoton use SetFunction with the ADC MFP value, not
+            // this path). Nothing to do here on MA35.
+            if (!ChipDetect.IsMa35) {
+                Stm32Mp1Pins.SetPull(port, line, Pull.None);
+                Stm32Mp1Pins.SetMode(port, line, Stm32Mp1Pins.Mode.Analog);
+            }
+        }
+
+        private static void ChipRestore(int port, int line, object state) {
+            if (ChipDetect.IsMa35) {
+                Ma35dPins.Restore(port, line, (Ma35dPins.State)state);
+            }
+            else {
+                Stm32Mp1Pins.Restore(port, line, (Stm32Mp1Pins.State)state);
             }
         }
     }

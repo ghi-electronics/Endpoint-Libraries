@@ -1,6 +1,5 @@
 using System.Globalization;
 using GHIElectronics.Endpoint.Core.Internal;
-using static GHIElectronics.Endpoint.Core.Chips.Stm32Mp1Pins;
 
 namespace GHIElectronics.Endpoint.Core {
     public static partial class EPM815 {

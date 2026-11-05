@@ -28,23 +28,13 @@ namespace GHIElectronics.Endpoint.Core.Chips {
     /// </summary>
     internal static class Ma35dPins {
         // =====================================================================
-        // Public enums — same NAMES as Stm32Mp1Pins so PinFunction can carry
-        // either chip's values; semantics documented above.
+        // MA35-specific MODE enum. Pull / OutputType / Speed come from the
+        // chip-neutral PinOptions so PinFunction can carry them for either
+        // chip; the shared Speed values (Low/Medium/High/VeryHigh) map onto
+        // the MA35's three SLEWCTL settings below in SetSpeed.
         // =====================================================================
 
         public enum Mode { Input = 0, Output = 1, OpenDrain = 2, Quasi = 3 }
-
-        public enum Pull { None = 0, Up = 1, Down = 2 }
-
-        /// <summary>SLEWCTL field: slew-rate / edge speed.</summary>
-        public enum Speed { Low = 0, High = 1, Fast = 2 }
-
-        /// <summary>
-        /// On MA35 this folds into <see cref="Mode"/> — kept as a separate
-        /// enum for API parity with <see cref="Stm32Mp1Pins.OutputType"/> so
-        /// <see cref="PinFunction"/> stays chip-neutral.
-        /// </summary>
-        public enum OutputType { PushPull = 0, OpenDrain = 1 }
 
         /// <summary>A pin's whole setup, snapshot for <see cref="Restore"/>.</summary>
         public readonly record struct State(Mode Mode, int Mfp, Pull Pull, Speed Speed);
@@ -89,10 +79,20 @@ namespace GHIElectronics.Endpoint.Core.Chips {
             PhysicalMemory.Modify(PortBase(port, line) + GpioPusel,
                 3u << (line * 2), (uint)pull << (line * 2));
 
-        /// <summary>Writes the pin's SLEWCTL field.</summary>
-        public static void SetSpeed(int port, int line, Speed speed) =>
+        /// <summary>
+        /// Writes the pin's SLEWCTL field. The chip-neutral <see cref="Speed"/>
+        /// enum has four values; the MA35 SLEWCTL has three (0=normal,
+        /// 1=high, 2=fast). Mapping: Low→0, Medium/High→1, VeryHigh→2.
+        /// </summary>
+        public static void SetSpeed(int port, int line, Speed speed) {
+            uint slewctl = speed switch {
+                Speed.Low => 0,
+                Speed.VeryHigh => 2,
+                _ => 1,  // Medium and High both map to "high slew"
+            };
             PhysicalMemory.Modify(PortBase(port, line) + GpioSlewctl,
-                3u << (line * 2), (uint)speed << (line * 2));
+                3u << (line * 2), slewctl << (line * 2));
+        }
 
         /// <summary>
         /// Writes the pin's output type. On MA35 this folds into MODE —
@@ -120,11 +120,18 @@ namespace GHIElectronics.Endpoint.Core.Chips {
             var b = PortBase(port, line);
             var mfpReg = SysBase + MfpBase + ((ulong)port * 0x08) + (line < 8 ? 0ul : 0x04ul);
             var mfpShift = (line % 8) * 4;
+            var slewctl = (PhysicalMemory.Read(b + GpioSlewctl) >> (line * 2)) & 3;
+            // Inverse of SetSpeed's mapping (lossy — Medium and High both saved as High).
+            var speed = slewctl switch {
+                0u => Speed.Low,
+                2u => Speed.VeryHigh,
+                _ => Speed.High,
+            };
             return new State(
                 (Mode)((PhysicalMemory.Read(b + GpioMode) >> (line * 2)) & 3),
                 (int)((PhysicalMemory.Read(mfpReg) >> mfpShift) & 0xF),
                 (Pull)((PhysicalMemory.Read(b + GpioPusel) >> (line * 2)) & 3),
-                (Speed)((PhysicalMemory.Read(b + GpioSlewctl) >> (line * 2)) & 3));
+                speed);
         }
 
         /// <summary>

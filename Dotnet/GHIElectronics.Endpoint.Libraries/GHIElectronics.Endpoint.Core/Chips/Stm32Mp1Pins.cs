@@ -12,10 +12,10 @@ namespace GHIElectronics.Endpoint.Core.Chips {
     /// the kernel turns it off after its next access.
     /// </summary>
     internal static class Stm32Mp1Pins {
+        /// <summary>STM32-specific MODER value (Input / Output / Alternate / Analog).
+        /// Pull / Speed / OutputType moved to the Internal namespace so they are
+        /// shared with other chip helpers via <see cref="PinFunction"/>.</summary>
         public enum Mode { Input = 0, Output = 1, Alternate = 2, Analog = 3 }
-        public enum Pull { None = 0, Up = 1, Down = 2 }
-        public enum Speed { Low = 0, Medium = 1, High = 2, VeryHigh = 3 }
-        public enum OutputType { PushPull = 0, OpenDrain = 1 }
 
         /// <summary>A pin's whole setup, to put it back later</summary>
         public readonly record struct State(Mode Mode, int Alternate, Pull Pull, OutputType Type, Speed Speed);

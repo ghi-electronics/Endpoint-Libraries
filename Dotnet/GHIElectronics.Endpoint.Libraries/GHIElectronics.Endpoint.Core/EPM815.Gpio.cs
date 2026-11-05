@@ -132,19 +132,19 @@ namespace GHIElectronics.Endpoint.Core {
             /// <summary>Writes the pin's OTYPER register bit (push-pull or open-drain).</summary>
             public static void SetOutputType(int pin, OutputType type) {
                 var (port, line) = ChipPin(pin);
-                Stm32Mp1Pins.SetOutputType(port, line, (Stm32Mp1Pins.OutputType)type);
+                Stm32Mp1Pins.SetOutputType(port, line, (Internal.OutputType)type);
             }
 
             /// <summary>Writes the pin's PUPDR register field (pull-up / pull-down).</summary>
             public static void SetPull(int pin, Pull pull) {
                 var (port, line) = ChipPin(pin);
-                Stm32Mp1Pins.SetPull(port, line, (Stm32Mp1Pins.Pull)pull);
+                Stm32Mp1Pins.SetPull(port, line, (Internal.Pull)pull);
             }
 
             /// <summary>Writes the pin's OSPEEDR register field (slew rate).</summary>
             public static void SetSpeed(int pin, Speed speed) {
                 var (port, line) = ChipPin(pin);
-                Stm32Mp1Pins.SetSpeed(port, line, (Stm32Mp1Pins.Speed)speed);
+                Stm32Mp1Pins.SetSpeed(port, line, (Internal.Speed)speed);
             }
 
             /// <summary>Marks the pin as used by the app, so the libraries do not use it too</summary>
