@@ -13,18 +13,30 @@
   </ItemGroup>
 
   <!-- libendpoint (Endpoint-Libraries/native, built for the board), for the
-       features .NET shares with Python and C++ (storage): in the NuGet
-       package for linux-arm64, and next to the program for projects that
-       reference this one. Build native/ first (its CMake preset "endpoint"). -->
+       features .NET shares with Python and C++. One .so per architecture,
+       packed under runtimes/RID/native so .NET's RID probe picks the
+       right one at publish time. Build with cmake presets in native/:
+
+         endpoint-arm64 produces build/linux-arm64/libendpoint.so (EPN256 / EPN128)
+         endpoint-arm   produces build/linux-arm/libendpoint.so   (EPM815)
+
+       Either preset alone is enough to build the package; building both
+       is what the releases pack. Dev builds that reference this project
+       directly see only the arm64 copy next to the exe; arm is picked at
+       publish time via the consumer's RuntimeIdentifier. -->
   <PropertyGroup>
-    <Libendpoint>$(MSBuildThisFileDirectory)..\..\..\native\build\libendpoint.so</Libendpoint>
+    <LibendpointArm64>$(MSBuildThisFileDirectory)..\..\..\native\build\linux-arm64\libendpoint.so</LibendpointArm64>
+    <LibendpointArm>$(MSBuildThisFileDirectory)..\..\..\native\build\linux-arm\libendpoint.so</LibendpointArm>
   </PropertyGroup>
   <ItemGroup>
-    <None Include="$(Libendpoint)" Link="libendpoint.so" Pack="true" PackagePath="runtimes/linux-arm64/native"
-          CopyToOutputDirectory="PreserveNewest" Visible="false" />
+    <None Include="$(LibendpointArm64)" Link="libendpoint.so" Pack="true" PackagePath="runtimes/linux-arm64/native"
+          CopyToOutputDirectory="PreserveNewest" Visible="false" Condition="Exists('$(LibendpointArm64)')" />
+    <None Include="$(LibendpointArm)"   Pack="true" PackagePath="runtimes/linux-arm/native"
+          Visible="false" Condition="Exists('$(LibendpointArm)')" />
   </ItemGroup>
   <Target Name="CheckLibendpoint" BeforeTargets="Build">
-    <Error Condition="!Exists('$(Libendpoint)')" Text="$(Libendpoint) is missing: build Endpoint-Libraries/native first" />
+    <Error Condition="!Exists('$(LibendpointArm64)') AND !Exists('$(LibendpointArm)')"
+           Text="libendpoint.so is missing for both archs: build the native cmake presets 'endpoint-arm64' and/or 'endpoint-arm' in Endpoint-Libraries/native" />
   </Target>
 
 </Project>

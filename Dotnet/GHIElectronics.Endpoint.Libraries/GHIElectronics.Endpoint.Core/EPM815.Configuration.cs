@@ -5,7 +5,6 @@ using System.Runtime.CompilerServices;
 [assembly: InternalsVisibleTo("GHIElectronics.Endpoint.Devices.Storage")]
 [assembly: InternalsVisibleTo("GHIElectronics.Endpoint.Devices.UsbHost")]
 [assembly: InternalsVisibleTo("GHIElectronics.Endpoint.Devices.Camera")]
-[assembly: InternalsVisibleTo("GHIElectronics.Endpoint.Devices.Sound")]
 [assembly: InternalsVisibleTo("GHIElectronics.Endpoint.Devices.Rtc")]
 [assembly: InternalsVisibleTo("GHIElectronics.Endpoint.Devices.Adc")]
 [assembly: InternalsVisibleTo("GHIElectronics.Endpoint.Devices.Dac")]
