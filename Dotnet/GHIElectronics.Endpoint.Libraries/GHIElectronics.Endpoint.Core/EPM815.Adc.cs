@@ -1,3 +1,5 @@
+using GHIElectronics.Endpoint.Core.Internal;
+
 namespace GHIElectronics.Endpoint.Core {
     public static partial class EPM815 {
         /// <summary>
@@ -45,27 +47,33 @@ namespace GHIElectronics.Endpoint.Core {
                 public const int PF14 = Gpio.Pin.PF14;
             }
 
-            /// <summary>An analog input: its converter (1 or 2) and channel there</summary>
-            internal sealed record Input(int Pin, int Converter, int Channel) {
-                /// <summary>Whether the input has its own pin (ANA0 and ANA1 are not GPIO pins)</summary>
-                public bool IsGpio => this.Pin < Gpio.Pin.PZ7 + 1;
+            internal const string Adc1IioName = "48003000.adc:adc@0";
+            internal const string Adc2IioName = "48003000.adc:adc@100";
 
-                public string Name => this.Pin switch {
-                    EPM815.Adc.Pin.ANA0 => "ANA0",
-                    EPM815.Adc.Pin.ANA1 => "ANA1",
-                    _ => Gpio.Name(this.Pin),
-                };
-            }
-
-            internal static readonly Input[] Inputs = {
-                new(Pin.ANA0, 1, 0), new(Pin.ANA1, 1, 1), new(Pin.PF11, 1, 2), new(Pin.PA6, 1, 3),
-                new(Pin.PF12, 1, 6), new(Pin.PB0, 1, 9), new(Pin.PC0, 1, 10), new(Pin.PC3, 1, 13),
-                new(Pin.PA3, 1, 15), new(Pin.PA0, 1, 16), new(Pin.PA4, 1, 18), new(Pin.PA5, 1, 19),
-                new(Pin.PF13, 2, 2), new(Pin.PF14, 2, 6),
+            // Alternate = -1 means put the pin in analog mode; see PeripheralPins.
+            internal static readonly AnalogInput[] Inputs = {
+                new(Pin.ANA0, 0,  -1, false, "ANA0", Adc1IioName),
+                new(Pin.ANA1, 1,  -1, false, "ANA1", Adc1IioName),
+                new(Pin.PF11, 2,  -1, true,  "PF11", Adc1IioName),
+                new(Pin.PA6,  3,  -1, true,  "PA6",  Adc1IioName),
+                new(Pin.PF12, 6,  -1, true,  "PF12", Adc1IioName),
+                new(Pin.PB0,  9,  -1, true,  "PB0",  Adc1IioName),
+                new(Pin.PC0,  10, -1, true,  "PC0",  Adc1IioName),
+                new(Pin.PC3,  13, -1, true,  "PC3",  Adc1IioName),
+                new(Pin.PA3,  15, -1, true,  "PA3",  Adc1IioName),
+                new(Pin.PA0,  16, -1, true,  "PA0",  Adc1IioName),
+                new(Pin.PA4,  18, -1, true,  "PA4",  Adc1IioName),
+                new(Pin.PA5,  19, -1, true,  "PA5",  Adc1IioName),
+                new(Pin.PF13, 2,  -1, true,  "PF13", Adc2IioName),
+                new(Pin.PF14, 6,  -1, true,  "PF14", Adc2IioName),
             };
 
-            /// <summary>The analog input on <paramref name="pin"/>, or null</summary>
-            internal static Input Find(int pin) => Array.Find(Inputs, i => i.Pin == pin);
+            internal static AnalogInput? Find(int pin) {
+                foreach (var i in Inputs) {
+                    if (i.Pin == pin) return i;
+                }
+                return null;
+            }
         }
     }
 }

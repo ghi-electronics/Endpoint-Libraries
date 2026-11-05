@@ -1,81 +1,66 @@
-using System.Globalization;
+using GHIElectronics.Endpoint.Core.Internal;
 
 namespace GHIElectronics.Endpoint.Core {
     public static partial class EPN256 {
         /// <summary>
-        /// The ADC channels bundled with EPN256. Call
-        /// <see cref="ReadMillivolts"/> on <see cref="Eadc0"/> and the channel
-        /// index to read a channel. Channels 0 - 3 of <see cref="Eadc0"/> drive
-        /// the resistive touch screen on the reference panel; stay off those
-        /// unless the touch subnode has been removed.
+        /// The analog inputs bundled with EPN256. Use with .NET's
+        /// <c>System.Device.Analog</c> through the
+        /// <c>GHIElectronics.Endpoint.Devices.Adc</c> package. MA35D1's EADC0
+        /// is the general-purpose 12-bit ADC, 8 channels on PB0..PB7 (the
+        /// resistive touchscreen uses a separate ADC — see the touch
+        /// package — so the full EADC range is free for application code).
         /// </summary>
         /// <example>
         /// <code>
-        /// int mv = EPN256.Adc.ReadMillivolts(EPN256.Adc.Eadc0, 2);
+        /// using var adc = new AdcController();
+        /// using var input = adc.OpenPin(EPN256.Adc.Pin.PB0);
+        /// Console.WriteLine($"{input.ReadVoltage().Volts:0.000} V");
         /// </code>
         /// </example>
         public static class Adc {
-            /// <summary>ADC bank 0 (<c>eadc0</c>) — 8 channels, 12-bit.</summary>
-            public const string Eadc0 = "eadc0";
-
-            private const string IioRoot = "/sys/bus/iio/devices";
-
-            /// <summary>Raw ADC code (0..4095 for the 12-bit <see cref="Eadc0"/>).</summary>
-            public static int ReadRaw(string bank, int channel) {
-                var iioDir = ResolveIioDir(bank);
-                var path = $"{iioDir}/in_voltage{channel}_raw";
-                if (!File.Exists(path)) {
-                    throw new InvalidOperationException(
-                        $"ADC channel {channel} not available on {bank} ({path} missing).");
-                }
-                return int.Parse(File.ReadAllText(path).Trim(), CultureInfo.InvariantCulture);
+            /// <summary>The pins with an analog input (EADC0 channel is in the comment).</summary>
+            public static class Pin {
+                /// <summary>EADC0 channel 0</summary>
+                public const int PB0 = Gpio.Pin.PB0;
+                /// <summary>EADC0 channel 1</summary>
+                public const int PB1 = Gpio.Pin.PB1;
+                /// <summary>EADC0 channel 2</summary>
+                public const int PB2 = Gpio.Pin.PB2;
+                /// <summary>EADC0 channel 3</summary>
+                public const int PB3 = Gpio.Pin.PB3;
+                /// <summary>EADC0 channel 4</summary>
+                public const int PB4 = Gpio.Pin.PB4;
+                /// <summary>EADC0 channel 5</summary>
+                public const int PB5 = Gpio.Pin.PB5;
+                /// <summary>EADC0 channel 6</summary>
+                public const int PB6 = Gpio.Pin.PB6;
+                /// <summary>EADC0 channel 7</summary>
+                public const int PB7 = Gpio.Pin.PB7;
             }
 
-            /// <summary>
-            /// Reads raw and applies the IIO scale and offset so the result is
-            /// millivolts. The reference is 3.3 V over 12 bits, giving roughly
-            /// 0.806 mV/count.
-            /// </summary>
-            public static int ReadMillivolts(string bank, int channel) {
-                var iioDir = ResolveIioDir(bank);
-                int raw = ReadRaw(bank, channel);
-                double scale = TryReadDouble($"{iioDir}/in_voltage_scale")
-                               ?? TryReadDouble($"{iioDir}/in_voltage{channel}_scale")
-                               ?? (3300.0 / 4096.0);
-                double offset = TryReadDouble($"{iioDir}/in_voltage_offset") ?? 0.0;
-                return (int)Math.Round((raw + offset) * scale);
-            }
+            /// <summary>IIO <c>name</c> of the MA35D1 EADC driver, see
+            /// drivers/iio/adc/ma35d1_eadc.c in the vendor kernel.</summary>
+            internal const string IioName = "ma35d1-eadc";
 
-            private static string ResolveIioDir(string bank) {
-                if (bank != Eadc0) {
-                    throw new ArgumentOutOfRangeException(nameof(bank), bank,
-                        "Only EPN256.Adc.Eadc0 is supported on this chip.");
-                }
-                if (!Directory.Exists(IioRoot)) {
-                    throw new InvalidOperationException(
-                        "IIO subsystem not available: CONFIG_IIO is not enabled.");
-                }
-                // eadc0's platform device is at 40430000.adc. Match by of_node.
-                foreach (var dir in Directory.EnumerateDirectories(IioRoot)) {
-                    try {
-                        var namePath = Path.Combine(dir, "name");
-                        if (!File.Exists(namePath)) continue;
-                        var name = File.ReadAllText(namePath).Trim();
-                        if (string.Equals(name, "40430000.adc", StringComparison.OrdinalIgnoreCase) ||
-                            string.Equals(name, "ma35d1-eadc", StringComparison.OrdinalIgnoreCase)) {
-                            return dir;
-                        }
-                    } catch { /* keep scanning */ }
-                }
-                throw new InvalidOperationException(
-                    $"IIO device for {bank} not found under {IioRoot}.");
-            }
+            /// <summary>EADC0 pin → channel map. MFP value 0x8 muxes the pin
+            /// to <c>EADC0_CHn</c> per include/dt-bindings/pinctrl/ma35d1-pinfunc.h.</summary>
+            internal static readonly AnalogInput[] Inputs = {
+                new(Pin.PB0, 0, 0x8, true, "PB0", IioName),
+                new(Pin.PB1, 1, 0x8, true, "PB1", IioName),
+                new(Pin.PB2, 2, 0x8, true, "PB2", IioName),
+                new(Pin.PB3, 3, 0x8, true, "PB3", IioName),
+                new(Pin.PB4, 4, 0x8, true, "PB4", IioName),
+                new(Pin.PB5, 5, 0x8, true, "PB5", IioName),
+                new(Pin.PB6, 6, 0x8, true, "PB6", IioName),
+                new(Pin.PB7, 7, 0x8, true, "PB7", IioName),
+            };
 
-            private static double? TryReadDouble(string path) {
-                try {
-                    if (!File.Exists(path)) return null;
-                    return double.Parse(File.ReadAllText(path).Trim(), CultureInfo.InvariantCulture);
-                } catch { return null; }
+            /// <summary>The analog input on <paramref name="pin"/>, or null.</summary>
+            internal static AnalogInput? Find(int pin) {
+                foreach (var i in Inputs) {
+                    if (i.Pin == pin) return i;
+                }
+                return null;
             }
         }
     }
