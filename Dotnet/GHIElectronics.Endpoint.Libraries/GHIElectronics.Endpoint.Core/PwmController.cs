@@ -8,47 +8,43 @@ namespace GHIElectronics.Endpoint.Core {
     /// </summary>
     /// <example>
     /// <code>
-    /// PwmController.Initialize(EPN256.Pwm.Epwm0);
+    /// PwmController.Initialize(EPN256.Pwm.Pin.PK5);
     /// using var pwm = PwmChannel.Create(
-    ///     PwmController.GetChipId(EPN256.Pwm.Epwm0),
-    ///     PwmController.GetChannelId(EPN256.Pwm.Epwm0),
+    ///     PwmController.GetChipId(EPN256.Pwm.Pin.PK5),
+    ///     PwmController.GetChannelId(EPN256.Pwm.Pin.PK5),
     ///     frequency: 1000, dutyCyclePercentage: 0.5);
     /// pwm.Start();
     /// </code>
     /// </example>
     public static class PwmController {
         /// <summary>
-        /// Brings up a PWM channel. On EPM815 the argument is a pin constant
-        /// (for example <c>EPM815.Pwm.PA0</c>); on EPN256/EPN128 it is a
-        /// controller constant (for example <c>EPN256.Pwm.Epwm0</c>). In both
-        /// cases the customer passes a chip-specific constant from the matching
-        /// namespace, so forwarding is direct.
+        /// Brings up a PWM channel. The argument is a pin constant from the
+        /// chip's namespace (for example <c>EPM815.Pwm.Pin.PA8</c> or
+        /// <c>EPN256.Pwm.Pin.PK5</c>); only that pin is claimed.
         /// </summary>
-        public static void Initialize(int pinOrController) {
-            if (ChipDetect.IsMa35) EPN256.Pwm.Initialize(pinOrController);
-            else                   EPM815.Pwm.Initialize(pinOrController);
+        public static void Initialize(int pin) {
+            if (ChipDetect.IsMa35) EPN256.Pwm.Initialize(pin);
+            else                   EPM815.Pwm.Initialize(pin);
         }
 
-        /// <summary>Releases the PWM channel's pin.</summary>
-        public static void UnInitialize(int pinOrController) {
-            if (ChipDetect.IsMa35) EPN256.Pwm.UnInitialize(pinOrController);
-            else                   EPM815.Pwm.UnInitialize(pinOrController);
+        /// <summary>Releases the PWM pin back to free GPIO.</summary>
+        public static void UnInitialize(int pin) {
+            if (ChipDetect.IsMa35) EPN256.Pwm.UnInitialize(pin);
+            else                   EPM815.Pwm.UnInitialize(pin);
         }
 
         /// <summary>
         /// Kernel <c>pwmchipN</c> index to pass to
         /// <see cref="System.Device.Pwm.PwmChannel.Create(int, int, int, double)"/>.
         /// </summary>
-        public static int GetChipId(int pinOrController) =>
-            ChipDetect.IsMa35 ? EPN256.Pwm.GetChipId(pinOrController) : EPM815.Pwm.GetChipId(pinOrController);
+        public static int GetChipId(int pin) =>
+            ChipDetect.IsMa35 ? EPN256.Pwm.GetChipId(pin) : EPM815.Pwm.GetChipId(pin);
 
         /// <summary>
         /// Channel index within the PWM chip to pass to
         /// <see cref="System.Device.Pwm.PwmChannel.Create(int, int, int, double)"/>.
-        /// MA35D1 EPWM maps one controller per <c>pwmchipN</c> with a single
-        /// channel 0; EPM815 uses the pin's channel within its TIM.
         /// </summary>
-        public static int GetChannelId(int pinOrController) =>
-            ChipDetect.IsMa35 ? 0 : EPM815.Pwm.GetChannelId(pinOrController);
+        public static int GetChannelId(int pin) =>
+            ChipDetect.IsMa35 ? EPN256.Pwm.GetChannelId(pin) : EPM815.Pwm.GetChannelId(pin);
     }
 }

@@ -16,13 +16,11 @@ namespace GHIElectronics.Endpoint.Core {
     /// </example>
     public static class SerialPortController {
         /// <summary>
-        /// Muxes the port's pins. On EPM815 <paramref name="enableHardwareFlowControl"/>
-        /// also connects RTS/CTS; on EPN256/EPN128 it is accepted for signature
-        /// parity but ignored (hardware flow control requires a per-port DTS
-        /// override that the current firmware does not ship).
+        /// Muxes the port's pins. When <paramref name="enableHardwareFlowControl"/>
+        /// is set, RTS and (where bonded out) CTS are muxed too.
         /// </summary>
         public static void Initialize(string portName, bool enableHardwareFlowControl = false) {
-            if (ChipDetect.IsMa35) EPN256.SerialPort.Initialize(portName);
+            if (ChipDetect.IsMa35) EPN256.SerialPort.Initialize(portName, enableHardwareFlowControl);
             else                   EPM815.SerialPort.Initialize(portName, enableHardwareFlowControl);
         }
 

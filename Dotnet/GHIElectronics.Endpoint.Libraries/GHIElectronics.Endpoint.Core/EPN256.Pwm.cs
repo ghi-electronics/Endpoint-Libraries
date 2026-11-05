@@ -1,136 +1,166 @@
 using System.Diagnostics;
+using GHIElectronics.Endpoint.Core.Internal;
 
 namespace GHIElectronics.Endpoint.Core {
     public static partial class EPN256 {
         /// <summary>
-        /// PWM channels bundled with EPN256, for <c>System.Device.Pwm</c>. The
-        /// PWM controller stays unprobed and its pins stay free GPIO until
-        /// <see cref="Initialize"/> loads its driver. Reverse with
-        /// <see cref="UnInitialize"/>. The <c>EPWM_</c> number is the instance
-        /// number; the sysfs <c>pwmchipN</c> is probe-order and is resolved at
-        /// <see cref="Initialize"/> time, so application code never has to deal
-        /// with it.
+        /// PWM pins bundled with EPN256, for .NET's <c>System.Device.Pwm</c>.
+        /// MA35D1 has three EPWM controllers (EPWM0 / EPWM1 / EPWM2), each
+        /// exposing six channels (CH0..CH5) that share the controller's
+        /// frequency. <see cref="Initialize"/> connects a pin to its
+        /// controller + channel; <see cref="GetChipId"/> and
+        /// <see cref="GetChannelId"/> give what <c>PwmChannel.Create</c>
+        /// needs. Pay-for-use: initializing one pin claims only that pin.
         /// </summary>
         /// <example>
         /// <code>
-        /// EPN256.Pwm.Initialize(EPN256.Pwm.Epwm1);
-        /// var chipId = EPN256.Pwm.GetChipId(EPN256.Pwm.Epwm1);
-        /// using var pwm = System.Device.Pwm.PwmChannel.Create(chipId, 0, 1000, 0.5);
+        /// EPN256.Pwm.Initialize(EPN256.Pwm.Pin.PK5);
+        /// using var pwm = PwmChannel.Create(
+        ///     EPN256.Pwm.GetChipId(EPN256.Pwm.Pin.PK5),
+        ///     EPN256.Pwm.GetChannelId(EPN256.Pwm.Pin.PK5),
+        ///     1000,
+        ///     0.5);
         /// pwm.Start();
         /// </code>
         /// </example>
         public static class Pwm {
-            /// <summary>EPWM0 (reserved — not wired on EPN256 reference board).</summary>
-            public const int Epwm0 = 0;
-            /// <summary>EPWM1 (used by the display backlight on EPN256).</summary>
-            public const int Epwm1 = 1;
-            /// <summary>EPWM2 (reserved — not wired on EPN256 reference board).</summary>
-            public const int Epwm2 = 2;
+            /// <summary>The pins with PWM (the controller and channel are in the comments).
+            /// One representative pin per (controller, channel); if your board wires a
+            /// different pin alternate, request it and we'll add it.</summary>
+            public static class Pin {
+                /// <summary>EPWM0 channel 0</summary>
+                public const int PD6  = Gpio.Pin.PD6;
+                /// <summary>EPWM0 channel 1</summary>
+                public const int PD7  = Gpio.Pin.PD7;
+                /// <summary>EPWM0 channel 2</summary>
+                public const int PD8  = Gpio.Pin.PD8;
+                /// <summary>EPWM0 channel 3</summary>
+                public const int PD9  = Gpio.Pin.PD9;
+                /// <summary>EPWM0 channel 4</summary>
+                public const int PD10 = Gpio.Pin.PD10;
+                /// <summary>EPWM0 channel 5</summary>
+                public const int PD11 = Gpio.Pin.PD11;
+                /// <summary>EPWM1 channel 0</summary>
+                public const int PG4  = Gpio.Pin.PG4;
+                /// <summary>EPWM1 channel 1 — the EPN256 reference panel's backlight pin.</summary>
+                public const int PK5  = Gpio.Pin.PK5;
+                /// <summary>EPWM1 channel 2</summary>
+                public const int PG6  = Gpio.Pin.PG6;
+                /// <summary>EPWM1 channel 3</summary>
+                public const int PG7  = Gpio.Pin.PG7;
+                /// <summary>EPWM1 channel 4</summary>
+                public const int PG8  = Gpio.Pin.PG8;
+                /// <summary>EPWM1 channel 5</summary>
+                public const int PM13 = Gpio.Pin.PM13;
+                /// <summary>EPWM2 channel 0</summary>
+                public const int PC8  = Gpio.Pin.PC8;
+                /// <summary>EPWM2 channel 1</summary>
+                public const int PC9  = Gpio.Pin.PC9;
+                /// <summary>EPWM2 channel 2</summary>
+                public const int PC10 = Gpio.Pin.PC10;
+                /// <summary>EPWM2 channel 3</summary>
+                public const int PC11 = Gpio.Pin.PC11;
+                /// <summary>EPWM2 channel 4</summary>
+                public const int PB9  = Gpio.Pin.PB9;
+                /// <summary>EPWM2 channel 5</summary>
+                public const int PB10 = Gpio.Pin.PB10;
+            }
 
-            private const string ModuleName = "pwm-ma35d1";
-            private static readonly string[] PlatformDevices = {
-                "40580000.epwm0",
-                "40590000.epwm1",
-                "405a0000.epwm2",
+            /// <summary>One PWM pin and how it maps: (pin, controller 0..2, channel 0..5, MFP alternate).</summary>
+            private sealed record Output(int Pin, int Controller, int Channel, int Mfp);
+
+            // MFP values are from include/dt-bindings/pinctrl/ma35d1-pinfunc.h.
+            // PD6..PD11 share MFP 0x8; everything else here is MFP 0x1.
+            private static readonly Output[] Outputs = {
+                new(Pin.PD6,  0, 0, 0x8), new(Pin.PD7,  0, 1, 0x8), new(Pin.PD8,  0, 2, 0x8),
+                new(Pin.PD9,  0, 3, 0x8), new(Pin.PD10, 0, 4, 0x8), new(Pin.PD11, 0, 5, 0x8),
+
+                new(Pin.PG4,  1, 0, 0x1), new(Pin.PK5,  1, 1, 0x1), new(Pin.PG6,  1, 2, 0x1),
+                new(Pin.PG7,  1, 3, 0x1), new(Pin.PG8,  1, 4, 0x1), new(Pin.PM13, 1, 5, 0x1),
+
+                new(Pin.PC8,  2, 0, 0x1), new(Pin.PC9,  2, 1, 0x1), new(Pin.PC10, 2, 2, 0x1),
+                new(Pin.PC11, 2, 3, 0x1), new(Pin.PB9,  2, 4, 0x1), new(Pin.PB10, 2, 5, 0x1),
             };
 
-            private static readonly object gate = new();
-            private static readonly Dictionary<int, int> openCount = new();
-            private static bool moduleLoaded;
+            // MMIO base per EPWM controller (arch/arm64/.../ma35d1.dtsi).
+            private static readonly ulong[] ControllerAddress = {
+                0x40580000, // EPWM0
+                0x40590000, // EPWM1
+                0x405A0000, // EPWM2
+            };
+
+            private const string ModuleName = "pwm-ma35d1";
 
             /// <summary>
-            /// Loads the PWM controller driver so <c>/sys/class/pwm/pwmchipN</c>
-            /// for the chosen controller appears. The PWM output pins are muxed
-            /// as part of probe.
+            /// Loads the EPWM driver (so <c>/sys/class/pwm/pwmchipN</c> appears
+            /// for the pin's controller) and mux's the pin to its channel.
             /// </summary>
-            public static void Initialize(int controller) {
-                ValidateController(controller);
-                lock (gate) {
-                    if (!moduleLoaded) {
-                        Run("/sbin/modprobe", ModuleName);
-                        moduleLoaded = true;
-                    }
-                    openCount[controller] = openCount.TryGetValue(controller, out var n) ? n + 1 : 1;
-                }
-                // Wait briefly for the pwmchip node that corresponds to this controller.
+            public static void Initialize(int pin) {
+                var o = Get(pin);
+                EnsureDriverLoaded();
+                // Wait briefly for the pwmchipN node that corresponds to this controller.
                 for (int i = 0; i < 50; i++) {
-                    if (TryGetChipId(controller, out _)) return;
+                    if (EndpointDevices.Find("pwm", "pwmchip", ControllerAddress[o.Controller]) >= 0) break;
                     Thread.Sleep(20);
                 }
-                throw new InvalidOperationException(
-                    $"PWM driver loaded but no pwmchip matched {PlatformDevices[controller]} within 1 s.");
-            }
-
-            /// <summary>Reverse of <see cref="Initialize"/>. When no controller remains open,
-            /// the driver is unloaded and the pins return to GPIO.</summary>
-            public static void UnInitialize(int controller) {
-                ValidateController(controller);
-                lock (gate) {
-                    if (!openCount.TryGetValue(controller, out var n) || n <= 0) return;
-                    if (--n == 0) openCount.Remove(controller);
-                    else openCount[controller] = n;
-                    if (openCount.Count == 0 && moduleLoaded) {
-                        try { Run("/sbin/rmmod", ModuleName); } catch { }
-                        moduleLoaded = false;
-                    }
-                }
-            }
-
-            /// <summary>
-            /// Returns the PWM chip id for the chosen controller — the first
-            /// argument that <c>System.Device.Pwm.PwmChannel.Create</c> takes.
-            /// Only valid after <see cref="Initialize"/>.
-            /// </summary>
-            public static int GetChipId(int controller) {
-                ValidateController(controller);
-                if (!TryGetChipId(controller, out var id)) {
+                if (EndpointDevices.Find("pwm", "pwmchip", ControllerAddress[o.Controller]) < 0) {
                     throw new InvalidOperationException(
-                        $"EPN256.Pwm.Initialize({controller}) must be called first.");
+                        $"EPWM driver loaded but no pwmchip matched EPWM{o.Controller} within 1 s.");
                 }
-                return id;
+                PeripheralPins.Connect(Owner(pin), new PinFunction(pin, o.Mfp));
             }
 
-            private static bool TryGetChipId(int controller, out int chipId) {
-                chipId = -1;
-                if (!Directory.Exists("/sys/class/pwm")) return false;
-                var expected = PlatformDevices[controller]; // e.g. "40590000.epwm1"
-                foreach (var dir in Directory.EnumerateDirectories("/sys/class/pwm")) {
-                    // The of_node/name file is the simplest, portable way to
-                    // identify which DT node this pwmchip wraps.
-                    var ofName = Path.Combine(dir, "device", "of_node", "name");
-                    string? name = null;
-                    try { if (File.Exists(ofName)) name = File.ReadAllText(ofName).TrimEnd('\0').Trim(); }
-                    catch { /* keep scanning */ }
-                    if (name != null && expected.EndsWith("." + name, StringComparison.OrdinalIgnoreCase)) {
-                        var chipName = Path.GetFileName(dir); // "pwmchip3"
-                        if (chipName.StartsWith("pwmchip") &&
-                            int.TryParse(chipName.AsSpan("pwmchip".Length), out var n)) {
-                            chipId = n;
-                            return true;
-                        }
+            /// <summary>Gives the pin back as free GPIO. Reverses <see cref="Initialize"/>.</summary>
+            public static void UnInitialize(int pin) {
+                Get(pin);
+                PeripheralPins.Disconnect(Owner(pin));
+            }
+
+            /// <summary>The PWM chip of the pin's controller (<c>/sys/class/pwm/pwmchipN</c>),
+            /// for <see cref="System.Device.Pwm.PwmChannel.Create(int, int, int, double)"/>.
+            /// Only valid after <see cref="Initialize"/>.</summary>
+            public static int GetChipId(int pin) {
+                var o = Get(pin);
+                var chip = EndpointDevices.Find("pwm", "pwmchip", ControllerAddress[o.Controller]);
+                return chip >= 0 ? chip : throw new InvalidOperationException(
+                    $"EPWM{o.Controller} is not enabled in this firmware; call Initialize first.");
+            }
+
+            /// <summary>The pin's channel in its PWM chip, for
+            /// <see cref="System.Device.Pwm.PwmChannel.Create(int, int, int, double)"/>.</summary>
+            public static int GetChannelId(int pin) => Get(pin).Channel;
+
+            private static string Owner(int pin) => $"PWM pin {pin}";
+
+            private static Output Get(int pin) =>
+                Outputs.FirstOrDefault(o => o.Pin == pin)
+                ?? throw new ArgumentException($"Pin {pin} has no PWM on EPN256", nameof(pin));
+
+            // =====================================================================
+            // Driver load helper. Module stays loaded for the life of the process;
+            // the kernel keeps per-controller bindings, we keep per-pin pin
+            // reservations via PeripheralPins.
+            // =====================================================================
+
+            private static readonly object driverGate = new();
+            private static bool driverLoaded;
+
+            private static void EnsureDriverLoaded() {
+                lock (driverGate) {
+                    if (driverLoaded) return;
+                    var psi = new ProcessStartInfo("/sbin/modprobe", ModuleName) {
+                        RedirectStandardOutput = true,
+                        RedirectStandardError = true,
+                        UseShellExecute = false,
+                    };
+                    using var p = Process.Start(psi)
+                        ?? throw new InvalidOperationException($"Failed to start /sbin/modprobe {ModuleName}");
+                    p.WaitForExit();
+                    if (p.ExitCode != 0) {
+                        throw new InvalidOperationException(
+                            $"modprobe {ModuleName} failed: {p.StandardError.ReadToEnd().Trim()}");
                     }
-                }
-                return false;
-            }
-
-            private static void ValidateController(int c) {
-                if (c is < 0 or > 2) {
-                    throw new ArgumentOutOfRangeException(nameof(c), c,
-                        "Must be EPN256.Pwm.Epwm0 / Epwm1 / Epwm2");
-                }
-            }
-
-            private static void Run(string path, string arg) {
-                var psi = new ProcessStartInfo(path, arg) {
-                    RedirectStandardOutput = true, RedirectStandardError = true,
-                    UseShellExecute = false,
-                };
-                using var p = Process.Start(psi)
-                    ?? throw new InvalidOperationException($"Failed to start {path}");
-                p.WaitForExit();
-                if (p.ExitCode != 0) {
-                    throw new InvalidOperationException(
-                        $"{path} {arg} failed: {p.StandardError.ReadToEnd().Trim()}");
+                    driverLoaded = true;
                 }
             }
         }
