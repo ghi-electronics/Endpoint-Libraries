@@ -72,7 +72,7 @@ namespace GHIElectronics.Endpoint.Core {
             /// gpio.Write(EPN128.Gpio.Pin.PB8, PinValue.Low); // LED2 is active-LOW
             /// </code>
             /// </example>
-            public sealed class Driver : GpioDriver {
+            public class Driver : GpioDriver {
                 private const string Owner = "GPIO";
 
                 private readonly object gate = new();

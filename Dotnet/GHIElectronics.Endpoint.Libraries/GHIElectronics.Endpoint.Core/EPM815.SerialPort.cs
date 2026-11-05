@@ -30,7 +30,7 @@ namespace GHIElectronics.Endpoint.Core {
             /// <summary>UART8: PE1 (TX), PE0 (RX)</summary>
             public const string Uart8 = "/dev/ttySTM7";
 
-            private sealed record Port(string Device, string Name, ulong Address, int Alternate,
+            private record Port(string Device, string Name, ulong Address, int Alternate,
                 int Tx, int Rx, int Rts = Gpio.Pin.NONE, int Cts = Gpio.Pin.NONE) {
                 public bool HasFlowControl => this.Rts != Gpio.Pin.NONE;
             }

@@ -19,7 +19,7 @@ namespace GHIElectronics.Endpoint.Core {
             /// gpio.Write(EPM815.Gpio.Pin.PC0, PinValue.High);
             /// </code>
             /// </example>
-            public sealed class Driver : GpioDriver {
+            public class Driver : GpioDriver {
                 private const string Owner = "GPIO";
 
                 private readonly object gate = new();

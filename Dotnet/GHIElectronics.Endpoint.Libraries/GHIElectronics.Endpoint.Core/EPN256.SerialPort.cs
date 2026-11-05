@@ -28,7 +28,7 @@ namespace GHIElectronics.Endpoint.Core {
 
             /// <summary>Mapping of one UART: device path, MMIO base, and the pin + MFP for each
             /// line. Cts = -1 means the board does not expose CTS for this port.</summary>
-            private sealed record Port(string Device, ulong Address,
+            private record Port(string Device, ulong Address,
                 int Rxd, int Txd, int Rts, int Cts, int Mfp);
 
             // MFP values are from include/dt-bindings/pinctrl/ma35d1-pinfunc.h;

@@ -25,7 +25,7 @@ namespace GHIElectronics.Endpoint.Core {
             internal const int ChannelCount = 2;
 
             /// <summary>A DAC channel: its pin, its IIO device and the channel there.</summary>
-            internal sealed record Output(int Channel, int Pin, string Device, int DeviceChannel);
+            internal record Output(int Channel, int Pin, string Device, int DeviceChannel);
 
             internal static readonly Output[] Outputs = {
                 new(PA4, Gpio.Pin.PA4, "40017000.dac:dac@1", 1),

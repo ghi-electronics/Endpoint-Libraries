@@ -33,7 +33,7 @@ namespace GHIElectronics.Endpoint.Core {
             /// <summary>1 MHz (fast mode plus)</summary>
             public const int MaxFrequency = 1_000_000;
 
-            private sealed record Bus(string Name, ulong Address, int Scl, int Sda, int SclAlternate, int SdaAlternate);
+            private record Bus(string Name, ulong Address, int Scl, int Sda, int SclAlternate, int SdaAlternate);
 
             // Indexed by the constants above
             private static readonly Bus[] Buses = {

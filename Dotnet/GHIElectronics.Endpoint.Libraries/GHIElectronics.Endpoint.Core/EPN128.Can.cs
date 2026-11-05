@@ -30,7 +30,7 @@ namespace GHIElectronics.Endpoint.Core {
             public const int MaxBitrate = 1_000_000;
 
             /// <summary>Mapping of one CAN port: net-interface name, MMIO base, pin + MFP per line.</summary>
-            private sealed record Port(string Name, ulong Address, int Rxd, int Txd, int RxdMfp, int TxdMfp);
+            private record Port(string Name, ulong Address, int Rxd, int Txd, int RxdMfp, int TxdMfp);
 
             // MFP values from include/dt-bindings/pinctrl/ma35d1-pinfunc.h;
             // MMIO addresses from arch/arm64/.../ma35d05k.dtsi.

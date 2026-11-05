@@ -85,7 +85,7 @@ namespace GHIElectronics.Endpoint.Core {
             }
 
             // Channel: 0 = the timer's channel 1 (the system counts from 0)
-            private sealed record Output(int Pin, int Timer, int Channel, int Alternate);
+            private record Output(int Pin, int Timer, int Channel, int Alternate);
 
             private static readonly Output[] Outputs = {
                 new(Pin.PA8, 1, 0, 1), new(Pin.PE11, 1, 1, 1), new(Pin.PA10, 1, 2, 1), new(Pin.PA11, 1, 3, 1),

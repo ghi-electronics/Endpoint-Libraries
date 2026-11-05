@@ -29,7 +29,7 @@ namespace GHIElectronics.Endpoint.Core {
             public const string Uart13 = "/dev/ttyS13";
 
             /// <summary>Mapping of one UART: device path, MMIO base, pin + MFP per line. Rts/Cts = -1 means that signal isn't bonded on Chili Pro.</summary>
-            private sealed record Port(string Device, ulong Address,
+            private record Port(string Device, ulong Address,
                 int Rxd, int Txd, int Rts, int Cts, int RxdMfp, int TxdMfp, int RtsMfp, int CtsMfp);
 
             // MFP values from include/dt-bindings/pinctrl/ma35d1-pinfunc.h;

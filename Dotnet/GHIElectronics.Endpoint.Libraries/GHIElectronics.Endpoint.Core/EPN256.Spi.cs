@@ -30,7 +30,7 @@ namespace GHIElectronics.Endpoint.Core {
 
             /// <summary>Mapping of one SPI bus: name, MMIO base, four pins, and the MFP function
             /// value used to mux them. All four pins on MA35D1 SPI buses share the same MFP value.</summary>
-            private sealed record Bus(string Name, ulong Address, int Ss, int Clk, int Mosi, int Miso, int Mfp);
+            private record Bus(string Name, ulong Address, int Ss, int Clk, int Mosi, int Miso, int Mfp);
 
             // Indexed by bus number. MFP values are from
             // include/dt-bindings/pinctrl/ma35d1-pinfunc.h; MMIO addresses from

@@ -29,7 +29,7 @@ namespace GHIElectronics.Endpoint.Core {
 
             /// <summary>Mapping of one CAN port: the kernel's net-interface name, its MMIO base,
             /// and the RXD/TXD pin + MFP function value used to mux it on this board.</summary>
-            private sealed record Port(string Name, ulong Address, int Rxd, int Txd, int RxdMfp, int TxdMfp);
+            private record Port(string Name, ulong Address, int Rxd, int Txd, int RxdMfp, int TxdMfp);
 
             // MFP values are from include/dt-bindings/pinctrl/ma35d1-pinfunc.h;
             // MMIO addresses from arch/arm64/.../ma35d1.dtsi.

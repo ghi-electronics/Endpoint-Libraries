@@ -67,7 +67,7 @@ namespace GHIElectronics.Endpoint.Core {
             }
 
             /// <summary>One PWM pin and how it maps: (pin, controller 0..2, channel 0..5, MFP alternate).</summary>
-            private sealed record Output(int Pin, int Controller, int Channel, int Mfp);
+            private record Output(int Pin, int Controller, int Channel, int Mfp);
 
             // MFP values are from include/dt-bindings/pinctrl/ma35d1-pinfunc.h.
             // PD6..PD11 share MFP 0x8; everything else here is MFP 0x1.

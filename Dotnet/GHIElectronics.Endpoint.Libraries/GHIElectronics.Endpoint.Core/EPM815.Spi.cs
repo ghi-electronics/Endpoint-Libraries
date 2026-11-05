@@ -30,7 +30,7 @@ namespace GHIElectronics.Endpoint.Core {
             /// <summary>The largest transfer when none is given (the system's default)</summary>
             public const int DefaultBufferSize = 4096;
 
-            private sealed record Bus(string Name, ulong Address, int Sck, int Miso, int Mosi, int Alternate);
+            private record Bus(string Name, ulong Address, int Sck, int Miso, int Mosi, int Alternate);
 
             // Indexed by the constants above
             private static readonly Bus[] Buses = {

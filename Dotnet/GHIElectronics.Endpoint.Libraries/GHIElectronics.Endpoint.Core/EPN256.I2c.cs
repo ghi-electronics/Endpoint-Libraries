@@ -41,7 +41,7 @@ namespace GHIElectronics.Endpoint.Core {
 
             /// <summary>Mapping of one I2C bus: the kernel's device file, its MMIO base, and the
             /// SDA/SCL pin + MFP function value used to mux it on this board.</summary>
-            private sealed record Bus(string Name, ulong Address, int Scl, int Sda, int SclMfp, int SdaMfp);
+            private record Bus(string Name, ulong Address, int Scl, int Sda, int SclMfp, int SdaMfp);
 
             // Indexed by bus number minus 1 (I2c1..I2c5 → Buses[0..4]).
             // MFP values are from include/dt-bindings/pinctrl/ma35d1-pinfunc.h in the

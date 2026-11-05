@@ -28,7 +28,7 @@ namespace GHIElectronics.Endpoint.Core {
             /// <summary>The highest bitrate (1 Mbit/s)</summary>
             public const int MaxBitrate = 1_000_000;
 
-            private sealed record Port(string Name, string Interface, ulong Address, int Tx, int Rx);
+            private record Port(string Name, string Interface, ulong Address, int Tx, int Rx);
 
             private static readonly Port[] Ports = {
                 new("CAN1", Can1, 0x4400E000, Gpio.Pin.PD1, Gpio.Pin.PD0),

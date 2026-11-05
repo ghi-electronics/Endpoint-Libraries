@@ -29,7 +29,7 @@ namespace GHIElectronics.Endpoint.Core {
             /// <summary>1 MHz (fast mode plus).</summary>
             public const int MaxFrequency = 1_000_000;
 
-            private sealed record Bus(string Name, ulong Address, int Scl, int Sda, int SclMfp, int SdaMfp);
+            private record Bus(string Name, ulong Address, int Scl, int Sda, int SclMfp, int SdaMfp);
 
             // MFP 0x4 for I2C4/I2C5 on MA35D0 Chili Pro.
             // MMIO addresses from arch/arm64/.../ma35d0.dtsi.
