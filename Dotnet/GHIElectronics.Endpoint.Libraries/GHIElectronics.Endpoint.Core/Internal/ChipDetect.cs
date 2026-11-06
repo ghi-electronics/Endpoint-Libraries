@@ -32,18 +32,46 @@ namespace GHIElectronics.Endpoint.Core.Internal {
 
         private static Chip Detect() {
             try {
-                // /proc/device-tree/compatible is a NUL-separated list of
-                // compatible strings, most-specific first. We only need to
-                // find a family hint.
-                var raw = File.ReadAllText("/proc/device-tree/compatible");
-                if (raw.Contains("ma35d0", StringComparison.OrdinalIgnoreCase)) return Chip.Epn128;
-                if (raw.Contains("ma35d1", StringComparison.OrdinalIgnoreCase)) return Chip.Epn256;
-                if (raw.Contains("stm32mp15", StringComparison.OrdinalIgnoreCase)) return Chip.Epm815;
+                // /proc/device-tree/model carries the board/SoC name verbatim
+                // ("Nuvoton MA35D05K-IoT" on Chili Pro, "Nuvoton MA35D1 SoM ..."
+                // on EPN256). Use it first because /proc/device-tree/compatible
+                // on MA35D0 reports just "nuvoton,ma35d1" — the family string,
+                // not the specific chip — so matching compatible alone sends
+                // MA35D0 boards down the MA35D1 code path.
+                var model = ReadDtNodeText("/proc/device-tree/model");
+                if (model is not null) {
+                    // "MA35D05K" / "MA35D06K" are MA35D0 variants. "MA35D1" is
+                    // MA35D1. Order matters: "MA35D0" matches both "MA35D05K"
+                    // and "MA35D06K"; check it first so it wins over a later
+                    // "MA35D1" fallback that would also match a D0 name by
+                    // accident.
+                    if (model.Contains("MA35D0", StringComparison.OrdinalIgnoreCase)) return Chip.Epn128;
+                    if (model.Contains("MA35D1", StringComparison.OrdinalIgnoreCase)) return Chip.Epn256;
+                    if (model.Contains("STM32MP15", StringComparison.OrdinalIgnoreCase)) return Chip.Epm815;
+                }
+
+                // Fallback to compatible for boards whose vendor DTS does not
+                // set a distinctive model string.
+                var compat = ReadDtNodeText("/proc/device-tree/compatible");
+                if (compat is not null) {
+                    if (compat.Contains("ma35d0", StringComparison.OrdinalIgnoreCase)) return Chip.Epn128;
+                    if (compat.Contains("ma35d1", StringComparison.OrdinalIgnoreCase)) return Chip.Epn256;
+                    if (compat.Contains("stm32mp15", StringComparison.OrdinalIgnoreCase)) return Chip.Epm815;
+                }
             }
             catch {
                 // No device tree (dev machine, container, test host): leave Unknown.
             }
             return Chip.Unknown;
+        }
+
+        // Device-tree node files terminate with a NUL byte. Trim it so
+        // string.Contains comparisons behave intuitively.
+        private static string? ReadDtNodeText(string path) {
+            try {
+                return File.Exists(path) ? File.ReadAllText(path).TrimEnd('\0') : null;
+            }
+            catch { return null; }
         }
     }
 }
