@@ -83,14 +83,54 @@ public abstract class Widget : IDisposable {
         Libendpoint.Check(Libendpoint.UiWidgetSetMargin(this.Native, left, top, right, bottom));
     }
 
-    /// <summary>Tiled background from raw RGB565 pixel bytes (little-endian).</summary>
+    /// <summary>
+    /// Background image from raw RGB565 pixel bytes (little-endian). The
+    /// library copies the bytes into native storage, so the caller's buffer
+    /// can be released as soon as this returns. The widget renders the
+    /// image at its native size (no tiling, no scaling). The widget's own
+    /// solid background is turned off so the image shows through.
+    /// </summary>
     public unsafe void SetBackgroundImage(byte[] rgb565Pixels, int width, int height) {
-        // Keep the managed buffer alive for the widget's lifetime (LVGL holds
-        // a pointer into it). The GCHandle is freed in Dispose.
-        var handle = GCHandle.Alloc(rgb565Pixels, GCHandleType.Pinned);
-        this.TrackEventHandle(handle);  // reuse the handle list so Dispose frees it
-        var p = (byte*)handle.AddrOfPinnedObject();
-        Libendpoint.Check(Libendpoint.UiWidgetSetBgImage(this.Native, p, rgb565Pixels.Length, width, height));
+        ArgumentNullException.ThrowIfNull(rgb565Pixels);
+        fixed (byte* p = rgb565Pixels) {
+            Libendpoint.Check(Libendpoint.UiWidgetSetBgImage(this.Native, p, rgb565Pixels.Length, width, height));
+        }
+    }
+
+    /// <summary>
+    /// Background image from a decoded <see cref="Drawing.Image"/> (JPG/PNG/BMP/…
+    /// handed to <see cref="Drawing.Image.Load"/>). The image's RGB888 pixels
+    /// are converted to RGB565 and copied into native storage; the same
+    /// <c>Image</c> stays reusable for Canvas calls after this returns.
+    /// </summary>
+    public unsafe void SetBackgroundImage(Drawing.Image image) {
+        ArgumentNullException.ThrowIfNull(image);
+        if (image.PixelFormat != Drawing.PixelFormat.Rgb888) {
+            throw new NotSupportedException(
+                $"SetBackgroundImage(Image): source format {image.PixelFormat} not yet supported (Rgb888 only).");
+        }
+        var src = image.Pixels;
+        int w = image.Width, h = image.Height;
+        var rgb565 = new byte[w * h * 2];
+        for (int i = 0, j = 0; i < src.Length; i += 3, j += 2) {
+            byte r = src[i], g = src[i + 1], b = src[i + 2];
+            ushort px = (ushort)(((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3));
+            rgb565[j]     = (byte)px;
+            rgb565[j + 1] = (byte)(px >> 8);
+        }
+        SetBackgroundImage(rgb565, w, h);
+    }
+
+    /// <summary>
+    /// Custom font for any text this widget renders (Button caption, Label
+    /// text, Chart axis labels, …). Loaded once via <see cref="Font.Load"/>;
+    /// the same <c>Font</c> can be assigned to any number of widgets.
+    /// </summary>
+    public Font? Font {
+        set {
+            Libendpoint.Check(Libendpoint.UiWidgetSetFont(this.Native,
+                value is null ? 0 : value.Handle));
+        }
     }
 
     /// <summary>Destroy the native widget and release pinned event handles. Idempotent.</summary>

@@ -12,8 +12,12 @@
 #include <cstdio>
 #include <cstring>
 #include <new>
+#include <unordered_map>
+#include <utility>
+#include <vector>
 
 #include "lvgl.h"
+#include "src/libs/tiny_ttf/lv_tiny_ttf.h"
 
 #include "CApi.h"
 #include "UI.h"
@@ -201,29 +205,8 @@ ENDPOINT_API int endpoint_ui_widget_set_bg_gradient(void* widget,
     });
 }
 
-// Background image from raw RGB565 pixels (little-endian).
-ENDPOINT_API int endpoint_ui_widget_set_bg_image(void* widget,
-                                                 const uint8_t* data, int data_len,
-                                                 int width, int height) {
-    return Call([&] {
-        if (!data || data_len <= 0) ThrowInvalidOperation("data is null or empty");
-        if (data_len != width * height * 2) ThrowInvalidOperation("data_len does not match width*height*2 (RGB565)");
-        auto* obj = AsObj(widget);
-        // LVGL needs an lv_image_dsc_t that outlives the widget. Store it on
-        // the widget itself (user data), freeing any previous one.
-        auto* prev = reinterpret_cast<lv_image_dsc_t*>(lv_obj_get_user_data(obj));
-        if (prev) { delete prev; }
-        auto* desc = new lv_image_dsc_t{};
-        desc->header.cf = LV_COLOR_FORMAT_RGB565;
-        desc->header.w = width;
-        desc->header.h = height;
-        desc->data_size = data_len;
-        desc->data = data;
-        lv_obj_set_user_data(obj, desc);
-        lv_obj_set_style_bg_image_src(obj, desc, LV_PART_MAIN);
-        lv_obj_set_style_bg_image_tiled(obj, true, LV_PART_MAIN);
-    });
-}
+// endpoint_ui_widget_set_bg_image lives later in the file (after listbox
+// APIs); grouped with the related font + LV_EVENT_DELETE cleanup plumbing.
 
 // =========================================================================
 // Events
@@ -1302,4 +1285,111 @@ ENDPOINT_API int endpoint_ui_listbox_add_item(void* lb, const char* text, void**
 
 ENDPOINT_API int endpoint_ui_listbox_clear(void* lb) {
     return Call([&] { lv_obj_clean(AsObj(lb)); });
+}
+
+// =========================================================================
+// Runtime TTF fonts (lv_tiny_ttf) + per-widget background images.
+//
+// lv_tiny_ttf_create_data holds a pointer into the caller's byte buffer
+// without copying; we take ownership by moving the bytes into a native
+// FontHandle so the caller can drop their reference immediately.
+//
+// Background images attach an lv_image_dsc_t + a copy of the pixel bytes
+// to the widget. An LV_EVENT_DELETE callback frees them when the widget is
+// destroyed, so set-once-and-forget is safe. UI is single-threaded
+// (LV_USE_OS = LV_OS_NONE) so the side table needs no lock.
+// =========================================================================
+
+namespace {
+
+struct UiFontHandle {
+    std::vector<uint8_t> bytes;
+    lv_font_t* font;
+};
+
+struct BgImageSlot {
+    lv_image_dsc_t dsc;
+    std::vector<uint8_t> pixels;
+};
+
+std::unordered_map<lv_obj_t*, BgImageSlot*>& BgImageTable() {
+    static std::unordered_map<lv_obj_t*, BgImageSlot*> table;
+    return table;
+}
+
+void BgImageDeleteCb(lv_event_t* e) {
+    auto* obj = static_cast<lv_obj_t*>(lv_event_get_current_target(e));
+    auto& table = BgImageTable();
+    auto it = table.find(obj);
+    if (it != table.end()) {
+        delete it->second;
+        table.erase(it);
+    }
+}
+
+}  // namespace
+
+ENDPOINT_API int endpoint_ui_font_load_ttf(const uint8_t* data, int length, int sizePx, void** out_handle) {
+    return Call([&] {
+        if (!data || length <= 0 || sizePx <= 0 || !out_handle) {
+            ThrowInvalidOperation("endpoint_ui_font_load_ttf: invalid args");
+        }
+        auto* h = new UiFontHandle;
+        h->bytes.assign(data, data + length);
+        h->font = lv_tiny_ttf_create_data(h->bytes.data(), h->bytes.size(), sizePx);
+        if (!h->font) {
+            delete h;
+            throw EndpointError(ErrorKind::Argument, "not a valid TTF / OTF font");
+        }
+        *out_handle = h;
+    });
+}
+
+ENDPOINT_API void endpoint_ui_font_free(void* handle) {
+    auto* h = static_cast<UiFontHandle*>(handle);
+    if (h) {
+        if (h->font) lv_tiny_ttf_destroy(h->font);
+        delete h;
+    }
+}
+
+ENDPOINT_API int endpoint_ui_widget_set_font(void* widget, void* font_handle) {
+    return Call([&] {
+        if (!widget || !font_handle) ThrowInvalidOperation("widget or font is null");
+        auto* h = static_cast<UiFontHandle*>(font_handle);
+        lv_obj_set_style_text_font(AsObj(widget), h->font, LV_PART_MAIN);
+    });
+}
+
+ENDPOINT_API int endpoint_ui_widget_set_bg_image(void* widget, const uint8_t* rgb565Pixels,
+                                                 int byteCount, int width, int height) {
+    return Call([&] {
+        if (!widget || !rgb565Pixels || byteCount <= 0 || width <= 0 || height <= 0) {
+            ThrowInvalidOperation("endpoint_ui_widget_set_bg_image: invalid args");
+        }
+        auto* obj = AsObj(widget);
+        auto& table = BgImageTable();
+
+        auto [it, inserted] = table.try_emplace(obj, nullptr);
+        if (inserted) {
+            it->second = new BgImageSlot{};
+            lv_obj_add_event_cb(obj, BgImageDeleteCb, LV_EVENT_DELETE, nullptr);
+        }
+
+        auto* slot = it->second;
+        slot->pixels.assign(rgb565Pixels, rgb565Pixels + byteCount);
+        slot->dsc = lv_image_dsc_t{};
+        slot->dsc.header.magic = LV_IMAGE_HEADER_MAGIC;
+        slot->dsc.header.cf = LV_COLOR_FORMAT_RGB565;
+        slot->dsc.header.w = width;
+        slot->dsc.header.h = height;
+        slot->dsc.header.stride = width * 2;
+        slot->dsc.data_size = (uint32_t)byteCount;
+        slot->dsc.data = slot->pixels.data();
+
+        lv_obj_set_style_bg_image_src(obj, &slot->dsc, LV_PART_MAIN);
+        // Make sure the widget's own opaque background doesn't paint over
+        // the image (Button defaults to LV_OPA_COVER on the fill).
+        lv_obj_set_style_bg_opa(obj, LV_OPA_TRANSP, LV_PART_MAIN);
+    });
 }

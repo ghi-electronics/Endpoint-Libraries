@@ -26,5 +26,16 @@ namespace GHIElectronics.Endpoint.Core.Internal {
         public static partial int FontRasterize(nint handle, int codepoint, int sizePx,
                                                 out byte* bitmap, out int width, out int height,
                                                 out int xoff, out int yoff, out int advance);
+
+        // LVGL-backed TTF font for Widget text (lv_tiny_ttf). Separate handle
+        // namespace from the Canvas-side Font (stb_truetype).
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_font_load_ttf")]
+        public static partial int UiFontLoadTtf(byte* data, int length, int sizePx, out nint handle);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_font_free")]
+        public static partial void UiFontFree(nint handle);
+
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_widget_set_font")]
+        public static partial int UiWidgetSetFont(nint widget, nint fontHandle);
     }
 }
