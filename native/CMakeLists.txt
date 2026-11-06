@@ -28,6 +28,21 @@ set(CMAKE_VISIBILITY_INLINES_HIDDEN ON)
 
 file(GLOB ENDPOINT_SOURCES CONFIGURE_DEPENDS src/*.cpp)
 
+# Display.cpp has two chip-specific siblings — DisplayStm32.cpp and
+# DisplayNuvoton.cpp — and the preset picks exactly one. Compiling both
+# would collide on Chip::ApplyPanel / Chip::UnloadPanel; compiling neither
+# leaves Display.cpp unresolved. ENDPOINT_ARCH comes from CMakePresets.json.
+list(REMOVE_ITEM ENDPOINT_SOURCES
+     "${CMAKE_CURRENT_SOURCE_DIR}/src/DisplayStm32.cpp"
+     "${CMAKE_CURRENT_SOURCE_DIR}/src/DisplayNuvoton.cpp")
+if(ENDPOINT_ARCH STREQUAL "arm")
+    list(APPEND ENDPOINT_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/DisplayStm32.cpp")
+elseif(ENDPOINT_ARCH STREQUAL "aarch64")
+    list(APPEND ENDPOINT_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/src/DisplayNuvoton.cpp")
+else()
+    message(FATAL_ERROR "ENDPOINT_ARCH must be 'arm' (STM32) or 'aarch64' (Nuvoton); got '${ENDPOINT_ARCH}'")
+endif()
+
 add_library(endpoint_objects OBJECT ${ENDPOINT_SOURCES})
 # MP3 decoding (third-party/minimp3, public domain), for SoundDevice.PlayMp3
 target_sources(endpoint_objects PRIVATE third-party/minimp3/minimp3.c)
@@ -35,6 +50,12 @@ set_source_files_properties(third-party/minimp3/minimp3.c PROPERTIES COMPILE_OPT
 # JPEG encoding (third-party/stb, public domain), for Camera with cameras that send raw YUYV
 target_sources(endpoint_objects PRIVATE third-party/stb/stb_image_write.c)
 set_source_files_properties(third-party/stb/stb_image_write.c PROPERTIES COMPILE_OPTIONS "-w")
+# JPEG / PNG / BMP / GIF / TGA decoding (third-party/stb), for Canvas.DrawImage(jpegBytes)
+target_sources(endpoint_objects PRIVATE third-party/stb/stb_image_impl.c)
+set_source_files_properties(third-party/stb/stb_image_impl.c PROPERTIES COMPILE_OPTIONS "-w")
+# TTF / OTF font loading + glyph rasterization (third-party/stb), for Canvas.DrawText
+target_sources(endpoint_objects PRIVATE third-party/stb/stb_truetype_impl.c)
+set_source_files_properties(third-party/stb/stb_truetype_impl.c PROPERTIES COMPILE_OPTIONS "-w")
 # LVGL (third-party/lvgl v9.2.2, MIT), the widget runtime behind the UI API.
 # All .c files under src/ compile into endpoint_objects. lv_conf.h sits next
 # to lvgl.h in third-party/lvgl/ and is found via LV_CONF_INCLUDE_SIMPLE.

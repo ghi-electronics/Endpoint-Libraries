@@ -58,6 +58,15 @@ namespace GHIElectronics.Endpoint.Core.Chips {
         /// <summary>Last port: N (A = 0 ... N = 13).</summary>
         public const int MaxPort = 13;
 
+        /// <summary>
+        /// Decodes an EPN256 / EPN128 pin number (<c>port * 16 + line</c>) into
+        /// the (port, line) pair this chip helper expects. MA35 ports A..N number
+        /// sequentially 0..13 with no gaps, so this is a plain divmod — mirrors
+        /// <see cref="Stm32Mp1Pins.FromPin"/> for dispatch from
+        /// <see cref="Internal.PeripheralPins"/>.
+        /// </summary>
+        public static (int Port, int Line) FromPin(int pin) => (pin / 16, pin % 16);
+
         // Per-bank register offsets (same for every bank)
         private const ulong GpioMode    = 0x00;  // 2 bits/pin
         private const ulong GpioPusel   = 0x30;  // 2 bits/pin

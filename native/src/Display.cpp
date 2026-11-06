@@ -13,6 +13,7 @@
 
 #include <nlohmann/json.hpp>
 
+#include "DisplayChip.h"
 #include "Errors.h"
 
 namespace GHIElectronics::Endpoint::Internal::Display {
@@ -21,21 +22,6 @@ namespace {
 
 constexpr const char* kConfigPath = "/config/display.json";
 constexpr const char* kFramebufferPath = "/dev/fb0";
-
-// Runs <path> with <argv> and returns the child's exit status (-1 on fork or
-// wait failure). Caller interprets non-zero to decide retry policy.
-int RunAndWait(const char* path, char* const argv[]) {
-    pid_t child = fork();
-    if (child == 0) {
-        execv(path, argv);
-        _exit(127);
-    }
-    if (child <= 0) return -1;
-    int status = 0;
-    while (waitpid(child, &status, 0) < 0 && errno == EINTR) {}
-    if (WIFEXITED(status)) return WEXITSTATUS(status);
-    return -1;
-}
 
 nlohmann::json ReadConfig() {
     try {
@@ -82,27 +68,6 @@ int ParseGpioChipNumber(const std::string& name) {
 bool FramebufferExists() {
     struct stat st{};
     return stat(kFramebufferPath, &st) == 0;
-}
-
-void ApplyParallelLcd(const nlohmann::json& /*section*/) {
-    // Nuvoton MA35D1 DCUltra. The panel timings, bus format, and DE / pixel-
-    // clock polarities are described in the device tree (ma35d1-som-256m.dts +
-    // our Endpoint DTS tweaks) and read by ma35-drm at probe. The /config/
-    // display.json "parallel" section's width / height / timing fields are
-    // IGNORED on MA35D1 — we keep the schema cross-chip for forward
-    // compatibility but there is nothing to pass through as module params on
-    // this chip. STM32MP1 used to need panel-simple + ltdc_generic_setting
-    // here; that path is gone with the 0.4.x switch to Nuvoton-only.
-    //
-    // Load the Nuvoton DCUltra driver. It is a module (CONFIG_DRM_MA35=m) so
-    // a customer with no display pays zero boot time; this call is the
-    // moment the ~200 ms probe runs. Touch stays the customer's job
-    // (subclass of the Touch abstract class, driving their chip through
-    // Core.I2c + Core.Gpio) — we ship no touch kernel driver.
-    char* argv[] = {const_cast<char*>("modprobe"),
-                    const_cast<char*>("ma35-drm"),
-                    nullptr};
-    RunAndWait("/sbin/modprobe", argv);
 }
 
 // libgpiod 1.x releases the line as soon as gpioset exits, which drops the
@@ -162,28 +127,6 @@ void ApplyBacklight(const nlohmann::json& section, bool on) {
     }
 }
 
-void UnloadPanel() {
-    // modprobe -r ma35-drm. Reclaims the 8 MiB display_buf CMA region and
-    // ends the DCUltra pixel-clock, so a Disable() call really is "pay-for-
-    // use off" and not just the backlight.
-    //
-    // After the C# / Python / C++ wrappers close their /dev/fb0 FileStream the
-    // kernel's DRM teardown takes a few ms to drop its last internal reference,
-    // so an immediate `modprobe -r` fails with EBUSY ("Resource temporarily
-    // unavailable"). Retry a handful of times with a short sleep so the common
-    // close-then-disable path finishes cleanly. Give up quietly after ~500 ms;
-    // the next Enable() will modprobe again and the stale instance will unload
-    // when its refcount drops.
-    char* argv[] = {const_cast<char*>("modprobe"),
-                    const_cast<char*>("-r"),
-                    const_cast<char*>("ma35-drm"),
-                    nullptr};
-    for (int i = 0; i < 10; ++i) {
-        if (RunAndWait("/sbin/modprobe", argv) == 0) return;
-        usleep(50 * 1000);
-    }
-}
-
 }  // namespace
 
 void Enable() {
@@ -193,12 +136,12 @@ void Enable() {
         throw EndpointError(ErrorKind::InvalidOperation,
                             "display type is 'none' in /config/display.json");
     }
-    ApplyParallelLcd(config);
+    Chip::ApplyPanel(config);
     ApplyBacklight(config, true);
 
-    // modprobe + panel-simple probe is asynchronous: /dev/fb0 appears a
-    // moment later. Block until it exists (up to 10 s) so the user does not
-    // have to poll before their first Flush. Timeout -> throw so IsEnabled
+    // modprobe + panel probe is asynchronous: /dev/fb0 appears a moment
+    // later. Block until it exists (up to 10 s) so the user does not have
+    // to poll before their first Flush. Timeout -> throw so IsEnabled
     // reports the true state.
     for (int waited = 0; waited < 10000; waited += 50) {
         if (FramebufferExists()) return;
@@ -211,7 +154,7 @@ void Enable() {
 void Disable() {
     nlohmann::json config = ReadConfig();
     ApplyBacklight(config, false);
-    UnloadPanel();
+    Chip::UnloadPanel();
 }
 
 bool IsEnabled() {

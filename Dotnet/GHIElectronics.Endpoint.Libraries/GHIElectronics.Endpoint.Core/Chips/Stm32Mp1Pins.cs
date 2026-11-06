@@ -23,6 +23,19 @@ namespace GHIElectronics.Endpoint.Core.Chips {
         /// <summary>Port Z: its registers and clock are separate from ports A to K</summary>
         public const int PortZ = 25;
 
+        /// <summary>
+        /// Decodes an EPM815 pin number (<c>Gpio.Port * 16 + line</c>) into the
+        /// (port, line) pair this chip helper expects. The EPM815 <c>Gpio.Port</c>
+        /// enum numbers Z as 9 (packed right after I = 8), but the STM32MP1
+        /// register layout puts Z's clock + MMIO on a separate bus and this helper
+        /// identifies Z with <see cref="PortZ"/> (= 25). Translate here so
+        /// <see cref="Internal.PeripheralPins"/> can stay chip-neutral.
+        /// </summary>
+        public static (int Port, int Line) FromPin(int pin) {
+            var port = pin / 16;
+            return (port == 9 ? PortZ : port, pin % 16);
+        }
+
         // Reading RCC_MP_AHBxENSETR gives the clocks that are on
         private const ulong RccAhb4Enable = 0x50000A28;  // GPIOA..K clocks, bit = port
         private const ulong RccAhb5Enable = 0x50000210;  // GPIOZ clock, bit 0

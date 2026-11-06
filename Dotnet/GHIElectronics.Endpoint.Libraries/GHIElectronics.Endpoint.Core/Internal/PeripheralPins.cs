@@ -49,8 +49,11 @@ namespace GHIElectronics.Endpoint.Core.Internal {
                 var saved = new List<Saved>();
                 try {
                     foreach (var p in pins) {
-                        // Both chips use the same (port, line) decode: port * 16 + line
-                        var (port, line) = (p.Pin / 16, p.Pin % 16);
+                        // Pin number is port * 16 + line, but each chip has its
+                        // own port numbering (STM32 identifies port Z as 25, not
+                        // 9, because its clock + MMIO live on a different bus).
+                        // Delegate the decode to the chip helper via dispatch.
+                        var (port, line) = ChipFromPin(p.Pin);
                         saved.Add(new Saved(p.Pin, port, line, ChipSave(port, line)));
                         if (p.Alternate == PinFunction.AnalogFunction) {
                             ChipSetAnalog(port, line);
@@ -93,6 +96,10 @@ namespace GHIElectronics.Endpoint.Core.Internal {
         }
 
         // ============== Chip dispatch ==============
+
+        private static (int Port, int Line) ChipFromPin(int pin) => ChipDetect.IsMa35
+            ? Ma35dPins.FromPin(pin)
+            : Stm32Mp1Pins.FromPin(pin);
 
         private static object ChipSave(int port, int line) => ChipDetect.IsMa35
             ? Ma35dPins.Save(port, line)
