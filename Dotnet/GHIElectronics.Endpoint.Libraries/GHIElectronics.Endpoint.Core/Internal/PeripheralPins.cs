@@ -116,7 +116,7 @@ namespace GHIElectronics.Endpoint.Core.Internal {
         }
 
         private static void ChipSetAnalog(int port, int line) {
-            // STM32: Analog is a MODE value. MA35: no analog mode — ADC pins
+            // STM32: Analog is a MODE value. MA35: no analog mode; ADC pins
             // are picked by MFP like any other peripheral function (callers
             // for Adc on Nuvoton use SetFunction with the ADC MFP value, not
             // this path). Nothing to do here on MA35.

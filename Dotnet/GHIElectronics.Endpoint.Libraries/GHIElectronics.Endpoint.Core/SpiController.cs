@@ -20,8 +20,8 @@ namespace GHIElectronics.Endpoint.Core {
         /// <summary>
         /// Connects the bus's SCK/MISO/MOSI pins. On EPM815, also sizes the
         /// kernel transfer buffer; on EPN256/EPN128 <paramref name="bufferSize"/>
-        /// is accepted for signature parity and otherwise ignored (the Nuvoton
-        /// driver uses a fixed DMA buffer).
+        /// is accepted for signature parity and otherwise ignored (those
+        /// chips use a fixed DMA buffer).
         /// </summary>
         public static void Initialize(int bus, int bufferSize = 2048) {
             switch (ChipDetect.Current) {

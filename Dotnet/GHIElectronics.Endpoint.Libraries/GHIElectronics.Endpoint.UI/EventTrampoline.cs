@@ -18,7 +18,7 @@ internal static class EventTrampolines {
             if (GCHandle.FromIntPtr(context).Target is Action action) action();
         }
         catch {
-            // Swallow — a C callback must not propagate .NET exceptions back
+            // Swallow: a C callback must not propagate .NET exceptions back
             // into native code (would unwind through the LVGL stack).
         }
     }

@@ -16,14 +16,14 @@ namespace GHIElectronics.Endpoint.Core.Chips {
     /// non-zero MFP value selects a peripheral function; MODE is ignored
     /// while a peripheral owns the pin. MFP = 0 means plain GPIO.</description></item>
     /// <item><description>No separate output-type register. Open-drain is a
-    /// MODE value, not a bit — <see cref="OutputType.OpenDrain"/> maps to
+    /// MODE value, not a bit; <see cref="OutputType.OpenDrain"/> maps to
     /// <see cref="Mode.OpenDrain"/>.</description></item>
     /// <item><description>No analog mode: ADC pins are selected via MFP as
     /// a peripheral function like any other.</description></item>
     /// </list>
     /// MA35D0 (EPN128) and MA35D1 (EPN256) share the same pinctrl layout at
-    /// this level — the chips differ in how many ports / pins are bonded
-    /// out, not in the register map — so one helper covers both. Per-chip
+    /// this level. The chips differ in how many ports / pins are bonded
+    /// out, not in the register map, so one helper covers both. Per-chip
     /// bus tables (EPN256.I2c.cs, EPN128.I2c.cs) carry the function numbers.
     /// </summary>
     internal static class Ma35dPins {
@@ -61,7 +61,7 @@ namespace GHIElectronics.Endpoint.Core.Chips {
         /// <summary>
         /// Decodes an EPN256 / EPN128 pin number (<c>port * 16 + line</c>) into
         /// the (port, line) pair this chip helper expects. MA35 ports A..N number
-        /// sequentially 0..13 with no gaps, so this is a plain divmod — mirrors
+        /// sequentially 0..13 with no gaps, so this is a plain divmod. Mirrors
         /// <see cref="Stm32Mp1Pins.FromPin"/> for dispatch from
         /// <see cref="Internal.PeripheralPins"/>.
         /// </summary>
@@ -71,11 +71,11 @@ namespace GHIElectronics.Endpoint.Core.Chips {
         private const ulong GpioMode    = 0x00;  // 2 bits/pin
         private const ulong GpioPusel   = 0x30;  // 2 bits/pin
         private const ulong GpioSlewctl = 0x28;  // 2 bits/pin
-        private const ulong GpioSmten   = 0x24;  // 1 bit/pin — Schmitt trigger
+        private const ulong GpioSmten   = 0x24;  // 1 bit/pin (Schmitt trigger)
         private const ulong GpioDs      = 0x38;  // drive strength
 
         // =====================================================================
-        // Public methods — same shape as Stm32Mp1Pins.
+        // Public methods: same shape as Stm32Mp1Pins.
         // =====================================================================
 
         /// <summary>Writes the pin's MODE field.</summary>
@@ -104,7 +104,7 @@ namespace GHIElectronics.Endpoint.Core.Chips {
         }
 
         /// <summary>
-        /// Writes the pin's output type. On MA35 this folds into MODE —
+        /// Writes the pin's output type. On MA35 this folds into MODE:
         /// OpenDrain selects <see cref="Mode.OpenDrain"/>, PushPull selects
         /// <see cref="Mode.Output"/>. Only meaningful when the pin is in a
         /// GPIO function (MFP = 0).
@@ -130,7 +130,7 @@ namespace GHIElectronics.Endpoint.Core.Chips {
             var mfpReg = SysBase + MfpBase + ((ulong)port * 0x08) + (line < 8 ? 0ul : 0x04ul);
             var mfpShift = (line % 8) * 4;
             var slewctl = (PhysicalMemory.Read(b + GpioSlewctl) >> (line * 2)) & 3;
-            // Inverse of SetSpeed's mapping (lossy — Medium and High both saved as High).
+            // Inverse of SetSpeed's mapping (lossy: Medium and High both saved as High).
             var speed = slewctl switch {
                 0u => Speed.Low,
                 2u => Speed.VeryHigh,
@@ -160,7 +160,7 @@ namespace GHIElectronics.Endpoint.Core.Chips {
         /// <paramref name="type"/> parameter is accepted for API parity with
         /// <see cref="Stm32Mp1Pins.SetFunction"/>; on MA35 the peripheral
         /// controls direction / type once MFP picks it, so OutputType does
-        /// not apply here — if the bus is open-drain (I²C), the peripheral
+        /// not apply here. If the bus is open-drain (I2C), the peripheral
         /// already drives open-drain.
         /// </summary>
         public static void SetFunction(int port, int line, int function, Pull pull = Pull.None,
@@ -168,7 +168,7 @@ namespace GHIElectronics.Endpoint.Core.Chips {
             SetAlternate(port, line, function);
             SetPull(port, line, pull);
             SetSpeed(port, line, speed);
-            _ = type;  // suppress "unused" — kept for signature parity
+            _ = type;  // suppress "unused"; kept for signature parity
         }
 
         // =====================================================================

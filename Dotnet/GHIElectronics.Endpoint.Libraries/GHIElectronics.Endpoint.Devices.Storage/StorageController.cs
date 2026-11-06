@@ -20,7 +20,7 @@ namespace GHIElectronics.Endpoint.Devices.Storage {
         /// <summary>
         /// The drive's name ("LOGGER"), empty if it has none. (On Endpoint,
         /// <see cref="System.IO.DriveInfo.VolumeLabel"/> returns the drive's mount
-        /// folder, not its label — read this property instead.)
+        /// folder, not its label; read this property instead.)
         /// </summary>
         public string VolumeLabel { get; }
     }

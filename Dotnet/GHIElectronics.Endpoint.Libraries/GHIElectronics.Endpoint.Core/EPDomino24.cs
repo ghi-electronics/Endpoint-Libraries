@@ -178,9 +178,9 @@ namespace GHIElectronics.Endpoint.Core {
         public static class Pwm {
             /// <summary>PWM pins. Subset of <see cref="EPM815.Pwm.Pin"/>.</summary>
             public static class Pin {
-                /// <summary>TIM5 channel 1 — mikroBUS #2 PWM.</summary>
+                /// <summary>TIM5 channel 1 (mikroBUS #2 PWM).</summary>
                 public const int PA0  = EPM815.Pwm.Pin.PA0;
-                /// <summary>TIM2 channel 4 — mikroBUS #1 PWM.</summary>
+                /// <summary>TIM2 channel 4 (mikroBUS #1 PWM).</summary>
                 public const int PA3  = EPM815.Pwm.Pin.PA3;
                 /// <summary>TIM13 channel 1.</summary>
                 public const int PA6  = EPM815.Pwm.Pin.PA6;
@@ -196,7 +196,7 @@ namespace GHIElectronics.Endpoint.Core {
                 public const int PD15 = EPM815.Pwm.Pin.PD15;
                 /// <summary>TIM15 channel 1.</summary>
                 public const int PE5  = EPM815.Pwm.Pin.PE5;
-                /// <summary>TIM14 channel 1 — the onboard buzzer.</summary>
+                /// <summary>TIM14 channel 1 (the onboard buzzer).</summary>
                 public const int PF9  = EPM815.Pwm.Pin.PF9;
                 /// <summary>TIM12 channel 2.</summary>
                 public const int PH9  = EPM815.Pwm.Pin.PH9;
@@ -219,7 +219,7 @@ namespace GHIElectronics.Endpoint.Core {
                 public const int PA5  = EPM815.Adc.Pin.PA5;
                 /// <summary>ADC1 channel 3.</summary>
                 public const int PA6  = EPM815.Adc.Pin.PA6;
-                /// <summary>ADC1 channel 13 — mikroBUS #1 ADC.</summary>
+                /// <summary>ADC1 channel 13 (mikroBUS #1 ADC).</summary>
                 public const int PC3  = EPM815.Adc.Pin.PC3;
                 /// <summary>ADC1 channel 2.</summary>
                 public const int PF11 = EPM815.Adc.Pin.PF11;
@@ -227,7 +227,7 @@ namespace GHIElectronics.Endpoint.Core {
                 public const int PF12 = EPM815.Adc.Pin.PF12;
                 /// <summary>ADC2 channel 2.</summary>
                 public const int PF13 = EPM815.Adc.Pin.PF13;
-                /// <summary>ADC2 channel 6 — mikroBUS #2 ADC.</summary>
+                /// <summary>ADC2 channel 6 (mikroBUS #2 ADC).</summary>
                 public const int PF14 = EPM815.Adc.Pin.PF14;
             }
         }
@@ -242,7 +242,7 @@ namespace GHIElectronics.Endpoint.Core {
             public const int PA5 = EPM815.Dac.PA5;
         }
 
-        /// <summary>Watchdog — same as <see cref="EPM815.Watchdog"/>.</summary>
+        /// <summary>Watchdog, same as <see cref="EPM815.Watchdog"/>.</summary>
         public static class Watchdog {
             /// <summary>Name for <c>WatchdogController.FromName</c>.</summary>
             public const string Id = EPM815.Watchdog.Id;

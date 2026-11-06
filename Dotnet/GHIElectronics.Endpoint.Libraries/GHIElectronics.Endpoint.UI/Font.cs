@@ -56,7 +56,7 @@ public sealed unsafe class Font : IDisposable {
 
     /// <summary>
     /// Release the native font. Do NOT dispose while any widget still uses
-    /// it — call after <c>UI.Stop()</c> returns, or let the process exit.
+    /// it; call after <c>UI.Stop()</c> returns, or let the process exit.
     /// </summary>
     public void Dispose() {
         var h = this._handle;

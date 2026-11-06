@@ -8,7 +8,7 @@ namespace GHIElectronics.Endpoint.Core {
         /// The I2C buses bundled with EPN256. Use with .NET's
         /// <c>System.Device.I2c</c>. <see cref="Initialize"/> connects the
         /// bus's pins; <see cref="UnInitialize"/> releases them. Pay-for-use:
-        /// only the pins of the bus you initialize are claimed — every other
+        /// only the pins of the bus you initialize are claimed. Every other
         /// bus's pins stay free for GPIO. Each constant is the bus number for
         /// <c>I2cConnectionSettings</c> (<c>/dev/i2c-N</c>).
         /// </summary>

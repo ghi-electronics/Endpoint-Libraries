@@ -42,7 +42,7 @@ namespace GHIElectronics.Endpoint.Core {
                 public const int PD11 = Gpio.Pin.PD11;
                 /// <summary>EPWM1 channel 0</summary>
                 public const int PG4  = Gpio.Pin.PG4;
-                /// <summary>EPWM1 channel 1 — the EPN256 reference panel's backlight pin.</summary>
+                /// <summary>EPWM1 channel 1 (the EPN256 reference panel's backlight pin).</summary>
                 public const int PK5  = Gpio.Pin.PK5;
                 /// <summary>EPWM1 channel 2</summary>
                 public const int PG6  = Gpio.Pin.PG6;

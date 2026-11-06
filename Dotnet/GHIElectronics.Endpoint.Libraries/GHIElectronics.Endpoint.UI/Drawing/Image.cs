@@ -6,7 +6,7 @@ using GHIElectronics.Endpoint.Core.Internal;
 namespace GHIElectronics.Endpoint.UI.Drawing {
     /// <summary>
     /// A decoded image, ready to blit into a <see cref="Canvas"/>. Decoding
-    /// (JPEG / PNG / BMP / GIF / TGA — picked from the file's magic bytes)
+    /// (JPEG / PNG / BMP / GIF / TGA, picked from the file's magic bytes)
     /// happens once at <see cref="Load"/>; <see cref="Canvas.DrawImage(Image, int, int)"/>
     /// then just blits + converts to whatever <see cref="PixelFormat"/> the
     /// target canvas uses. Same <c>Image</c> instance is reusable across
@@ -33,7 +33,7 @@ namespace GHIElectronics.Endpoint.UI.Drawing {
 
         /// <summary>
         /// Internal storage format of the decoded pixels. Currently always
-        /// <see cref="PixelFormat.Rgb888"/> — the decoder's native output.
+        /// <see cref="PixelFormat.Rgb888"/>, the decoder's native output.
         /// This does NOT dictate the canvas format; <see cref="Canvas.DrawImage(Image, int, int)"/>
         /// converts to the target canvas's <see cref="Canvas.PixelFormat"/> on draw.
         /// </summary>
@@ -49,7 +49,7 @@ namespace GHIElectronics.Endpoint.UI.Drawing {
         }
 
         /// <summary>
-        /// Decodes an image file (JPEG / PNG / BMP / GIF / TGA — detected
+        /// Decodes an image file (JPEG / PNG / BMP / GIF / TGA, detected
         /// from the file's magic bytes) into an in-memory bitmap. Decode
         /// runs inside <c>libendpoint</c> (stb_image); callers never see a
         /// pixel-format parameter or a stride.

@@ -31,7 +31,7 @@ namespace GHIElectronics.Endpoint.UI.Drawing {
         public static Color FromRgb(uint rgb) =>
             new((byte)(rgb >> 16), (byte)(rgb >> 8), (byte)rgb);
 
-        // Common colors — names match System.Drawing / CSS where they overlap.
+        // Common colors. Names match System.Drawing / CSS where they overlap.
         public static Color Transparent => new(0, 0, 0, 0);
         public static Color Black       => new(0x00, 0x00, 0x00);
         public static Color White       => new(0xFF, 0xFF, 0xFF);

@@ -178,7 +178,7 @@ namespace GHIElectronics.Endpoint.Devices.UsbHost.Descriptors {
 
         /// <summary>Walks a config-descriptor blob from <paramref name="offset"/> to the end and fills <see cref="Interfaces"/>, the nested endpoints, and <see cref="AuxiliaryDescriptors"/>.</summary>
         /// <param name="bytes">The full configuration-descriptor blob (length = <see cref="TotalLength"/>).</param>
-        /// <param name="offset">Byte offset to start parsing children — typically <see cref="FixedLength"/> when the blob starts with the configuration header.</param>
+        /// <param name="offset">Byte offset to start parsing children; typically <see cref="FixedLength"/> when the blob starts with the configuration header.</param>
         public void FillChildren(byte[] bytes, int offset) {
             var auxiliaries = new System.Collections.Generic.List<Auxiliary>();
             var interfaces = new System.Collections.Generic.List<Interface>();

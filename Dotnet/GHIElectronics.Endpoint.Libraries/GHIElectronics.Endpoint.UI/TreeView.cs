@@ -4,7 +4,7 @@ namespace GHIElectronics.Endpoint.UI;
 
 /// <summary>
 /// Hierarchical list. Nodes are added imperatively via <see cref="AddNode"/>
-/// with a depth value — codegen walks the tree and emits one AddNode call
+/// with a depth value; codegen walks the tree and emits one AddNode call
 /// per visible node.
 /// </summary>
 public class TreeView : Widget {

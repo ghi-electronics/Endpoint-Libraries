@@ -7,7 +7,7 @@ namespace GHIElectronics.Endpoint.UI.Drawing {
     /// A pixel buffer plus the primitives to draw into it. Pick the
     /// size and <see cref="PixelFormat"/> at <see cref="Create"/> time;
     /// when done, hand <see cref="Buffer"/> to whichever device accepts
-    /// bytes — <c>DisplayController.Flush</c>, <c>SpiDevice.Write</c>,
+    /// bytes: <c>DisplayController.Flush</c>, <c>SpiDevice.Write</c>,
     /// <c>I2cDevice.Write</c>, a file, anywhere.
     /// </summary>
     /// <example>
@@ -187,7 +187,7 @@ namespace GHIElectronics.Endpoint.UI.Drawing {
 
         /// <summary>
         /// Draw an arc between two angles (0° = east, growing counter-clockwise).
-        /// Planned — not implemented in the managed prototype; needs LVGL
+        /// Planned; not implemented in the managed prototype. Needs LVGL
         /// native backend.
         /// </summary>
         public void DrawArc(int cx, int cy, int radius, int startDeg, int endDeg, Color color, int thickness = 1) =>
@@ -239,7 +239,7 @@ namespace GHIElectronics.Endpoint.UI.Drawing {
         /// Blit a pre-decoded <see cref="Image"/> into this canvas at
         /// (<paramref name="x"/>, <paramref name="y"/>). The image's internal
         /// pixels are converted to this canvas's <see cref="PixelFormat"/> on
-        /// the fly — no re-decode, no cached intermediate. Prefer this over
+        /// the fly, with no re-decode and no cached intermediate. Prefer this over
         /// <see cref="DrawImage(byte[], int, int)"/> in redraw loops: decoding
         /// a JPG is ~150 ms; blitting a cached Image is a few ms.
         /// </summary>
@@ -249,12 +249,12 @@ namespace GHIElectronics.Endpoint.UI.Drawing {
         }
 
         /// <summary>
-        /// Decode an image file (JPEG / PNG / BMP / GIF / TGA — the format is
+        /// Decode an image file (JPEG / PNG / BMP / GIF / TGA; the format is
         /// detected from the file's magic bytes) and blit it into this canvas
         /// at (<paramref name="x"/>, <paramref name="y"/>). Clips to the canvas
-        /// bounds. The decoder runs inside <c>libendpoint</c> — callers hand
+        /// bounds. The decoder runs inside <c>libendpoint</c>; callers hand
         /// over the raw file bytes and never see a pixel format or stride.
-        /// Convenience one-shot — for repeated draws, cache the decode via
+        /// Convenience one-shot. For repeated draws, cache the decode via
         /// <see cref="Image.Load"/> and call <see cref="DrawImage(Image, int, int)"/>.
         /// </summary>
         /// <example>
@@ -293,7 +293,7 @@ namespace GHIElectronics.Endpoint.UI.Drawing {
 
         /// <summary>
         /// Blit a decoded pixel buffer into this canvas at (x, y). The source
-        /// may extend outside the canvas on any side — pixels that fall
+        /// may extend outside the canvas on any side; pixels that fall
         /// outside are clipped. Prefer <see cref="DrawImage(byte[], int, int)"/>
         /// if you have raw file bytes and want the library to decode; this
         /// overload is for callers that already have pixels (e.g. from a
@@ -379,7 +379,7 @@ namespace GHIElectronics.Endpoint.UI.Drawing {
 
         // Alpha-blends an 8-bit grayscale glyph bitmap (the alpha channel of
         // the text pixel) over the current Rgb565 canvas contents at the given
-        // top-left position. Clipping is handled per-pixel — glyphs that run
+        // top-left position. Clipping is handled per-pixel; glyphs that run
         // off the edge of the canvas are safe to pass in.
         private void AlphaBlendGlyph(byte* glyph, int gw, int gh, int dstX, int dstY, Color color) {
             int srcX0 = Math.Max(0, -dstX);

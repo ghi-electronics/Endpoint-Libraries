@@ -13,7 +13,7 @@ public enum ChartMode {
 }
 
 /// <summary>
-/// Simple chart with a single series. Not a standard .NET widget — the API
+/// Simple chart with a single series. Not a standard .NET widget; the API
 /// mirrors TinyCLR's Chart for ease of porting.
 /// </summary>
 public class Chart : Widget {

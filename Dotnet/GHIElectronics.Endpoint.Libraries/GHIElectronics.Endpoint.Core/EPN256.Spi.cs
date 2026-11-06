@@ -19,7 +19,7 @@ namespace GHIElectronics.Endpoint.Core {
         /// </code>
         /// </example>
         public static class Spi {
-            /// <summary>SPI0: PB8 (SS1), PB9 (CLK), PB10 (MOSI), PB11 (MISO); /dev/spidev0.0. Conflicts with I2C1/I2C2 on PB8-PB11 — initialize one or the other, not both.</summary>
+            /// <summary>SPI0: PB8 (SS1), PB9 (CLK), PB10 (MOSI), PB11 (MISO); /dev/spidev0.0. Conflicts with I2C1/I2C2 on PB8-PB11; initialize one or the other, not both.</summary>
             public const int Spi0 = 0;
             /// <summary>SPI1: PC8 (SS0), PC9 (CLK), PC10 (MOSI), PC11 (MISO); /dev/spidev1.0.</summary>
             public const int Spi1 = 1;

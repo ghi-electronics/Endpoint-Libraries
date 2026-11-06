@@ -19,7 +19,7 @@ public static unsafe class UI {
     /// Callback invoked by LVGL whenever a frame is ready to be pushed to the
     /// physical display. The bytes are in the pixel format passed to
     /// <see cref="Initialize(int, int, PixelFormat, FlushCallback)"/>. The
-    /// callback runs on the UI thread — keep it fast; return as soon as the
+    /// callback runs on the UI thread. Keep it fast; return as soon as the
     /// bytes have been handed off to the transport (SPI/I2C write, file
     /// write, socket send, …).
     /// </summary>
@@ -38,7 +38,7 @@ public static unsafe class UI {
     private static GCHandle _customContextHandle;
 
     /// <summary>
-    /// Initialize LVGL for a custom display of any transport — SPI, I2C,
+    /// Initialize LVGL for a custom display of any transport: SPI, I2C,
     /// UART, HDMI, a file, a network socket. LVGL renders each frame into an
     /// internal buffer and invokes <paramref name="flush"/> with the full
     /// rendered bytes; the caller pushes them to the physical device.
@@ -46,7 +46,7 @@ public static unsafe class UI {
     /// </summary>
     /// <example>
     /// <code>
-    /// // 128x64 SSD1306 OLED over I²C (1 bpp, MSB-first)
+    /// // 128x64 SSD1306 OLED over I2C (1 bpp, MSB-first)
     /// UI.Initialize(128, 64, PixelFormat.Monochrome, buffer => i2c.Write(buffer));
     ///
     /// // 240x320 ILI9341 SPI TFT (RGB565)

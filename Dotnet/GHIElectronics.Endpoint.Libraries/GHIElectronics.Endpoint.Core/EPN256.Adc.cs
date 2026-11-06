@@ -7,8 +7,8 @@ namespace GHIElectronics.Endpoint.Core {
         /// <c>System.Device.Analog</c> through the
         /// <c>GHIElectronics.Endpoint.Devices.Adc</c> package. MA35D1's EADC0
         /// is the general-purpose 12-bit ADC, 8 channels on PB0..PB7 (the
-        /// resistive touchscreen uses a separate ADC — see the touch
-        /// package — so the full EADC range is free for application code).
+        /// resistive touchscreen uses a separate ADC (see the touch
+        /// package), so the full EADC range is free for application code).
         /// </summary>
         /// <example>
         /// <code>

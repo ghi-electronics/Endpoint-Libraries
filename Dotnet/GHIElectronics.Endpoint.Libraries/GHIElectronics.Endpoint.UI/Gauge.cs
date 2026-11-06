@@ -3,7 +3,7 @@ using GHIElectronics.Endpoint.Core.Internal;
 namespace GHIElectronics.Endpoint.UI;
 
 /// <summary>
-/// Radial dial with a needle. Not a standard .NET widget — the API
+/// Radial dial with a needle. Not a standard .NET widget; the API
 /// mirrors TinyCLR's Gauge. SweepAngle is 180/270/360 degrees.
 /// </summary>
 public class Gauge : Widget {

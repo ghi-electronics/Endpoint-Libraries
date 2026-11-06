@@ -66,7 +66,7 @@ namespace GHIElectronics.Endpoint.Core {
 
                 // The ma35d1-uart driver is built-in and auto-binds at boot
                 // (SERIAL_MA35D1 can't be modular). Phase 7 strips pinctrl-0
-                // from the board DTS so the auto-bind no longer mux's pins —
+                // from the board DTS so the auto-bind no longer mux's pins;
                 // /dev/ttySN exists, pins stay free until we connect them.
                 if (!File.Exists(device)) {
                     throw new InvalidOperationException(

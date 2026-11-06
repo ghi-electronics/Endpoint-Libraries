@@ -5,12 +5,12 @@ namespace GHIElectronics.Endpoint.Core.Internal {
     /// </summary>
     /// <remarks>
     /// Chip-dispatch inside the library (pin muxing, device paths) uses this.
-    /// Customer-facing APIs do not expose it — the board identity on the
+    /// Customer-facing APIs do not expose it; the board identity on the
     /// host side comes from the USB interface name (see Phase 1 of the
     /// library rework).
     /// </remarks>
     internal enum Chip {
-        /// <summary>Unknown — fallback for dev machines without a Linux device tree.</summary>
+        /// <summary>Unknown (fallback for dev machines without a Linux device tree).</summary>
         Unknown = 0,
         /// <summary>STM32MP153 (EPM815 board family). 32-bit ARMv7.</summary>
         Epm815 = 1,
@@ -35,8 +35,8 @@ namespace GHIElectronics.Endpoint.Core.Internal {
                 // /proc/device-tree/model carries the board/SoC name verbatim
                 // ("Nuvoton MA35D05K-IoT" on Chili Pro, "Nuvoton MA35D1 SoM ..."
                 // on EPN256). Use it first because /proc/device-tree/compatible
-                // on MA35D0 reports just "nuvoton,ma35d1" — the family string,
-                // not the specific chip — so matching compatible alone sends
+                // on MA35D0 reports just "nuvoton,ma35d1" (the family string,
+                // not the specific chip), so matching compatible alone sends
                 // MA35D0 boards down the MA35D1 code path.
                 var model = ReadDtNodeText("/proc/device-tree/model");
                 if (model is not null) {
