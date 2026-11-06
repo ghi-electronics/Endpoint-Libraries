@@ -22,11 +22,14 @@
 #include "endpoint/Core.h"
 #include "endpoint/Dac.h"
 #include "endpoint/Display.h"
-// EPN256 pin names and the pay-for-use SerialPort / Spi / I2c / Pwm / Can /
-// Adc / StorageController helpers — pulled in by default so sample code can
-// write EPN256::StorageController::UsbHostMassStorage without an extra
-// include. (Mirrors the .NET and Python APIs, where EPN256 is reachable
-// through the top-level Core import.)
+#include "endpoint/Drawing.h"
+// EPDomino24 board aliases + EPN128 (MA35D0, Chili Pro) and EPN256 (MA35D1)
+// pin names plus their pay-for-use peripheral helpers — pulled in by
+// default so sample code can write EPN256::StorageController::UsbHostMassStorage
+// without an extra include. (Mirrors the .NET and Python APIs, where these
+// are reachable through the top-level Core import.)
+#include "endpoint/EPDomino24.h"
+#include "endpoint/EPN128.h"
 #include "endpoint/EPN256.h"
 #include "endpoint/Gpio.h"
 #include "endpoint/I2c.h"

@@ -21,7 +21,8 @@ Usage::
 
 import ctypes
 
-from GHIElectronics.Endpoint.Core._native import native, UiEventCallback
+from GHIElectronics.Endpoint.Core._native import native, UiEventCallback, CustomFlushCallback
+from GHIElectronics.Endpoint.Core._errors import ArgumentException, NotSupportedException
 
 
 # ------------------------------------------------------------------
@@ -59,11 +60,47 @@ class _Event:
 
 class UI:
     """UI subsystem lifecycle. Call Initialize() once after the display is
-    enabled; call Run() to drive the event loop; Stop() to exit."""
+    enabled; call Run() to drive the event loop; Stop() to exit.
+
+    Initialize() has two forms:
+    - ``UI.Initialize()`` binds LVGL to the on-board parallel-RGB framebuffer
+      (/dev/fb0). Call after DisplayController.Enable().
+    - ``UI.Initialize(width, height, pixel_format, flush)`` binds LVGL to a
+      custom display of any transport. LVGL renders each frame into an
+      internal buffer and calls ``flush(pixels_bytes)``; the callback pushes
+      them to the destination (SPI/I2C/UART/HDMI/file/network).
+    """
+
+    # Pinned at module scope so ctypes doesn't collect them while the native
+    # display driver still holds pointers. One slot, one custom display.
+    _custom_flush = None
+    _custom_trampoline = None
 
     @staticmethod
-    def Initialize():
-        native.ui_initialize()
+    def Initialize(*args):
+        if len(args) == 0:
+            native.ui_initialize()
+            return
+        if len(args) != 4:
+            raise ArgumentException(
+                "UI.Initialize takes 0 or 4 arguments (width, height, pixel_format, flush).")
+        width, height, pixel_format, flush = args
+        if flush is None:
+            raise ArgumentException("flush must not be None")
+
+        def trampoline(_context, pixels_ptr, byte_count):
+            try:
+                managed = bytes(ctypes.string_at(pixels_ptr, byte_count))
+                flush(managed)
+            except Exception:
+                # A C callback must not propagate Python exceptions back into
+                # native code (would unwind through LVGL). Swallow.
+                pass
+
+        UI._custom_flush = flush
+        UI._custom_trampoline = CustomFlushCallback(trampoline)
+        native.ui_initialize_custom(int(width), int(height), int(pixel_format),
+                                    UI._custom_trampoline, None)
 
     @staticmethod
     def Run():
@@ -129,6 +166,50 @@ class UiTimer:
         if self._handle:
             native.ui_timer_delete(self._handle)
             self._handle = None
+
+    def __del__(self):
+        try: self.Dispose()
+        except Exception: pass
+
+
+# ------------------------------------------------------------------
+# Widget font (LVGL lv_tiny_ttf)
+# ------------------------------------------------------------------
+
+class Font:
+    """A TrueType / OpenType font for widget text (Button caption, Label text,
+    Chart axis labels, ...). Rasterized on demand by LVGL's lv_tiny_ttf; the
+    same Font can be assigned to any number of widgets. Separate from
+    GHIElectronics.Endpoint.UI.Drawing.Font (which is stb_truetype for
+    off-screen Canvas drawing)."""
+
+    def __init__(self, handle):
+        self._native = handle
+
+    @staticmethod
+    def Load(ttf_bytes, size_px):
+        """Load a TTF / OTF font at the given pixel height. Bytes are copied
+        into native storage, so the caller's buffer can be released as soon
+        as this returns."""
+        if ttf_bytes is None:
+            raise ArgumentException("ttf_bytes must not be None")
+        if len(ttf_bytes) == 0:
+            raise ArgumentException("Font bytes are empty.")
+        if size_px <= 0:
+            raise ArgumentException("size_px must be positive.")
+
+        data = bytes(ttf_bytes)
+        src = (ctypes.c_uint8 * len(data)).from_buffer_copy(data)
+        out_handle = native.out_handle()
+        native.ui_font_load_ttf(src, len(data), int(size_px), native.ref(out_handle))
+        return Font(out_handle.value)
+
+    def Dispose(self):
+        """Release the native font. Do NOT dispose while any widget still
+        uses it - call after UI.Stop() returns, or let the process exit."""
+        if self._native is not None:
+            native.ui_font_free(self._native)
+            self._native = None
 
     def __del__(self):
         try: self.Dispose()
@@ -218,16 +299,61 @@ class Widget:
         """WPF-style per-widget Margin. Works in any parent."""
         native.ui_widget_set_margin(self._native, int(left), int(top), int(right), int(bottom))
 
-    def SetBackgroundImage(self, rgb565_bytes, width, height):
-        """Tiled background from raw RGB565 pixel bytes (little-endian).
-        The bytes buffer is pinned on the widget so LVGL can hold a pointer
-        into it."""
-        if not hasattr(self, "_bg_pixels"):
-            self._bg_pixels = None
-        self._bg_pixels = bytes(rgb565_bytes)  # keep alive for the widget's life
+    def SetBackgroundImage(self, source, width=None, height=None):
+        """Background image for the widget. Rendered at native size (no tile,
+        no scale). Two forms, mirroring the .NET overloads:
+
+        - ``SetBackgroundImage(rgb565_bytes, width, height)`` — raw RGB565
+          pixel bytes (little-endian).
+        - ``SetBackgroundImage(image)`` — a decoded ``Drawing.Image`` (JPG /
+          PNG / BMP / ...). The image's RGB888 pixels are converted to
+          RGB565 and copied into native storage.
+        """
+        # Deferred import: Drawing module imports native too; keep the
+        # top-of-module import list short and avoid a circular hazard.
+        from GHIElectronics.Endpoint.UI.Drawing import Image as _DrawingImage
+        from GHIElectronics.Endpoint.UI.Drawing import PixelFormat as _DrawingPixelFormat
+
+        if isinstance(source, _DrawingImage):
+            if source.PixelFormat != _DrawingPixelFormat.Rgb888:
+                raise NotSupportedException(
+                    f"SetBackgroundImage(Image): source format {source.PixelFormat} "
+                    "not yet supported (Rgb888 only).")
+            w, h = source.Width, source.Height
+            src = source._pixels
+            rgb565 = bytearray(w * h * 2)
+            j = 0
+            for i in range(0, len(src), 3):
+                r, g, b = src[i], src[i + 1], src[i + 2]
+                px = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)
+                rgb565[j]     = px & 0xFF
+                rgb565[j + 1] = (px >> 8) & 0xFF
+                j += 2
+            self._set_bg_image_bytes(rgb565, w, h)
+            return
+
+        # Raw-bytes form.
+        if width is None or height is None:
+            raise ArgumentException("width and height are required when passing raw pixel bytes")
+        self._set_bg_image_bytes(source, int(width), int(height))
+
+    def _set_bg_image_bytes(self, rgb565_bytes, width, height):
+        self._bg_pixels = bytes(rgb565_bytes)  # kept alive on the widget
         buf = (ctypes.c_ubyte * len(self._bg_pixels)).from_buffer_copy(self._bg_pixels)
-        self._bg_pixels_buf = buf  # also keep the ctypes buffer alive
+        self._bg_pixels_buf = buf
         native.ui_widget_set_bg_image(self._native, buf, len(self._bg_pixels), width, height)
+
+    @property
+    def Font(self):
+        raise AttributeError("Font is write-only")
+
+    @Font.setter
+    def Font(self, value):
+        """Custom font for any text this widget renders (Button caption,
+        Label text, Chart axis labels, ...). Load once via Font.Load; the
+        same Font can be assigned to any number of widgets. Pass None to
+        clear."""
+        native.ui_widget_set_font(self._native, value._native if value is not None else None)
 
     def Dispose(self):
         if self._native:

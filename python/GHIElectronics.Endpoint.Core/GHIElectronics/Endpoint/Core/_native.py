@@ -46,8 +46,11 @@ CameraFrameCallback = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.POINTER(cty
 
 # UI widget event (Clicked / ValueChanged), on the UI thread: (context)
 UiEventCallback = ctypes.CFUNCTYPE(None, ctypes.c_void_p)
+# LVGL custom-display flush, on the UI thread: (context, pixel bytes, byte count)
+CustomFlushCallback = ctypes.CFUNCTYPE(None, ctypes.c_void_p, ctypes.POINTER(ctypes.c_uint8), ctypes.c_int)
 _uint32 = ctypes.c_uint32
 _bytes_ptr = ctypes.POINTER(ctypes.c_uint8)
+_out_bytes_ptr = ctypes.POINTER(ctypes.POINTER(ctypes.c_uint8))
 
 _FUNCTIONS = {
     "gpio_create": [_out_handle],
@@ -303,6 +306,34 @@ _FUNCTIONS = {
     "ui_listbox_create": [_handle, _out_handle],
     "ui_listbox_add_item": [_handle, _text, _out_handle],
     "ui_listbox_clear": [_handle],
+
+    # Image decode (stb_image) and TTF rasterization (stb_truetype). Used by
+    # Drawing.Image / Drawing.Font / Canvas. image_decode allocates the pixel
+    # buffer; the caller frees it with image_free. font_rasterize's bitmap
+    # also frees with image_free (same stbi_image_free() underneath).
+    "image_decode": [_bytes_ptr, _int, _out_bytes_ptr, _out_int, _out_int],
+    "font_init": [_bytes_ptr, _int, _out_handle],
+    "font_metrics": [_handle, _int, _out_int, _out_int, _out_int],
+    "font_rasterize": [_handle, _int, _int, _out_bytes_ptr, _out_int, _out_int, _out_int, _out_int, _out_int],
+
+    # LVGL-backed TTF widget font (lv_tiny_ttf). Separate handle namespace
+    # from Drawing.Font above. Widget.Font setter pushes font into any widget.
+    "ui_font_load_ttf": [_bytes_ptr, _int, _int, _out_handle],
+    "ui_widget_set_font": [_handle, _handle],
+
+    # Custom-display init: LVGL renders a full frame into its internal buffer
+    # and calls flush_cb(context, pixels*, byteCount). Caller pushes bytes to
+    # any transport (SPI, I2C, UART, HDMI, file, network, ...).
+    "ui_initialize_custom": [_int, _int, _int, CustomFlushCallback, ctypes.c_void_p],
+}
+
+# Void-returning libendpoint functions. These cannot go through the checked
+# wrapper (a C `void` return gives a garbage integer that may look like an
+# error). Registered separately with restype=None.
+_VOID_FUNCTIONS = {
+    "image_free": [_bytes_ptr],
+    "font_free": [_handle],
+    "ui_font_free": [_handle],
 }
 
 
@@ -315,6 +346,12 @@ class _Native:
             function.argtypes = argtypes
             function.restype = ctypes.c_int
             setattr(self, name, self._checked(function))
+        # Void-returning functions: no error check (the C side cannot fail).
+        for name, argtypes in _VOID_FUNCTIONS.items():
+            function = getattr(_library, "endpoint_" + name)
+            function.argtypes = argtypes
+            function.restype = None
+            setattr(self, name, function)
 
     @staticmethod
     def _checked(function):

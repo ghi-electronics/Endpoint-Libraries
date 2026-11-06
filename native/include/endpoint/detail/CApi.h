@@ -521,6 +521,39 @@ int endpoint_ui_listbox_create(void* parent, void** out);
 int endpoint_ui_listbox_add_item(void* lb, const char* text, void** outItem);
 int endpoint_ui_listbox_clear(void* lb);
 
+// ---- Graphics (stb_image + stb_truetype) ----
+// Decode a JPG/PNG/BMP/GIF/TGA file into a malloc'd RGB888 buffer. The caller
+// frees the buffer with endpoint_image_free. endpoint_font_init copies the
+// TTF bytes into a heap-owned handle, so the caller's buffer can be released
+// as soon as init returns. endpoint_font_rasterize's bitmap frees with
+// endpoint_image_free (same free() underneath).
+int  endpoint_image_decode(const uint8_t* data, int length,
+                           uint8_t** pixels, int* width, int* height);
+void endpoint_image_free(uint8_t* pixels);
+int  endpoint_font_init(const uint8_t* ttfData, int length, void** out_handle);
+void endpoint_font_free(void* handle);
+int  endpoint_font_metrics(void* handle, int sizePx,
+                           int* ascent, int* descent, int* lineGap);
+int  endpoint_font_rasterize(void* handle, int codepoint, int sizePx,
+                             uint8_t** bitmap, int* width, int* height,
+                             int* xoff, int* yoff, int* advance);
+
+// ---- UI widget font (LVGL lv_tiny_ttf) ----
+// Separate handle namespace from the Canvas-side font above (stb_truetype).
+// widget_set_font attaches a loaded font to any widget's text (Button
+// caption, Label text, Chart labels, ...).
+int  endpoint_ui_font_load_ttf(const uint8_t* data, int length, int sizePx, void** out_handle);
+void endpoint_ui_font_free(void* handle);
+int  endpoint_ui_widget_set_font(void* widget, void* font_handle);
+
+// ---- UI custom display ----
+// LVGL renders each frame into its internal buffer and invokes flush_cb with
+// a pointer to those bytes; the callback pushes them to any destination
+// (SPI/I2C/UART/HDMI/file/network). pixel_format matches Drawing::PixelFormat.
+int endpoint_ui_initialize_custom(int width, int height, int pixel_format,
+                                  void (*flush_cb)(void* context, const uint8_t* pixels, int byteCount),
+                                  void* context);
+
 #ifdef __cplusplus
 }
 #endif

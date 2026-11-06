@@ -18,6 +18,7 @@
 #include <vector>
 
 #include "Core.h"                 // detail::Check
+#include "Drawing.h"              // Drawing::Image / Drawing::PixelFormat
 #include "detail/CApi.h"          // endpoint_ui_* C API
 
 namespace GHIElectronics {
@@ -44,6 +45,86 @@ namespace detail {
 inline void Initialize() { Core::detail::Check(endpoint_ui_initialize()); }
 inline void Run()        { Core::detail::Check(endpoint_ui_run()); }
 inline void Stop()       { Core::detail::Check(endpoint_ui_stop()); }
+
+namespace detail {
+    // Pinned at namespace scope so the std::function stays alive while the
+    // native display driver still holds a pointer to the trampoline. One
+    // slot, one custom display (matches the single-display on-board init).
+    using CustomFlushCallback = std::function<void(const uint8_t* pixels, int byteCount)>;
+    inline CustomFlushCallback& CustomFlushSlot() {
+        static CustomFlushCallback slot;
+        return slot;
+    }
+    inline void CustomFlushTrampoline(void* /*context*/, const uint8_t* pixels, int byteCount) {
+        auto& cb = CustomFlushSlot();
+        if (cb) cb(pixels, byteCount);
+    }
+}
+
+// Initialize LVGL for a custom display of any transport - SPI, I2C, UART,
+// HDMI, a file, a network socket. LVGL renders each frame into an internal
+// buffer and invokes `flush(pixels, byteCount)` with the full rendered
+// bytes; the caller pushes them to the physical device. Safe to call
+// multiple times (second and later calls are no-ops).
+//
+//     UI::Initialize(128, 64, Drawing::PixelFormat::Monochrome,
+//         [](const uint8_t* p, int n) { i2c.Write(p, n); });
+inline void Initialize(int width, int height, Drawing::PixelFormat format,
+                       std::function<void(const uint8_t* pixels, int byteCount)> flush) {
+    if (!flush) throw Core::ArgumentException("flush must not be null");
+    detail::CustomFlushSlot() = std::move(flush);
+    Core::detail::Check(endpoint_ui_initialize_custom(
+        width, height, static_cast<int>(format),
+        &detail::CustomFlushTrampoline, nullptr));
+}
+
+// A TrueType / OpenType font for widget text (Button caption, Label text,
+// Chart axis labels, ...). Rasterized on demand by LVGL's lv_tiny_ttf;
+// the same Font can be assigned to any number of widgets. Separate from
+// Drawing::Font (which is stb_truetype for off-screen Canvas drawing).
+class Font {
+public:
+    Font() = default;
+    ~Font() {
+        if (this->handle_) endpoint_ui_font_free(this->handle_);
+    }
+    Font(const Font&) = delete;
+    Font& operator=(const Font&) = delete;
+    Font(Font&& other) noexcept : handle_(other.handle_) { other.handle_ = nullptr; }
+    Font& operator=(Font&& other) noexcept {
+        if (this != &other) {
+            if (this->handle_) endpoint_ui_font_free(this->handle_);
+            this->handle_ = other.handle_;
+            other.handle_ = nullptr;
+        }
+        return *this;
+    }
+
+    // Load a TTF / OTF font at the given pixel height. Bytes are copied
+    // into native storage, so the caller's buffer can be released as soon
+    // as this returns.
+    static Font Load(const uint8_t* ttfBytes, size_t length, int sizePx) {
+        if (ttfBytes == nullptr || length == 0) {
+            throw Core::ArgumentException("Font bytes are empty.");
+        }
+        if (sizePx <= 0) {
+            throw Core::ArgumentOutOfRangeException("sizePx must be positive.");
+        }
+        void* h = nullptr;
+        Core::detail::Check(endpoint_ui_font_load_ttf(ttfBytes, static_cast<int>(length), sizePx, &h));
+        Font f;
+        f.handle_ = h;
+        return f;
+    }
+    static Font Load(const std::vector<uint8_t>& bytes, int sizePx) {
+        return Load(bytes.data(), bytes.size(), sizePx);
+    }
+
+    void* Handle() const { return this->handle_; }
+
+private:
+    void* handle_ = nullptr;
+};
 
 /// Touch input bridge. Call TouchAttach() once after Initialize(), then
 /// call TouchFeed(x, y, pressed) from your touch chip's event handler.
@@ -126,15 +207,43 @@ public:
     void SetBackgroundGradient(uint32_t rgb_start, uint32_t rgb_end, int direction = 0) {
         Core::detail::Check(endpoint_ui_widget_set_bg_gradient(this->_native, rgb_start, rgb_end, direction));
     }
-    // Tiled background from raw RGB565 pixels (little-endian). The byte buffer
-    // must outlive the widget.
+    // Tiled background from raw RGB565 pixels (little-endian). The native
+    // side copies the bytes into its own storage, so the caller's buffer
+    // can be released as soon as this returns.
     void SetBackgroundImage(const uint8_t* data, int data_len, int width, int height) {
         Core::detail::Check(endpoint_ui_widget_set_bg_image(this->_native, data, data_len, width, height));
+    }
+    // Background image from a decoded Drawing::Image (JPG/PNG/BMP/... handed
+    // to Drawing::Image::Load). RGB888 pixels are converted to RGB565 and
+    // copied into native storage; the same Image stays reusable for Canvas
+    // calls after this returns.
+    void SetBackgroundImage(const Drawing::Image& image) {
+        if (image.PixelFormat() != Drawing::PixelFormat::Rgb888) {
+            throw Core::NotSupportedException(
+                "SetBackgroundImage(Image): source format not yet supported (Rgb888 only).");
+        }
+        const auto& src = image.Pixels();
+        int w = image.Width(), h = image.Height();
+        std::vector<uint8_t> rgb565(static_cast<size_t>(w) * h * 2);
+        for (size_t i = 0, j = 0; i + 3 <= src.size(); i += 3, j += 2) {
+            uint8_t r = src[i], g = src[i + 1], b = src[i + 2];
+            uint16_t px = static_cast<uint16_t>(((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3));
+            rgb565[j]     = static_cast<uint8_t>(px & 0xFF);
+            rgb565[j + 1] = static_cast<uint8_t>(px >> 8);
+        }
+        SetBackgroundImage(rgb565.data(), static_cast<int>(rgb565.size()), w, h);
     }
 
     // WPF-style per-widget Margin.
     void SetMargin(int left, int top, int right, int bottom) {
         Core::detail::Check(endpoint_ui_widget_set_margin(this->_native, left, top, right, bottom));
+    }
+
+    // Custom font for any text this widget renders (Button caption, Label
+    // text, Chart axis labels, ...). Load once via UI::Font::Load; the
+    // same Font can be assigned to any number of widgets.
+    void SetFont(const Font& font) {
+        Core::detail::Check(endpoint_ui_widget_set_font(this->_native, font.Handle()));
     }
 
     NativeHandle Native() const { return this->_native; }

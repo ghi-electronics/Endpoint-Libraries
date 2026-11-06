@@ -7,7 +7,9 @@ GHIElectronics.Endpoint.Core.
 """
 
 from ._connection import DeviceConnectionStatus
+from ._epdomino24 import EPDomino24
 from ._epm815 import EPM815
+from ._epn128 import EPN128
 from ._epn256 import EPN256
 from ._errors import (
     ArgumentException,
@@ -22,7 +24,9 @@ from ._errors import (
 
 __all__ = [
     "DeviceConnectionStatus",
+    "EPDomino24",
     "EPM815",
+    "EPN128",
     "EPN256",
     "ArgumentException",
     "ArgumentOutOfRangeException",
