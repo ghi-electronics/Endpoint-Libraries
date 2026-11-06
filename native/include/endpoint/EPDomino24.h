@@ -28,6 +28,7 @@ inline constexpr int Buzzer   = EPM815::Gpio::Pin::PF9;  // Piezo buzzer on PF9 
 inline constexpr int ButtonF1 = EPM815::Gpio::Pin::PF3;  // Function button F1 on PF3
 inline constexpr int ButtonF2 = EPM815::Gpio::Pin::PH2;  // Function button F2 on PH2
 inline constexpr int ButtonF3 = EPM815::Gpio::Pin::PH3;  // Function button F3 on PH3
+inline constexpr int Backlight = EPM815::Gpio::Pin::PD14;  // Panel backlight on PD14 (also PWM-capable via TIM4 CH3)
 
 // ---------------------------------------------------------------
 // GPIO pins exposed on EP-Domino24's headers (40-pin header + two
@@ -35,6 +36,14 @@ inline constexpr int ButtonF3 = EPM815::Gpio::Pin::PH3;  // Function button F3 o
 // ---------------------------------------------------------------
 
 struct Gpio {
+    // Linux gpiochip number for the pin. Delegates to EPM815::Gpio::GetChipId
+    // because EP-Domino24 is an EPM815-based board.
+    static int GetChipId(int pin) { return EPM815::Gpio::GetChipId(pin); }
+
+    // Line number within the gpiochip (0 to 15). Pairs with GetChipId.
+    // Delegates to EPM815::Gpio::GetLineId.
+    static int GetLineId(int pin) { return EPM815::Gpio::GetLineId(pin); }
+
     // Pins bonded on EP-Domino24. Subset of EPM815::Gpio::Pin.
     struct Pin {
         static constexpr int PA0  = EPM815::Gpio::Pin::PA0;
@@ -184,6 +193,12 @@ struct Dac {
 // Watchdog - same as EPM815::Watchdog.
 struct Watchdog {
     static constexpr const char* Id = EPM815::Watchdog::Id;
+};
+
+// Storage controllers bonded on EP-Domino24. Same strings as EPM815::StorageController.
+struct StorageController {
+    static constexpr const char* SdCard             = EPM815::StorageController::SdCard;
+    static constexpr const char* UsbHostMassStorage = EPM815::StorageController::UsbHostMassStorage;
 };
 
 }  // namespace GHIElectronics::Endpoint::Core::EPDomino24

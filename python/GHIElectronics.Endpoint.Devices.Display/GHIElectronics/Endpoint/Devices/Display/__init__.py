@@ -64,11 +64,12 @@ class ClockEdge(IntEnum):
 
 
 class BacklightSettings:
-    """GPIO line driving the panel's backlight."""
+    """GPIO line driving the panel's backlight. ``Pin`` is the chip-neutral
+    packed pin number (e.g. ``EPM815.Gpio.Pin.PD14`` or
+    ``EPDomino24.Backlight``); -1 means "no pin"."""
 
     def __init__(self):
-        self.GpioChip = None    # str like "gpiochip7" or None
-        self.GpioPin = None     # int or None
+        self.Pin = -1
         self.ActivePolarity = SignalPolarity.ActiveHigh
 
 
@@ -345,26 +346,67 @@ def _type_to_string(t):
 def _read_backlight(o):
     if not isinstance(o, dict):
         return None
-    chip = o.get("gpioChip")
-    pin = o.get("gpioPin")
-    if chip is None and pin is None:
+    # New schema: a single packed "pin" int (chip-neutral EPM/EPN pin).
+    pin = o.get("pin")
+    # Legacy schema from 0.3.x: "gpioChip" ("gpiochipN") + "gpioPin" (line).
+    # We can't losslessly reverse those to a packed pin without the original
+    # chip's port ordering, so leave Pin = -1 and rely on the next
+    # SetSettings call (migration-on-write) to put the new keys in place.
+    # The user's live backlight continues to work because the native
+    # Display.cpp still reads the legacy keys as a fallback.
+    legacy_chip = o.get("gpioChip")
+    legacy_pin = o.get("gpioPin")
+    if pin is None and legacy_chip is None and legacy_pin is None:
         return None
     b = BacklightSettings()
-    b.GpioChip = chip
-    b.GpioPin = pin
+    b.Pin = int(pin) if isinstance(pin, int) else -1
     b.ActivePolarity = (SignalPolarity.ActiveLow
                         if str(o.get("activePolarity", "")).lower() == "activelow"
                         else SignalPolarity.ActiveHigh)
     return b
 
 
+def _chip_get_chip_id(pin):
+    """Dispatch pin -> gpiochip number via the chip detected at import.
+    Chip-neutral mirror of .NET's PeripheralPins.ChipGetChipId."""
+    # Import lazily to avoid a circular import at package init time.
+    from GHIElectronics.Endpoint.Core._chip_detect import Current, Chip
+    if Current == Chip.Epn256:
+        from GHIElectronics.Endpoint.Core._epn256 import EPN256
+        return EPN256.Gpio.GetChipId(pin)
+    if Current == Chip.Epn128:
+        from GHIElectronics.Endpoint.Core._epn128 import EPN128
+        return EPN128.Gpio.GetChipId(pin)
+    # Epm815 and Unknown both fall back to EPM815 (its layout).
+    from GHIElectronics.Endpoint.Core._epm815 import EPM815
+    return EPM815.Gpio.GetChipId(pin)
+
+
+def _chip_get_line_id(pin):
+    """Dispatch pin -> line number via the chip detected at import."""
+    from GHIElectronics.Endpoint.Core._chip_detect import Current, Chip
+    if Current == Chip.Epn256:
+        from GHIElectronics.Endpoint.Core._epn256 import EPN256
+        return EPN256.Gpio.GetLineId(pin)
+    if Current == Chip.Epn128:
+        from GHIElectronics.Endpoint.Core._epn128 import EPN128
+        return EPN128.Gpio.GetLineId(pin)
+    from GHIElectronics.Endpoint.Core._epm815 import EPM815
+    return EPM815.Gpio.GetLineId(pin)
+
+
 def _write_backlight(b):
     polarity = b.ActivePolarity if b else SignalPolarity.ActiveHigh
-    return {
-        "gpioChip": b.GpioChip if b else None,
-        "gpioPin": b.GpioPin if b else None,
+    out = {
         "activePolarity": "activeLow" if polarity == SignalPolarity.ActiveLow else "activeHigh",
     }
+    if b is not None and b.Pin >= 0:
+        # Resolve the packed pin via ChipDetect; the native Display.cpp
+        # reads these int keys.
+        out["pin"] = b.Pin
+        out["chip"] = _chip_get_chip_id(b.Pin)
+        out["line"] = _chip_get_line_id(b.Pin)
+    return out
 
 
 def _read_parallel(o):

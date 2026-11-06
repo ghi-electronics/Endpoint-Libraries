@@ -112,14 +112,24 @@ ENDPOINT_API int endpoint_display_get_settings(endpoint_display_settings_t* out)
         CopyToBuf(JsonStr(config, "logo"), out->logo, sizeof out->logo);
 
         auto bl = ObjectOrEmpty(config, "backlight");
-        auto blChip = bl.find("gpioChip");
-        auto blPin = bl.find("gpioPin");
-        if ((blChip != bl.end() && !blChip->is_null()) ||
-            (blPin != bl.end() && !blPin->is_null())) {
+        // New schema: "pin" / "chip" / "line" are ints (packed and resolved).
+        // Legacy: "gpioChip" ("gpiochipN") + "gpioPin" (line); we can't
+        // recover the packed pin without the original chip's port ordering
+        // (same reasoning as the .NET ReadBacklight). Leave Pin = -1 when
+        // only the legacy keys are present; the user's next SetSettings
+        // call will migrate the file. Live backlight keeps working because
+        // Display.cpp's ApplyBacklight still falls back to the legacy keys.
+        auto blPinN = bl.find("pin");
+        auto blChipN = bl.find("gpioChip");
+        auto blLineN = bl.find("gpioPin");
+        bool hasNew = (blPinN != bl.end() && blPinN->is_number_integer());
+        bool hasLegacy = (blChipN != bl.end() && !blChipN->is_null()) ||
+                        (blLineN != bl.end() && !blLineN->is_null());
+        if (hasNew || hasLegacy) {
             out->has_backlight = 1;
-            CopyToBuf(JsonStr(bl, "gpioChip"), out->backlight_gpio_chip,
-                      sizeof out->backlight_gpio_chip);
-            out->backlight_gpio_pin = JsonInt(bl, "gpioPin", -1);
+            out->backlight_pin = JsonInt(bl, "pin", -1);
+            out->backlight_chip = JsonInt(bl, "chip", -1);
+            out->backlight_line = JsonInt(bl, "line", -1);
             out->backlight_active_polarity = JsonStr(bl, "activePolarity") == "activeLow" ? 1 : 0;
         }
 
@@ -153,18 +163,16 @@ ENDPOINT_API int endpoint_display_set_settings(const endpoint_display_settings_t
                                      : nlohmann::json(nullptr);
 
         nlohmann::json backlight = nlohmann::json::object();
-        if (in->has_backlight) {
-            backlight["gpioChip"] = in->backlight_gpio_chip[0]
-                ? nlohmann::json(std::string(in->backlight_gpio_chip))
-                : nlohmann::json(nullptr);
-            backlight["gpioPin"] = (in->backlight_gpio_pin >= 0)
-                ? nlohmann::json(in->backlight_gpio_pin)
-                : nlohmann::json(nullptr);
+        if (in->has_backlight && in->backlight_pin >= 0) {
+            // New schema: pin + resolved chip/line (the C++/.NET wrappers
+            // did the chip dispatch before calling here). Drop the old
+            // gpioChip/gpioPin string keys.
+            backlight["pin"] = in->backlight_pin;
+            backlight["chip"] = in->backlight_chip;
+            backlight["line"] = in->backlight_line;
             backlight["activePolarity"] = in->backlight_active_polarity != 0
                 ? "activeLow" : "activeHigh";
         } else {
-            backlight["gpioChip"] = nullptr;
-            backlight["gpioPin"] = nullptr;
             backlight["activePolarity"] = "activeHigh";
         }
         config["backlight"] = backlight;
@@ -189,6 +197,11 @@ ENDPOINT_API int endpoint_display_set_settings(const endpoint_display_settings_t
         config.erase("spi");
         config.erase("i2c");
         config.erase("touch");
+        // Legacy backlight keys from 0.3.x; migration-on-write.
+        if (config["backlight"].is_object()) {
+            config["backlight"].erase("gpioChip");
+            config["backlight"].erase("gpioPin");
+        }
 
         SaveDisplayConfig(config);
     });

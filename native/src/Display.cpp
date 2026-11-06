@@ -107,9 +107,18 @@ void StopHeldBacklight() {
 
 void ApplyBacklight(const nlohmann::json& section, bool on) {
     auto bl = JsonObject(section, "backlight");
-    std::string chip = JsonString(bl, "gpioChip");
-    int chipNum = ParseGpioChipNumber(chip);
-    int pin = JsonInt(bl, "gpioPin", -1);
+    // New schema: "chip" + "line" are the ints the .NET WriteBacklight
+    // produces from the packed BacklightSettings.Pin. Legacy schema (0.3.x
+    // and earlier): "gpioChip" (string "gpiochipN") + "gpioPin" (line) -
+    // read those as fallback so an existing /config/display.json keeps
+    // working until the user's next SetSettings call rewrites it.
+    int chipNum = JsonInt(bl, "chip", -1);
+    int pin = JsonInt(bl, "line", -1);
+    if (chipNum < 0 || pin < 0) {
+        std::string legacyChip = JsonString(bl, "gpioChip");
+        chipNum = ParseGpioChipNumber(legacyChip);
+        pin = JsonInt(bl, "gpioPin", -1);
+    }
     // A missing or incomplete backlight entry is NOT an error: the customer
     // may have an external backlight controller, or no backlight at all.
     if (chipNum < 0 || pin < 0) return;

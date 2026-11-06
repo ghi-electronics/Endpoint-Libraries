@@ -264,10 +264,13 @@ typedef struct {
 
     // Backlight (nullable: has_backlight=0 means "no backlight is controlled
     // by the display controller - either there is no backlight or the user's
-    // own code drives it").
+    // own code drives it"). backlight_pin is the chip-neutral packed pin
+    // (port * 16 + line); backlight_chip + backlight_line are what the C++
+    // DisplayController writes into the JSON for the native ApplyBacklight.
     int has_backlight;
-    char backlight_gpio_chip[ENDPOINT_DISPLAY_NAME_SIZE];
-    int backlight_gpio_pin;
+    int backlight_pin;
+    int backlight_chip;
+    int backlight_line;
     int backlight_active_polarity;  // 0=ActiveHigh (ON when GPIO is high),
                                     // 1=ActiveLow (ON when GPIO is low).
 

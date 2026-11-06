@@ -162,6 +162,22 @@ namespace GHIElectronics.Endpoint.Core {
             /// <summary>The line within the port for the pin (0 to 15).</summary>
             public static int GetPin(int pin) => Check(pin) % 16;
 
+            /// <summary>
+            /// Linux gpiochip number for the pin, as exposed under
+            /// <c>/dev/gpiochipN</c> and <c>/sys/class/gpio/gpiochipN</c>.
+            /// Use with any libgpiod-based code (including the system
+            /// <c>gpioset</c> tool) that wants to drive one of the module's pins
+            /// without the full <see cref="Driver"/> path.
+            /// On EPM815 each port is its own gpiochip (A..I,Z = 0..9).
+            /// </summary>
+            public static int GetChipId(int pin) => Check(pin) / 16;
+
+            /// <summary>
+            /// Line number within the gpiochip (0 to 15 on EPM815). Pairs
+            /// with <see cref="GetChipId"/> for raw libgpiod access.
+            /// </summary>
+            public static int GetLineId(int pin) => Check(pin) % 16;
+
             /// <summary>The pin's name, for example "PC0"</summary>
             public static string Name(int pin) =>
                 IsValid(pin) ? $"P{(pin / 16 == (int)Port.Z ? 'Z' : (char)('A' + pin / 16))}{pin % 16}" : $"#{pin}";

@@ -273,6 +273,18 @@ class EPN256:
             PN15 = 223
             NONE = -1
 
+        @staticmethod
+        def GetChipId(pin):
+            """Linux gpiochip number for the pin, as exposed under
+            /dev/gpiochipN and /sys/class/gpio/gpiochipN. On EPN256 each
+            port is its own gpiochip (A..N = 0..13)."""
+            return pin // 16
+
+        @staticmethod
+        def GetLineId(pin):
+            """Line number within the gpiochip (0 to 15 on EPN256)."""
+            return pin % 16
+
     # Pay-for-use peripheral initializers. Same pattern + same side-effects as
     # the .NET GHIElectronics.Endpoint.Core.EPN256.* classes: Initialize loads
     # the kernel driver (or binds a platform device via sysfs), the kernel's

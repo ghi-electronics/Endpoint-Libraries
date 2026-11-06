@@ -29,6 +29,8 @@ namespace GHIElectronics.Endpoint.Core {
         public const int ButtonF2 = EPM815.Gpio.Pin.PH2;
         /// <summary>Function button F3 on PH3.</summary>
         public const int ButtonF3 = EPM815.Gpio.Pin.PH3;
+        /// <summary>Panel backlight on PD14 (also PWM-capable via TIM4 CH3).</summary>
+        public const int Backlight = EPM815.Gpio.Pin.PD14;
 
         // ---------------------------------------------------------------
         // GPIO pins exposed on EP-Domino24's headers (40-pin header + two
@@ -106,6 +108,21 @@ namespace GHIElectronics.Endpoint.Core {
 
             /// <summary>Same driver as <see cref="EPM815.Gpio.Driver"/>, named for the board.</summary>
             public class Driver : EPM815.Gpio.Driver { }
+
+            /// <summary>
+            /// Linux gpiochip number for the pin, as exposed under
+            /// <c>/dev/gpiochipN</c> and <c>/sys/class/gpio/gpiochipN</c>.
+            /// Delegates to <see cref="EPM815.Gpio.GetChipId"/> because
+            /// EP-Domino24 is an EPM815-based board.
+            /// </summary>
+            public static int GetChipId(int pin) => EPM815.Gpio.GetChipId(pin);
+
+            /// <summary>
+            /// Line number within the gpiochip (0 to 15). Pairs with
+            /// <see cref="GetChipId"/> for raw libgpiod access. Delegates
+            /// to <see cref="EPM815.Gpio.GetLineId"/>.
+            /// </summary>
+            public static int GetLineId(int pin) => EPM815.Gpio.GetLineId(pin);
         }
 
         // ---------------------------------------------------------------
@@ -229,6 +246,14 @@ namespace GHIElectronics.Endpoint.Core {
         public static class Watchdog {
             /// <summary>Name for <c>WatchdogController.FromName</c>.</summary>
             public const string Id = EPM815.Watchdog.Id;
+        }
+
+        /// <summary>Storage controllers bonded on EP-Domino24. Same strings as <see cref="EPM815.StorageController"/>.</summary>
+        public static class StorageController {
+            /// <summary>Name for <c>StorageController.FromName</c>: the SD-card slot.</summary>
+            public const string SdCard = EPM815.StorageController.SdCard;
+            /// <summary>Name for <c>StorageController.FromName</c>: a plugged-in USB mass-storage device.</summary>
+            public const string UsbHostMassStorage = EPM815.StorageController.UsbHostMassStorage;
         }
     }
 }

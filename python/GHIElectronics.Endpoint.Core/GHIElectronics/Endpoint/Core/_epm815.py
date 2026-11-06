@@ -181,6 +181,21 @@ class EPM815:
             """The pin's name, for example "PC0\""""
             return _name(pin)
 
+        @staticmethod
+        def GetChipId(pin):
+            """Linux gpiochip number for the pin, as exposed under
+            /dev/gpiochipN and /sys/class/gpio/gpiochipN. Use with any
+            libgpiod-based code (including the system gpioset tool) that
+            wants to drive one of the module's pins directly.
+            On EPM815 each port is its own gpiochip (A..I,Z = 0..9)."""
+            return pin // 16
+
+        @staticmethod
+        def GetLineId(pin):
+            """Line number within the gpiochip (0 to 15 on EPM815). Pairs
+            with GetChipId for raw libgpiod access."""
+            return pin % 16
+
     class I2c:
         """The I2C buses, for GHIElectronics.Endpoint.Devices.I2c:
 

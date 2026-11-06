@@ -64,8 +64,10 @@ enum class ClockEdge : int {
 // GPIO line driving the panel's backlight. Can be null (customer uses an
 // external backlight controller or has none).
 struct BacklightSettings {
-    std::string GpioChip;
-    int GpioPin = -1;
+    // Chip-neutral pin number (e.g. EPM815::Gpio::Pin::PD14 or
+    // EPDomino24::Backlight). -1 means "no pin": the DisplayController
+    // leaves the backlight line alone.
+    int Pin = -1;
     SignalPolarity ActivePolarity = SignalPolarity::ActiveHigh;
 };
 
@@ -173,8 +175,7 @@ inline DisplaySettings SettingsFromRaw(const endpoint_display_settings_t& raw) {
     s.Logo = raw.logo;
     if (raw.has_backlight) {
         BacklightSettings b;
-        b.GpioChip = raw.backlight_gpio_chip;
-        b.GpioPin = raw.backlight_gpio_pin;
+        b.Pin = raw.backlight_pin;
         b.ActivePolarity = static_cast<SignalPolarity>(raw.backlight_active_polarity);
         s.Backlight = b;
     }
@@ -203,11 +204,21 @@ inline endpoint_display_settings_t RawFromSettings(const DisplaySettings& s) {
     raw.type = static_cast<int>(s.Type);
     std::snprintf(raw.logo, sizeof raw.logo, "%s", s.Logo.c_str());
 
-    if (s.Backlight.has_value()) {
+    if (s.Backlight.has_value() && s.Backlight->Pin >= 0) {
         raw.has_backlight = 1;
-        std::snprintf(raw.backlight_gpio_chip, sizeof raw.backlight_gpio_chip,
-                      "%s", s.Backlight->GpioChip.c_str());
-        raw.backlight_gpio_pin = s.Backlight->GpioPin;
+        raw.backlight_pin = s.Backlight->Pin;
+        // Dispatch via ChipDetect so an EPM815 pin gets EPM815's chip/line
+        // split and an EPN256/128 pin gets MA35's. Chip-neutral entry point
+        // mirrors .NET's PeripheralPins.ChipGetChipId/LineId. MA35D0 shares
+        // MA35D1's pinctrl layout, so EPN256::Gpio::GetChipId works for both
+        // (keeps us from forcing every user of Display.h to pull in EPN128.h).
+        if (Core::ChipDetect::IsMa35()) {
+            raw.backlight_chip = Core::EPN256::Gpio::GetChipId(s.Backlight->Pin);
+            raw.backlight_line = Core::EPN256::Gpio::GetLineId(s.Backlight->Pin);
+        } else {
+            raw.backlight_chip = Core::EPM815::Gpio::GetChipId(s.Backlight->Pin);
+            raw.backlight_line = Core::EPM815::Gpio::GetLineId(s.Backlight->Pin);
+        }
         raw.backlight_active_polarity = static_cast<int>(s.Backlight->ActivePolarity);
     }
     ParallelLcdSettings p = s.Parallel.value_or(ParallelLcdSettings{});

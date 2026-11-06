@@ -25,6 +25,8 @@ class EPDomino24:
     """Function button F2 on PH2"""
     ButtonF3 = EPM815.Gpio.Pin.PH3
     """Function button F3 on PH3"""
+    Backlight = EPM815.Gpio.Pin.PD14
+    """Panel backlight on PD14 (also PWM-capable via TIM4 CH3)"""
 
     # ---------------------------------------------------------------
     # GPIO pins exposed on EP-Domino24's headers (40-pin header + two
@@ -33,6 +35,18 @@ class EPDomino24:
 
     class Gpio:
         """GPIO pins exposed on EP-Domino24."""
+
+        @staticmethod
+        def GetChipId(pin):
+            """Linux gpiochip number for the pin. Delegates to
+            EPM815.Gpio.GetChipId because EP-Domino24 is an EPM815 board."""
+            return EPM815.Gpio.GetChipId(pin)
+
+        @staticmethod
+        def GetLineId(pin):
+            """Line number within the gpiochip (0 to 15). Pairs with
+            GetChipId. Delegates to EPM815.Gpio.GetLineId."""
+            return EPM815.Gpio.GetLineId(pin)
 
         class Pin:
             """Pins bonded on EP-Domino24. Subset of EPM815.Gpio.Pin."""
@@ -178,3 +192,10 @@ class EPDomino24:
         """Watchdog - same as EPM815.Watchdog."""
         Id = EPM815.Watchdog.Id
         """The watchdog's name, for WatchdogController.FromName"""
+
+    class StorageController:
+        """Storage controllers bonded on EP-Domino24. Same strings as EPM815.StorageController."""
+        SdCard = EPM815.StorageController.SdCard
+        """The SD card slot (mounted on /media/sd/)"""
+        UsbHostMassStorage = EPM815.StorageController.UsbHostMassStorage
+        """The USB drives (mounted on /media/usb0/, usb1, ...: the first free number)"""

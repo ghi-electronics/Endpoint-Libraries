@@ -6,7 +6,10 @@
 //   EPM815::I2c::Initialize(EPM815::I2c::I2c1);
 #pragma once
 
+#include <cctype>
+#include <fstream>
 #include <functional>
+#include <iterator>
 #include <map>
 #include <mutex>
 #include <stdexcept>
@@ -107,6 +110,79 @@ enum class DeviceConnectionStatus {
     Bad = 2,  // a drive with no file system the board reads (format it as FAT32 or exFAT)
 };
 
+// The chip the library is running on, read once from
+// /proc/device-tree/model + /proc/device-tree/compatible at first use.
+// Mirrors .NET's GHIElectronics.Endpoint.Core.Internal.ChipDetect; chip
+// dispatch inside the library (pin muxing, device paths) uses this.
+enum class Chip {
+    Unknown = 0,  // dev host without a Linux device tree
+    Epm815 = 1,   // STM32MP153 (EPM815 family)
+    Epn256 = 2,   // Nuvoton MA35D1 (EPN256 family)
+    Epn128 = 3,   // Nuvoton MA35D0 (EPN128 / Chili Pro)
+};
+
+namespace ChipDetect {
+
+namespace detail {
+
+// Read a /proc/device-tree node file and strip the trailing NUL that the
+// kernel appends, so Contains-style substring matches behave intuitively.
+inline std::string ReadDtNodeText(const char* path) {
+    std::ifstream f(path, std::ios::binary);
+    if (!f) return {};
+    std::string s((std::istreambuf_iterator<char>(f)), std::istreambuf_iterator<char>());
+    while (!s.empty() && s.back() == '\0') s.pop_back();
+    return s;
+}
+
+inline bool Contains(const std::string& haystack, const char* needle) {
+    // Case-insensitive substring match: /proc/device-tree/model is mixed case.
+    std::string h; h.reserve(haystack.size());
+    for (char c : haystack) h.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(c))));
+    std::string n;
+    for (const char* p = needle; *p; ++p) n.push_back(static_cast<char>(std::tolower(static_cast<unsigned char>(*p))));
+    return h.find(n) != std::string::npos;
+}
+
+inline Chip Detect() {
+    // /proc/device-tree/model carries the board/SoC name verbatim ("Nuvoton
+    // MA35D05K-IoT" on Chili Pro, "Nuvoton MA35D1 SoM ..." on EPN256). Use
+    // it first because /proc/device-tree/compatible on MA35D0 reports just
+    // "nuvoton,ma35d1" - the family string - which would send MA35D0 down
+    // the MA35D1 path. Check "MA35D0" first (matches "MA35D05K"/"MA35D06K")
+    // before "MA35D1" fallback.
+    std::string model = ReadDtNodeText("/proc/device-tree/model");
+    if (!model.empty()) {
+        if (Contains(model, "MA35D0")) return Chip::Epn128;
+        if (Contains(model, "MA35D1")) return Chip::Epn256;
+        if (Contains(model, "STM32MP15")) return Chip::Epm815;
+    }
+    std::string compat = ReadDtNodeText("/proc/device-tree/compatible");
+    if (!compat.empty()) {
+        if (Contains(compat, "ma35d0")) return Chip::Epn128;
+        if (Contains(compat, "ma35d1")) return Chip::Epn256;
+        if (Contains(compat, "stm32mp15")) return Chip::Epm815;
+    }
+    return Chip::Unknown;
+}
+
+}  // namespace detail
+
+// The detected chip, cached for the life of the process (Meyers singleton).
+// Thread-safe one-time init on first call.
+inline Chip Current() {
+    static const Chip chip = detail::Detect();
+    return chip;
+}
+
+// True for any Nuvoton MA35 chip (EPN256 or EPN128).
+inline bool IsMa35() { return Current() == Chip::Epn256 || Current() == Chip::Epn128; }
+
+// True for the STM32MP1 family (EPM815).
+inline bool IsStm32Mp1() { return Current() == Chip::Epm815; }
+
+}  // namespace ChipDetect
+
 namespace detail {
 
 // Throws the error libendpoint reported (its kind and message)
@@ -168,6 +244,17 @@ struct EPM815 {
             int port = pin / 16;
             return std::string("P") + (port == 9 ? 'Z' : static_cast<char>('A' + port)) + std::to_string(pin % 16);
         }
+
+        // Linux gpiochip number for the pin, as exposed under /dev/gpiochipN
+        // and /sys/class/gpio/gpiochipN. Use with any libgpiod-based code
+        // (including the system gpioset tool) that wants to drive one of the
+        // module's pins without the full Driver path.
+        // On EPM815 each port is its own gpiochip (A..I,Z = 0..9).
+        static int GetChipId(int pin) { return pin / 16; }
+
+        // Line number within the gpiochip (0 to 15 on EPM815). Pairs with
+        // GetChipId for raw libgpiod access.
+        static int GetLineId(int pin) { return pin % 16; }
     };
 
     // The I2C buses, for Devices::I2c:
@@ -350,6 +437,13 @@ namespace EPN256 {
             int port = pin / 16;
             return std::string("P") + static_cast<char>('A' + port) + std::to_string(pin % 16);
         }
+
+        // Linux gpiochip number for the pin. On EPN256 each port is its own
+        // gpiochip (A..N = 0..13).
+        static int GetChipId(int pin) { return pin / 16; }
+
+        // Line number within the gpiochip (0 to 15 on EPN256).
+        static int GetLineId(int pin) { return pin % 16; }
     };
 }  // namespace EPN256
 

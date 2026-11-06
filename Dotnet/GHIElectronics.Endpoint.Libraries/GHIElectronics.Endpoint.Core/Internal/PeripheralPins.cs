@@ -134,5 +134,29 @@ namespace GHIElectronics.Endpoint.Core.Internal {
                 Stm32Mp1Pins.Restore(port, line, (Stm32Mp1Pins.State)state);
             }
         }
+
+        /// <summary>
+        /// Linux gpiochip number for the pin, dispatched to the right chip's
+        /// <c>Gpio.GetChipId</c> based on <see cref="ChipDetect.Current"/>.
+        /// Chip-neutral entry point so callers (e.g. DisplayController's
+        /// backlight serializer) can turn a packed pin into chip + line
+        /// without caring which board they're on. Falls back to EPM815 when
+        /// the chip is unknown (dev host, test machine).
+        /// </summary>
+        public static int ChipGetChipId(int pin) => ChipDetect.Current switch {
+            Chip.Epn256 => EPN256.Gpio.GetChipId(pin),
+            Chip.Epn128 => EPN128.Gpio.GetChipId(pin),
+            _ => EPM815.Gpio.GetChipId(pin),
+        };
+
+        /// <summary>
+        /// Line number within the gpiochip for the pin. Pairs with
+        /// <see cref="ChipGetChipId"/>.
+        /// </summary>
+        public static int ChipGetLineId(int pin) => ChipDetect.Current switch {
+            Chip.Epn256 => EPN256.Gpio.GetLineId(pin),
+            Chip.Epn128 => EPN128.Gpio.GetLineId(pin),
+            _ => EPM815.Gpio.GetLineId(pin),
+        };
     }
 }

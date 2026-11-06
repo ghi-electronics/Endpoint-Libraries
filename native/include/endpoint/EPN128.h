@@ -58,6 +58,18 @@ using GHIElectronics::Endpoint::Core::EPN256::detail::ToLower;
 
 }  // namespace GHIElectronics::Endpoint::Core::EPN128::detail
 
+namespace GHIElectronics::Endpoint::Core::EPN128::Gpio {
+
+// Linux gpiochip number for the pin. On EPN128 each port is its own
+// gpiochip (A..N = 0..13). Pairs with GetLineId for raw libgpiod access
+// (e.g. the system gpioset tool).
+inline int GetChipId(int pin) { return pin / 16; }
+
+// Line number within the gpiochip (0 to 15 on EPN128).
+inline int GetLineId(int pin) { return pin % 16; }
+
+}  // namespace Gpio
+
 namespace GHIElectronics::Endpoint::Core::EPN128::I2c {
 
 // Only I2C4 and I2C5 are bonded out on Chili Pro.

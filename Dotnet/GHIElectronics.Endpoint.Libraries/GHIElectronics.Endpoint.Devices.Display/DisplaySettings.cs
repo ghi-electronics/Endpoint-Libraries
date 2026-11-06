@@ -51,11 +51,13 @@ namespace GHIElectronics.Endpoint.Devices.Display {
 
     /// <summary>GPIO pin that drives the panel's backlight.</summary>
     public sealed class BacklightSettings {
-        /// <summary>Gpiochip name as the kernel exposes it (e.g. "gpiochip7").</summary>
-        public string? GpioChip { get; set; }
-
-        /// <summary>Line number on the chip.</summary>
-        public int? GpioPin { get; set; }
+        /// <summary>
+        /// Chip-neutral pin number (e.g. <see cref="GHIElectronics.Endpoint.Core.EPM815.Gpio.Pin.PD14"/>
+        /// or <see cref="GHIElectronics.Endpoint.Core.EPDomino24.Backlight"/>).
+        /// Default -1 means "no pin": the DisplayController leaves the
+        /// backlight line alone.
+        /// </summary>
+        public int Pin { get; set; } = -1;
 
         /// <summary>
         /// Which GPIO level turns the backlight ON. ActiveHigh (default) =

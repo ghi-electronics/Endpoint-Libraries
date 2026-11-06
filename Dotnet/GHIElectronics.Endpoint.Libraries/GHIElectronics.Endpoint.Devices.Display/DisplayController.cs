@@ -171,22 +171,37 @@ namespace GHIElectronics.Endpoint.Devices.Display {
 
         private static BacklightSettings? ReadBacklight(JsonObject? o) {
             if (o == null) return null;
-            var chip = o["gpioChip"]?.GetValue<string>();
-            var pin = o["gpioPin"]?.GetValue<int?>();
-            if (chip == null && pin == null) return null;
+            // New schema: a single packed "pin" (chip-neutral EPM/EPN pin number).
+            int? pin = o["pin"]?.GetValue<int?>();
+            // Legacy schema from 0.3.x: "gpioChip" ("gpiochipN") + "gpioPin" (line).
+            // We can't losslessly reverse those to a packed pin without the
+            // original chip's port ordering, so we leave Pin = -1 and rely on
+            // the next SetSettings call (migration-on-write) to put the new
+            // keys in place. The user's live backlight continues to work
+            // because the native Display.cpp still reads the legacy keys as
+            // a fallback.
+            var legacyChip = o["gpioChip"]?.GetValue<string>();
+            var legacyPin = o["gpioPin"]?.GetValue<int?>();
+            if (pin == null && legacyChip == null && legacyPin == null) return null;
             return new BacklightSettings {
-                GpioChip = chip,
-                GpioPin = pin,
+                Pin = pin ?? -1,
                 ActivePolarity = ParsePolarity(o["activePolarity"]?.GetValue<string>()),
             };
         }
 
-        private static JsonObject WriteBacklight(BacklightSettings? b) =>
-            new() {
-                ["gpioChip"] = b?.GpioChip,
-                ["gpioPin"] = b?.GpioPin,
+        private static JsonObject WriteBacklight(BacklightSettings? b) {
+            var o = new JsonObject {
                 ["activePolarity"] = PolarityToString(b?.ActivePolarity ?? SignalPolarity.ActiveHigh),
             };
+            if (b != null && b.Pin >= 0) {
+                // Resolve the packed pin into gpiochip + line via the chip
+                // detected at startup; the native Display.cpp reads these.
+                o["pin"] = b.Pin;
+                o["chip"] = PeripheralPins.ChipGetChipId(b.Pin);
+                o["line"] = PeripheralPins.ChipGetLineId(b.Pin);
+            }
+            return o;
+        }
 
         private static SignalPolarity ParsePolarity(string? s) =>
             s?.ToLowerInvariant() == "activelow" ? SignalPolarity.ActiveLow : SignalPolarity.ActiveHigh;

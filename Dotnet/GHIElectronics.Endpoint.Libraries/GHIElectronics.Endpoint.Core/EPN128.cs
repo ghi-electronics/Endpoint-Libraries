@@ -60,6 +60,22 @@ namespace GHIElectronics.Endpoint.Core {
             }
 
             /// <summary>
+            /// Linux gpiochip number for the pin, as exposed under
+            /// <c>/dev/gpiochipN</c> and <c>/sys/class/gpio/gpiochipN</c>.
+            /// Use with any libgpiod-based code (including the system
+            /// <c>gpioset</c> tool) that wants to drive one of the module's pins
+            /// without the full <see cref="Driver"/> path.
+            /// On EPN128 each port is its own gpiochip (A..N = 0..13).
+            /// </summary>
+            public static int GetChipId(int pin) => pin / 16;
+
+            /// <summary>
+            /// Line number within the gpiochip (0 to 15 on EPN128). Pairs
+            /// with <see cref="GetChipId"/> for raw libgpiod access.
+            /// </summary>
+            public static int GetLineId(int pin) => pin % 16;
+
+            /// <summary>
             /// GPIO driver for .NET's <see cref="GpioController"/> using the
             /// EPN128 pin numbers. Every pin mode, pull-up/down and pin change
             /// event of <see cref="GpioController"/> works. One gpiochip is
