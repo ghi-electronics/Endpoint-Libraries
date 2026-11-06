@@ -5,6 +5,8 @@
 #include <sys/wait.h>
 #include <unistd.h>
 
+#include <fcntl.h>
+
 #include <cerrno>
 #include <cstdio>
 #include <cstring>
@@ -68,6 +70,20 @@ int ParseGpioChipNumber(const std::string& name) {
 bool FramebufferExists() {
     struct stat st{};
     return stat(kFramebufferPath, &st) == 0;
+}
+
+// Hide the Linux framebuffer-console text cursor — the tiny blinking black
+// block the kernel's tty0 renders in the top-left of fb0. Same write as
+// UI::Initialize does; a Canvas-only program never calls that, so DO it here
+// so direct DisplayController users get the clean panel too. Silent on
+// error: the sysfs node is only present when fbcon is enabled in the
+// kernel; absence just means no cursor to hide.
+void HideFbconCursor() {
+    int fd = open("/sys/class/graphics/fbcon/cursor_blink", O_WRONLY);
+    if (fd >= 0) {
+        (void)!write(fd, "0", 1);
+        close(fd);
+    }
 }
 
 // libgpiod 1.x releases the line as soon as gpioset exits, which drops the
@@ -144,7 +160,10 @@ void Enable() {
     // to poll before their first Flush. Timeout -> throw so IsEnabled
     // reports the true state.
     for (int waited = 0; waited < 10000; waited += 50) {
-        if (FramebufferExists()) return;
+        if (FramebufferExists()) {
+            HideFbconCursor();
+            return;
+        }
         usleep(50 * 1000);
     }
     throw EndpointError(ErrorKind::Timeout,
