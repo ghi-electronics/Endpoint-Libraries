@@ -37,5 +37,13 @@ namespace GHIElectronics.Endpoint.Core.Internal {
 
         [LibraryImport(Library, EntryPoint = "endpoint_ui_widget_set_font")]
         public static partial int UiWidgetSetFont(nint widget, nint fontHandle);
+
+        // Custom display: LVGL renders a full frame into our internal buffer
+        // and invokes flush_cb with a pointer to those bytes. The caller
+        // pushes them to any destination (SPI/I2C/UART/HDMI/file/network).
+        [LibraryImport(Library, EntryPoint = "endpoint_ui_initialize_custom")]
+        public static partial int UiInitializeCustom(int width, int height, int pixelFormat,
+                                                     delegate* unmanaged<nint, byte*, int, void> flushCb,
+                                                     nint context);
     }
 }

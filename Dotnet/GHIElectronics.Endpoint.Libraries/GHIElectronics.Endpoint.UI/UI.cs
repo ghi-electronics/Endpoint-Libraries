@@ -4,22 +4,81 @@
 using System;
 using System.Runtime.InteropServices;
 using GHIElectronics.Endpoint.Core.Internal;
+using GHIElectronics.Endpoint.UI.Drawing;
 
 namespace GHIElectronics.Endpoint.UI;
 
 /// <summary>
-/// LVGL subsystem lifecycle. Call <see cref="Initialize"/> once after the
+/// LVGL subsystem lifecycle. Call <see cref="Initialize()"/> once after the
 /// display is enabled, then <see cref="Run"/> on your UI thread. LVGL is
 /// built single-threaded (<c>LV_USE_OS=LV_OS_NONE</c>); use
 /// <see cref="UiTimer"/> for periodic work that must touch widgets.
 /// </summary>
-public static class UI {
+public static unsafe class UI {
     /// <summary>
-    /// Initialize LVGL and bind it to the framebuffer. Call after the display
-    /// is enabled. Safe to call multiple times (second and later calls are
-    /// no-ops).
+    /// Callback invoked by LVGL whenever a frame is ready to be pushed to the
+    /// physical display. The bytes are in the pixel format passed to
+    /// <see cref="Initialize(int, int, PixelFormat, FlushCallback)"/>. The
+    /// callback runs on the UI thread — keep it fast; return as soon as the
+    /// bytes have been handed off to the transport (SPI/I2C write, file
+    /// write, socket send, …).
+    /// </summary>
+    public delegate void FlushCallback(byte[] pixels);
+
+    /// <summary>
+    /// Initialize LVGL and bind it to the on-board parallel-RGB framebuffer
+    /// (<c>/dev/fb0</c>). Call after <c>DisplayController.Enable()</c>.
+    /// Safe to call multiple times (second and later calls are no-ops).
     /// </summary>
     public static void Initialize() => Libendpoint.Check(Libendpoint.UiInitialize());
+
+    // Kept alive at the module level so the GC doesn't collect them while the
+    // native display driver still holds pointers.
+    private static FlushCallback? _customFlush;
+    private static GCHandle _customContextHandle;
+
+    /// <summary>
+    /// Initialize LVGL for a custom display of any transport — SPI, I2C,
+    /// UART, HDMI, a file, a network socket. LVGL renders each frame into an
+    /// internal buffer and invokes <paramref name="flush"/> with the full
+    /// rendered bytes; the caller pushes them to the physical device.
+    /// Safe to call multiple times (second and later calls are no-ops).
+    /// </summary>
+    /// <example>
+    /// <code>
+    /// // 128x64 SSD1306 OLED over I²C (1 bpp, MSB-first)
+    /// UI.Initialize(128, 64, PixelFormat.Monochrome, buffer => i2c.Write(buffer));
+    ///
+    /// // 240x320 ILI9341 SPI TFT (RGB565)
+    /// UI.Initialize(240, 320, PixelFormat.Rgb565, buffer => spi.Write(buffer));
+    /// </code>
+    /// </example>
+    public static void Initialize(int width, int height, PixelFormat format, FlushCallback flush) {
+        ArgumentNullException.ThrowIfNull(flush);
+
+        // Pin the user's delegate as the native context so the trampoline can
+        // find it via GCHandle.FromIntPtr. One slot, one display (matches the
+        // single-display on-board initialize).
+        if (_customContextHandle.IsAllocated) _customContextHandle.Free();
+        _customFlush = flush;
+        _customContextHandle = GCHandle.Alloc(flush);
+
+        Libendpoint.Check(Libendpoint.UiInitializeCustom(
+            width, height, (int)format,
+            &CustomFlushTrampoline,
+            GCHandle.ToIntPtr(_customContextHandle)));
+    }
+
+    [UnmanagedCallersOnly]
+    private static void CustomFlushTrampoline(nint context, byte* pixels, int byteCount) {
+        if (GCHandle.FromIntPtr(context).Target is not FlushCallback cb) return;
+        var managed = new byte[byteCount];
+        Marshal.Copy((nint)pixels, managed, 0, byteCount);
+        try { cb(managed); }
+        catch (Exception ex) {
+            Console.Error.WriteLine($"Unhandled exception in UI flush callback: {ex}");
+        }
+    }
 
     /// <summary>
     /// Run the event loop until <see cref="Stop"/> is called. Blocks the

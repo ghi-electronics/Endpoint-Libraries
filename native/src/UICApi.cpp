@@ -88,6 +88,15 @@ ENDPOINT_API int endpoint_ui_initialize(void) {
     return Call([] { UI::Initialize(); });
 }
 
+// Caller-supplied flush: LVGL renders a full frame into our internal buffer
+// and invokes flush_cb with a pointer to those bytes. Caller pushes them to
+// the destination (SPI/I2C/UART/HDMI/file/network — library doesn't care).
+ENDPOINT_API int endpoint_ui_initialize_custom(int width, int height, int pixel_format,
+                                               void (*flush_cb)(void*, const uint8_t*, int),
+                                               void* context) {
+    return Call([&] { UI::InitializeCustom(width, height, pixel_format, flush_cb, context); });
+}
+
 ENDPOINT_API int endpoint_ui_run(void) {
     return Call([] { UI::Run(); });
 }

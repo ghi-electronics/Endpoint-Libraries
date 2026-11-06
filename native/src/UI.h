@@ -12,6 +12,17 @@ namespace GHIElectronics::Endpoint::Internal::UI {
 // (second and later calls are no-ops). Throws EndpointError on failure.
 void Initialize();
 
+// Boots LVGL and creates a generic display driven by the caller's flush
+// callback. Transport-agnostic: the callback is handed the full rendered
+// frame as a byte buffer (format matches `pixel_format`, see
+// endpoint::PixelFormat) and it is the caller's job to push it to whatever
+// device — SPI TFT, I2C OLED, UART display, HDMI frame-grabber, a file,
+// a network socket. Safe to call multiple times (second and later calls
+// are no-ops). Throws EndpointError on failure.
+void InitializeCustom(int width, int height, int pixel_format,
+                      void (*flush_cb)(void* context, const uint8_t* pixels, int byte_count),
+                      void* context);
+
 // Pumps lv_timer_handler in a loop until Stop() is called. Blocks the
 // calling thread. Sleeps between frames based on lv_timer_handler's hint,
 // capped at 50 ms.

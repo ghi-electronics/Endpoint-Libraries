@@ -6,6 +6,7 @@
 #include <fcntl.h>
 #include <thread>
 #include <unistd.h>
+#include <vector>
 
 #include "lvgl.h"
 #include "src/drivers/display/fb/lv_linux_fbdev.h"
@@ -71,6 +72,91 @@ void Initialize() {
         throw EndpointError(ErrorKind::IO, "lv_linux_fbdev_create failed");
     }
     lv_linux_fbdev_set_file(disp, "/dev/fb0");
+}
+
+namespace {
+
+// Slot held for the lifetime of the custom display. LVGL holds a stable
+// pointer to the lv_display_t's user_data, which points here, so the C-side
+// flush trampoline can reach the user's managed callback + context + the
+// pre-allocated draw buffer. A single display per process matches the
+// existing fbdev path, so we keep this as a singleton.
+struct CustomDisplaySlot {
+    void (*user_flush)(void* context, const uint8_t* pixels, int byte_count);
+    void* user_context;
+    std::vector<uint8_t> draw_buffer;
+    int byte_count;
+};
+
+CustomDisplaySlot* g_custom_slot = nullptr;
+
+void CustomFlushTrampoline(lv_display_t* disp, const lv_area_t* /*area*/, uint8_t* px_map) {
+    auto* slot = static_cast<CustomDisplaySlot*>(lv_display_get_user_data(disp));
+    if (slot && slot->user_flush) {
+        slot->user_flush(slot->user_context, px_map, slot->byte_count);
+    }
+    lv_display_flush_ready(disp);
+}
+
+// Map the public PixelFormat enum (matches endpoint::PixelFormat in C#) to
+// LVGL's color format + bits-per-pixel. Keep in sync with the C# enum values.
+struct FormatInfo {
+    lv_color_format_t color_format;
+    int bits_per_pixel;
+};
+FormatInfo ResolveFormat(int format) {
+    switch (format) {
+        case 1: return {LV_COLOR_FORMAT_I1,       1};   // Monochrome (1 bpp, MSB-first)
+        case 2: return {LV_COLOR_FORMAT_RGB565,  16};   // Rgb565
+        case 3: return {LV_COLOR_FORMAT_RGB888,  24};   // Rgb888
+        case 4: return {LV_COLOR_FORMAT_ARGB8888,32};   // Argb8888
+        default:
+            throw EndpointError(ErrorKind::Argument,
+                "unsupported pixel format: use Monochrome, Rgb565, Rgb888 or Argb8888");
+    }
+}
+
+}  // namespace
+
+void InitializeCustom(int width, int height, int pixel_format,
+                      void (*flush_cb)(void* context, const uint8_t* pixels, int byte_count),
+                      void* context) {
+    if (g_initialized.exchange(true)) return;
+    if (width <= 0 || height <= 0) {
+        g_initialized = false;
+        throw EndpointError(ErrorKind::Argument, "width and height must be positive");
+    }
+    if (!flush_cb) {
+        g_initialized = false;
+        throw EndpointError(ErrorKind::Argument, "flush callback must not be null");
+    }
+    FormatInfo fmt = ResolveFormat(pixel_format);
+
+    lv_log_register_print_cb(LvglLogToStderr);
+    lv_init();
+    lv_tick_set_cb(TickNowMs);
+
+    lv_display_t* disp = lv_display_create(width, height);
+    if (!disp) {
+        g_initialized = false;
+        throw EndpointError(ErrorKind::IO, "lv_display_create failed");
+    }
+    lv_display_set_color_format(disp, fmt.color_format);
+
+    // Draw buffer sized to the whole frame; LV_DISPLAY_RENDER_MODE_DIRECT
+    // means LVGL renders straight into it and calls flush once per frame
+    // with the full buffer — simplest possible transport abstraction.
+    size_t buf_bytes = (size_t)(width * height * fmt.bits_per_pixel + 7) / 8;
+    g_custom_slot = new CustomDisplaySlot{};
+    g_custom_slot->user_flush = flush_cb;
+    g_custom_slot->user_context = context;
+    g_custom_slot->draw_buffer.resize(buf_bytes);
+    g_custom_slot->byte_count = (int)buf_bytes;
+
+    lv_display_set_buffers(disp, g_custom_slot->draw_buffer.data(), nullptr,
+                           (uint32_t)buf_bytes, LV_DISPLAY_RENDER_MODE_DIRECT);
+    lv_display_set_user_data(disp, g_custom_slot);
+    lv_display_set_flush_cb(disp, CustomFlushTrampoline);
 }
 
 void Run() {
