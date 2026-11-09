@@ -72,17 +72,27 @@ bool FramebufferExists() {
     return stat(kFramebufferPath, &st) == 0;
 }
 
-// Hide the Linux framebuffer-console text cursor — the tiny blinking black
-// block the kernel's tty0 renders in the top-left of fb0. Same write as
-// UI::Initialize does; a Canvas-only program never calls that, so DO it here
-// so direct DisplayController users get the clean panel too. Silent on
-// error: the sysfs node is only present when fbcon is enabled in the
-// kernel; absence just means no cursor to hide.
+// Hide the Linux framebuffer-console text cursor (the small block in the
+// top-left of fb0 that the kernel's text terminal draws there).
+//   1. Write "0" to /sys/class/graphics/fbcon/cursor_blink so the cursor
+//      stops blinking.
+//   2. Send the ANSI "hide cursor" escape ("\e[?25l") to /dev/tty0 so fbcon
+//      removes the cursor glyph entirely on the next refresh.
+// We cannot use KDSETMODE(KD_GRAPHICS) on this family: the DRM panel driver
+// treats it as "stop driving the panel" and blanks scanout, so direct writes
+// to /dev/fb0 go to a dark screen. Silent on error: kernels without fbcon
+// or /dev/tty0 need no action.
 void HideFbconCursor() {
-    int fd = open("/sys/class/graphics/fbcon/cursor_blink", O_WRONLY);
-    if (fd >= 0) {
-        (void)!write(fd, "0", 1);
-        close(fd);
+    int cb = open("/sys/class/graphics/fbcon/cursor_blink", O_WRONLY);
+    if (cb >= 0) {
+        (void)!write(cb, "0", 1);
+        close(cb);
+    }
+    int tty = open("/dev/tty0", O_WRONLY | O_NOCTTY);
+    if (tty >= 0) {
+        static const char kHideCursor[] = "\x1b[?25l";
+        (void)!write(tty, kHideCursor, sizeof(kHideCursor) - 1);
+        close(tty);
     }
 }
 

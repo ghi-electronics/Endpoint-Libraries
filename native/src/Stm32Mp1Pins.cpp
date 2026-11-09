@@ -90,4 +90,9 @@ void SetFunction(int port, int line, int function, Pull pull, OutputType type, S
     SetMode(port, line, Mode::Alternate);
 }
 
+PortLine FromPin(int pin) {
+    auto port = pin / 16;
+    return PortLine{port == 9 ? PortZ : port, pin % 16};
+}
+
 }  // namespace GHIElectronics::Endpoint::Internal::Stm32Mp1Pins

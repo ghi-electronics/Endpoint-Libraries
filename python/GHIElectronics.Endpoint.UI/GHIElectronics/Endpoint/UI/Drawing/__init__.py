@@ -15,6 +15,7 @@ inside libendpoint. Hand `Canvas.Buffer` to any device that accepts raw
 bytes (DisplayController.Flush, SpiDevice.Write, I2cDevice.Write, ...)."""
 
 import ctypes
+import math
 
 from GHIElectronics.Endpoint.Core._native import native
 from GHIElectronics.Endpoint.Core._errors import (
@@ -241,24 +242,18 @@ class Canvas:
             raise ObjectDisposedException("The Canvas is disposed")
         fmt = self.PixelFormat
         buf = self._buffer
+        # Slice-assignment hands the fill to the C bytearray slot: ~100x faster
+        # than a per-byte Python loop on a Cortex-A7 at 800x480.
         if fmt == PixelFormat.Monochrome:
             fill = 0xFF if (color.R | color.G | color.B) != 0 else 0x00
-            for i in range(len(buf)):
-                buf[i] = fill
+            buf[:] = bytes([fill]) * len(buf)
         elif fmt == PixelFormat.Rgb565:
             px = _rgb565(color)
-            lo, hi = px & 0xFF, (px >> 8) & 0xFF
-            for i in range(0, len(buf), 2):
-                buf[i] = lo
-                buf[i + 1] = hi
+            buf[:] = bytes([px & 0xFF, (px >> 8) & 0xFF]) * (len(buf) // 2)
         elif fmt == PixelFormat.Rgb888:
-            r, g, b = color.R, color.G, color.B
-            for i in range(0, len(buf), 3):
-                buf[i] = r; buf[i + 1] = g; buf[i + 2] = b
+            buf[:] = bytes([color.R, color.G, color.B]) * (len(buf) // 3)
         elif fmt == PixelFormat.Argb8888:
-            a, r, g, b = color.A, color.R, color.G, color.B
-            for i in range(0, len(buf), 4):
-                buf[i] = a; buf[i + 1] = r; buf[i + 2] = g; buf[i + 3] = b
+            buf[:] = bytes([color.A, color.R, color.G, color.B]) * (len(buf) // 4)
 
     def SetPixel(self, x, y, color):
         """Set a single pixel. No-op if (x, y) is outside the canvas."""
@@ -306,16 +301,45 @@ class Canvas:
 
     def DrawRectangle(self, x, y, width, height, color, thickness=1):
         """Stroke a rectangle outline."""
-        for t in range(thickness):
-            self.DrawLine(x + t, y + t, x + width - 1 - t, y + t, color)
-            self.DrawLine(x + t, y + height - 1 - t, x + width - 1 - t, y + height - 1 - t, color)
-            self.DrawLine(x + t, y + t, x + t, y + height - 1 - t, color)
-            self.DrawLine(x + width - 1 - t, y + t, x + width - 1 - t, y + height - 1 - t, color)
+        if thickness <= 0 or width <= 0 or height <= 0:
+            return
+        t = int(thickness)
+        x = int(x); y = int(y); width = int(width); height = int(height)
+        # Four axis-aligned bands via FillRectangle (one scanline slice per
+        # row on Rgb565): orders of magnitude faster than Bresenham DrawLine
+        # for borders. Top + bottom span the full width; left + right fill
+        # the remaining vertical strip so corners are not double-drawn.
+        self.FillRectangle(x, y, width, t, color)
+        self.FillRectangle(x, y + height - t, width, t, color)
+        inner_h = height - 2 * t
+        if inner_h > 0:
+            self.FillRectangle(x, y + t, t, inner_h, color)
+            self.FillRectangle(x + width - t, y + t, t, inner_h, color)
 
     def FillRectangle(self, x, y, width, height, color):
         """Fill a rectangle."""
-        for yy in range(y, y + height):
-            for xx in range(x, x + width):
+        if self._disposed:
+            raise ObjectDisposedException("The Canvas is disposed")
+        # Clip to canvas bounds.
+        x0 = max(0, int(x)); y0 = max(0, int(y))
+        x1 = min(self.Width,  int(x) + int(width))
+        y1 = min(self.Height, int(y) + int(height))
+        if x0 >= x1 or y0 >= y1:
+            return
+        fmt = self.PixelFormat
+        buf = self._buffer
+        # Rgb565 fast path: slice-assign one scanline at a time.
+        if fmt == PixelFormat.Rgb565:
+            px = _rgb565(color)
+            row = bytes([px & 0xFF, (px >> 8) & 0xFF]) * (x1 - x0)
+            stride = self.Width * 2
+            for yy in range(y0, y1):
+                off = yy * stride + x0 * 2
+                buf[off: off + len(row)] = row
+            return
+        # Fallback: per-pixel (less common formats).
+        for yy in range(y0, y1):
+            for xx in range(x0, x1):
                 self.SetPixel(xx, yy, color)
 
     def DrawCircle(self, cx, cy, radius, color, thickness=1):
@@ -426,28 +450,33 @@ class Canvas:
         if r <= 0:
             self.SetPixel(cx, cy, color)
             return
+        # Fill the disc as horizontal spans: one FillRectangle per row (which
+        # is a slice-assignment for Rgb565). Massively faster than per-pixel.
         r2 = r * r
         for yy in range(-r, r + 1):
-            for xx in range(-r, r + 1):
-                if xx * xx + yy * yy <= r2:
-                    self.SetPixel(cx + xx, cy + yy, color)
+            # Half-width of the span at this row: largest xx with xx*xx+yy*yy <= r2.
+            # Closed form avoids an inner loop.
+            dx2 = r2 - yy * yy
+            if dx2 < 0:
+                continue
+            w = int(math.isqrt(dx2))
+            self.FillRectangle(cx - w, cy + yy, 2 * w + 1, 1, color)
 
     def _midpoint_circle(self, cx, cy, r, color, fill):
         if r <= 0:
             self.SetPixel(cx, cy, color)
             return
+        if fill:
+            # Filled circle = _stamp_disc; avoids calling FillRectangle 2r+1
+            # times for each ring of the midpoint traversal.
+            self._stamp_disc(cx, cy, r, color)
+            return
         x, y, err = r, 0, 1 - r
         while x >= y:
-            if fill:
-                for i in range(cx - x, cx + x + 1):
-                    self.SetPixel(i, cy + y, color); self.SetPixel(i, cy - y, color)
-                for i in range(cx - y, cx + y + 1):
-                    self.SetPixel(i, cy + x, color); self.SetPixel(i, cy - x, color)
-            else:
-                self.SetPixel(cx + x, cy + y, color); self.SetPixel(cx - x, cy + y, color)
-                self.SetPixel(cx + x, cy - y, color); self.SetPixel(cx - x, cy - y, color)
-                self.SetPixel(cx + y, cy + x, color); self.SetPixel(cx - y, cy + x, color)
-                self.SetPixel(cx + y, cy - x, color); self.SetPixel(cx - y, cy - x, color)
+            self.SetPixel(cx + x, cy + y, color); self.SetPixel(cx - x, cy + y, color)
+            self.SetPixel(cx + x, cy - y, color); self.SetPixel(cx - x, cy - y, color)
+            self.SetPixel(cx + y, cy + x, color); self.SetPixel(cx - y, cy + x, color)
+            self.SetPixel(cx + y, cy - x, color); self.SetPixel(cx - y, cy - x, color)
             y += 1
             if err <= 0:
                 err += 2 * y + 1

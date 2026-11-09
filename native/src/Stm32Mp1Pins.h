@@ -31,6 +31,15 @@ struct State {
 // Port Z: its registers and clock are separate from ports A to K
 constexpr int PortZ = 25;
 
+// Decodes a packed pin number (port * 16 + line) into the (port, line) pair
+// this chip helper expects. The library's Pins:: namespace numbers Z as 9
+// (packed right after I = 8), but the STM32MP1 identifies Z with PortZ (= 25)
+// because its clock + MMIO live on a different bus. Translate here so
+// PeripheralPins can stay chip-neutral. Mirrors the .NET library's
+// Stm32Mp1Pins.FromPin.
+struct PortLine { int port; int line; };
+PortLine FromPin(int pin);
+
 void SetMode(int port, int line, Mode mode);
 void SetPull(int port, int line, Pull pull);
 void SetSpeed(int port, int line, Speed speed);

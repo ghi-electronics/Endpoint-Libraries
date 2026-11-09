@@ -35,15 +35,25 @@ uint32_t TickNowMs() {
     return (uint32_t)duration_cast<milliseconds>(steady_clock::now() - g_start).count();
 }
 
-// Hide the Linux framebuffer console cursor (the small black block in the
-// top-left corner from the kernel's text terminal that also lives on
-// /dev/fb0). Silent on error — the sysfs node is only present when fbcon is
-// enabled in the kernel; absence just means no cursor to hide.
+// Hide the Linux framebuffer console cursor (the small block in the top-left
+// of fb0 that the kernel's text terminal draws there).
+//   1. Write "0" to /sys/class/graphics/fbcon/cursor_blink so the cursor
+//      stops blinking.
+//   2. Send the ANSI "hide cursor" escape ("\e[?25l") to /dev/tty0 so fbcon
+//      removes the cursor glyph entirely.
+// KDSETMODE(KD_GRAPHICS) is NOT safe on this family: the DRM panel driver
+// blanks scanout in graphics mode, so direct framebuffer writes vanish.
 void HideFbconCursor() {
-    int fd = open("/sys/class/graphics/fbcon/cursor_blink", O_WRONLY);
-    if (fd >= 0) {
-        (void)!write(fd, "0", 1);
-        close(fd);
+    int cb = open("/sys/class/graphics/fbcon/cursor_blink", O_WRONLY);
+    if (cb >= 0) {
+        (void)!write(cb, "0", 1);
+        close(cb);
+    }
+    int tty = open("/dev/tty0", O_WRONLY | O_NOCTTY);
+    if (tty >= 0) {
+        static const char kHideCursor[] = "\x1b[?25l";
+        (void)!write(tty, kHideCursor, sizeof(kHideCursor) - 1);
+        close(tty);
     }
 }
 

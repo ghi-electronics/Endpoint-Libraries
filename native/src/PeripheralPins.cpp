@@ -4,7 +4,7 @@
 #include <mutex>
 
 #include "PinReservations.h"
-#include "Pins.h"
+#include "Stm32Mp1Pins.h"
 
 namespace GHIElectronics::Endpoint::Internal::PeripheralPins {
 
@@ -12,7 +12,7 @@ namespace {
 
 struct Saved {
     int pin;
-    Pins::ChipPin chip;
+    Stm32Mp1Pins::PortLine chip;
     Stm32Mp1Pins::State state;
 };
 
@@ -45,7 +45,10 @@ bool Connect(const std::string& owner, const std::vector<PinFunction>& pins) {
     std::vector<Saved> saved;
     try {
         for (const auto& p : pins) {
-            auto chip = Pins::ToChip(p.pin);
+            // Stm32Mp1Pins uses PortZ (= 25), not 9, for the Z bank; translate
+            // packed pin numbers to its port encoding. Mirrors .NET's
+            // Stm32Mp1Pins.FromPin so port Z never slips through as port J.
+            auto chip = Stm32Mp1Pins::FromPin(p.pin);
             saved.push_back(Saved{p.pin, chip, Stm32Mp1Pins::Save(chip.port, chip.line)});
             if (p.alternate == PinFunction::AnalogFunction) {
                 Stm32Mp1Pins::SetPull(chip.port, chip.line, Stm32Mp1Pins::Pull::None);
