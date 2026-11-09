@@ -393,33 +393,94 @@ class EPN256:
                     _try_run("/sbin/rmmod", cls._module_name)
                     cls._module_loaded = False
 
+        # MMIO base per I2C controller (arch/arm64/.../ma35d1.dtsi). Indexed by bus-1.
+        _addresses = (0x40810000, 0x40820000, 0x40830000, 0x40840000, 0x40850000)
+
+        @classmethod
+        def GetFrequency(cls, bus):
+            """The bus speed in use, in Hz. 400 kHz default if the driver does not expose it."""
+            cls._validate(bus)
+            path = f"/sys/bus/platform/devices/{cls._addresses[bus - 1]:x}.i2c/clock_frequency"
+            try:
+                with open(path) as f:
+                    return int(f.read().strip())
+            except (OSError, ValueError):
+                return 400_000
+
     class Pwm:
-        """MA35D1 Enhanced PWM. Initialize modprobes pwm-ma35d1 and resolves
-        the Linux pwmchipN that corresponds to the requested EPWM instance.
-        Mirrors .NET's EPN256.Pwm."""
-        Epwm0 = 0
-        Epwm1 = 1  # Used by display backlight on EPN256
-        Epwm2 = 2
+        """PWM pins bundled with EPN256, for the standard PwmChannel API.
+        MA35D1 has three EPWM controllers (EPWM0 / EPWM1 / EPWM2), each
+        exposing six channels (CH0..CH5) that share the controller's
+        frequency. Initialize(pin) connects a pin to its controller and
+        channel; GetChipId(pin) and GetChannelId(pin) give what the
+        standard PwmChannel constructor needs. Pay-for-use: initializing
+        one pin claims only that pin. Mirrors .NET's EPN256.Pwm.
+
+            EPN256.Pwm.Initialize(EPN256.Pwm.Pin.PK5)
+            chip    = EPN256.Pwm.GetChipId(EPN256.Pwm.Pin.PK5)
+            channel = EPN256.Pwm.GetChannelId(EPN256.Pwm.Pin.PK5)
+        """
+
+        class Pin:
+            """The pins with PWM (the controller and channel are in the comment).
+            One representative pin per (controller, channel); if your board wires
+            a different pin alternate, request it and we'll add it."""
+            PD6  = 54   # EPWM0 channel 0
+            PD7  = 55   # EPWM0 channel 1
+            PD8  = 56   # EPWM0 channel 2
+            PD9  = 57   # EPWM0 channel 3
+            PD10 = 58   # EPWM0 channel 4
+            PD11 = 59   # EPWM0 channel 5
+            PG4  = 100  # EPWM1 channel 0
+            PK5  = 165  # EPWM1 channel 1 (the EPN256 reference panel's backlight pin)
+            PG6  = 102  # EPWM1 channel 2
+            PG7  = 103  # EPWM1 channel 3
+            PG8  = 104  # EPWM1 channel 4
+            PM13 = 205  # EPWM1 channel 5
+            PC8  = 40   # EPWM2 channel 0
+            PC9  = 41   # EPWM2 channel 1
+            PC10 = 42   # EPWM2 channel 2
+            PC11 = 43   # EPWM2 channel 3
+            PB9  = 25   # EPWM2 channel 4
+            PB10 = 26   # EPWM2 channel 5
+
+        # One PWM pin and how it maps: (controller 0..2, channel 0..5).
+        # MFP values from include/dt-bindings/pinctrl/ma35d1-pinfunc.h are
+        # applied by the kernel's pinctrl framework via the DTS pwm pinctrl
+        # groups, so we only need the pin -> (controller, channel) map.
+        _outputs = {
+            54:  (0, 0), 55:  (0, 1), 56:  (0, 2),
+            57:  (0, 3), 58:  (0, 4), 59:  (0, 5),
+            100: (1, 0), 165: (1, 1), 102: (1, 2),
+            103: (1, 3), 104: (1, 4), 205: (1, 5),
+            40:  (2, 0), 41:  (2, 1), 42:  (2, 2),
+            43:  (2, 3), 25:  (2, 4), 26:  (2, 5),
+        }
+
+        # MMIO base per EPWM controller (arch/arm64/.../ma35d1.dtsi).
+        _platform_devices = ["40580000.epwm0", "40590000.epwm1", "405a0000.epwm2"]
 
         _module_name = "pwm-ma35d1"
-        _platform_devices = ["40580000.epwm0", "40590000.epwm1", "405a0000.epwm2"]
         _gate = threading.Lock()
         _open_count = {}
         _module_loaded = False
 
-        @staticmethod
-        def _validate(controller):
-            if not (0 <= controller <= 2):
-                raise ValueError(f"Must be EPN256.Pwm.Epwm0 / Epwm1 / Epwm2, got {controller}")
+        @classmethod
+        def _get(cls, pin):
+            if pin not in cls._outputs:
+                raise ValueError(f"Pin {pin} has no PWM on EPN256")
+            return cls._outputs[pin]
 
         @classmethod
-        def Initialize(cls, controller):
-            cls._validate(controller)
+        def Initialize(cls, pin):
+            """Loads the EPWM driver so /sys/class/pwm/pwmchipN appears for
+            the pin's controller, and mux's the pin to its channel."""
+            controller, _channel = cls._get(pin)
             with cls._gate:
                 if not cls._module_loaded:
                     _run("/sbin/modprobe", cls._module_name)
                     cls._module_loaded = True
-                cls._open_count[controller] = cls._open_count.get(controller, 0) + 1
+                cls._open_count[pin] = cls._open_count.get(pin, 0) + 1
             for _ in range(50):
                 if cls._try_get_chip_id(controller) is not None:
                     return
@@ -428,28 +489,36 @@ class EPN256:
                 f"pwm-ma35d1 loaded but no pwmchip matched {cls._platform_devices[controller]} within 1 s.")
 
         @classmethod
-        def UnInitialize(cls, controller):
-            cls._validate(controller)
+        def UnInitialize(cls, pin):
+            """Gives the pin back as free GPIO. Reverses Initialize."""
+            cls._get(pin)
             with cls._gate:
-                n = cls._open_count.get(controller, 0)
+                n = cls._open_count.get(pin, 0)
                 if n <= 0:
                     return
                 if n == 1:
-                    cls._open_count.pop(controller, None)
+                    cls._open_count.pop(pin, None)
                 else:
-                    cls._open_count[controller] = n - 1
+                    cls._open_count[pin] = n - 1
                 if not cls._open_count and cls._module_loaded:
                     _try_run("/sbin/rmmod", cls._module_name)
                     cls._module_loaded = False
 
         @classmethod
-        def GetChipId(cls, controller):
-            """The Linux pwmchip number for this EPWM instance. Call after Initialize."""
-            cls._validate(controller)
+        def GetChipId(cls, pin):
+            """The PWM chip of the pin's controller (/sys/class/pwm/pwmchipN),
+            for the standard PwmChannel constructor. Only valid after Initialize."""
+            controller, _channel = cls._get(pin)
             chip = cls._try_get_chip_id(controller)
             if chip is None:
-                raise OSError(f"EPN256.Pwm.Initialize({controller}) must be called first.")
+                raise OSError(f"EPWM{controller} is not enabled in this firmware; call Initialize first.")
             return chip
+
+        @classmethod
+        def GetChannelId(cls, pin):
+            """The pin's channel in its PWM chip, for the standard PwmChannel constructor."""
+            _controller, channel = cls._get(pin)
+            return channel
 
         @classmethod
         def _try_get_chip_id(cls, controller):
@@ -542,7 +611,13 @@ class EPN256:
         _open_count = {}
 
         @classmethod
-        def Initialize(cls, device):
+        def Initialize(cls, device, enableHardwareFlowControl=False):
+            """Binds the UART's platform device so TX/RX (and RTS/CTS where
+            declared in the board DTS) are muxed. enableHardwareFlowControl is
+            accepted for signature parity with SerialPortController; on EPN256
+            pin muxing is driven by DTS at bind time, so the flag has no
+            runtime effect here."""
+            _ = enableHardwareFlowControl
             platform = cls._device_name.get(device)
             if platform is None:
                 raise ValueError(f"Must be EPN256.SerialPort.Uart11 / Uart12 / Uart14, got {device}")

@@ -21,6 +21,11 @@ from ._errors import (
     ObjectDisposedException,
     TimeoutException,
 )
+from ._i2c_controller import I2cController
+from ._spi_controller import SpiController
+from ._pwm_controller import PwmController
+from ._serial_port_controller import SerialPortController
+from ._can_controller import CanController
 
 __all__ = [
     "DeviceConnectionStatus",
@@ -36,4 +41,9 @@ __all__ = [
     "NotSupportedException",
     "ObjectDisposedException",
     "TimeoutException",
+    "I2cController",
+    "SpiController",
+    "PwmController",
+    "SerialPortController",
+    "CanController",
 ]

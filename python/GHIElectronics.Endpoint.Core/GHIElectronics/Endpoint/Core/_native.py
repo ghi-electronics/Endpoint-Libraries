@@ -3,10 +3,35 @@ The other Endpoint packages call it through `native`; programs do not."""
 
 import ctypes
 import os
+import platform
 
 from ._errors import ObjectDisposedException, _exception
 
-_library = ctypes.CDLL(os.path.join(os.path.dirname(os.path.abspath(__file__)), "libendpoint.so"))
+
+def _library_path():
+    """Pick the right libendpoint.so for this board's architecture.
+
+    The Core wheel bundles two variants so a single wheel works on both the
+    32-bit EPM815 (armv7l) and the 64-bit EPN256/EPN128 (aarch64) boards:
+    libendpoint-arm.so and libendpoint-arm64.so. A plain libendpoint.so is
+    also accepted as a fallback for dev installs that only build one arch.
+    """
+    here = os.path.dirname(os.path.abspath(__file__))
+    machine = platform.machine().lower()
+    if machine in ("aarch64", "arm64"):
+        candidate = os.path.join(here, "libendpoint-arm64.so")
+    elif machine.startswith("armv") or machine == "arm":
+        candidate = os.path.join(here, "libendpoint-arm.so")
+    else:
+        candidate = os.path.join(here, "libendpoint.so")
+    if not os.path.exists(candidate):
+        fallback = os.path.join(here, "libendpoint.so")
+        if os.path.exists(fallback):
+            return fallback
+    return candidate
+
+
+_library = ctypes.CDLL(_library_path())
 _library.endpoint_last_error.restype = ctypes.c_char_p
 _library.endpoint_version.restype = ctypes.c_char_p
 

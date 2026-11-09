@@ -4,7 +4,7 @@
 
   <PropertyGroup>
     <PackageId>GHIElectronics.Endpoint.UI</PackageId>
-    <Description>UI widgets for Endpoint: Button, Label, Container, Image, TextBox, Slider, CheckBox on top of the embedded LVGL in libendpoint. Pair with the GHI UI designer.</Description>
+    <Description>UI widgets for Endpoint: Button, Label, Container, Image, TextBox, Slider, CheckBox on top of the embedded LVGL in libendpoint. Pair with the GHI Electronics UI designer.</Description>
     <Nullable>enable</Nullable>
   </PropertyGroup>
 

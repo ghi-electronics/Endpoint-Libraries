@@ -39,6 +39,7 @@
 #include <sys/wait.h>
 #include <thread>
 #include <unistd.h>
+#include <vector>
 
 namespace GHIElectronics::Endpoint::Core::EPN256::detail {
 
@@ -215,14 +216,63 @@ inline void UnInitialize(int bus) {
     }
 }
 
+// MMIO base per I2C controller (arch/arm64/.../ma35d1.dtsi). Indexed by bus-1.
+inline constexpr unsigned long Addresses[] = {
+    0x40810000UL, 0x40820000UL, 0x40830000UL, 0x40840000UL, 0x40850000UL,
+};
+
+// Current bus speed in Hz. Returns DefaultFrequency if the driver does not expose it.
+inline int GetFrequency(int bus) {
+    Validate(bus);
+    char path[96];
+    std::snprintf(path, sizeof path,
+                  "/sys/bus/platform/devices/%lx.i2c/clock_frequency", Addresses[bus - 1]);
+    std::ifstream f(path);
+    int freq = 0;
+    if (f && (f >> freq) && freq > 0) return freq;
+    return DefaultFrequency;
+}
+
 }  // namespace I2c
 
 namespace GHIElectronics::Endpoint::Core::EPN256::Pwm {
 
-inline constexpr int Epwm0 = 0;
-inline constexpr int Epwm1 = 1;  // backlight on EPN256 reference panel
-inline constexpr int Epwm2 = 2;
+// PWM pins bundled with EPN256, for Devices::Pwm::PwmChannel. MA35D1 has
+// three EPWM controllers (EPWM0 / EPWM1 / EPWM2), each exposing six
+// channels (CH0..CH5) that share the controller's frequency. Initialize
+// connects a pin to its controller + channel; GetChipId and GetChannelId
+// give what PwmChannel::Create needs. Pay-for-use: initializing one pin
+// claims only that pin. Mirrors .NET's EPN256.Pwm.
+//
+//   EPN256::Pwm::Initialize(EPN256::Pwm::Pin::PK5);
+//   int chip    = EPN256::Pwm::GetChipId(EPN256::Pwm::Pin::PK5);
+//   int channel = EPN256::Pwm::GetChannelId(EPN256::Pwm::Pin::PK5);
+struct Pin {
+    // One representative pin per (controller, channel); if your board wires
+    // a different pin alternate, request it and we'll add it.
+    static constexpr int PD6  = 54;   // EPWM0 channel 0
+    static constexpr int PD7  = 55;   // EPWM0 channel 1
+    static constexpr int PD8  = 56;   // EPWM0 channel 2
+    static constexpr int PD9  = 57;   // EPWM0 channel 3
+    static constexpr int PD10 = 58;   // EPWM0 channel 4
+    static constexpr int PD11 = 59;   // EPWM0 channel 5
+    static constexpr int PG4  = 100;  // EPWM1 channel 0
+    static constexpr int PK5  = 165;  // EPWM1 channel 1 (the EPN256 reference panel's backlight pin)
+    static constexpr int PG6  = 102;  // EPWM1 channel 2
+    static constexpr int PG7  = 103;  // EPWM1 channel 3
+    static constexpr int PG8  = 104;  // EPWM1 channel 4
+    static constexpr int PM13 = 205;  // EPWM1 channel 5
+    static constexpr int PC8  = 40;   // EPWM2 channel 0
+    static constexpr int PC9  = 41;   // EPWM2 channel 1
+    static constexpr int PC10 = 42;   // EPWM2 channel 2
+    static constexpr int PC11 = 43;   // EPWM2 channel 3
+    static constexpr int PB9  = 25;   // EPWM2 channel 4
+    static constexpr int PB10 = 26;   // EPWM2 channel 5
+};
 
+// MMIO base per EPWM controller (arch/arm64/.../ma35d1.dtsi). Pin MFPs
+// are set by the kernel's pinctrl framework through the pwm DTS groups;
+// userspace only needs the pin -> (controller, channel) map.
 inline std::array<const char*, 3> PlatformDevices() {
     return {"40580000.epwm0", "40590000.epwm1", "405a0000.epwm2"};
 }
@@ -231,9 +281,35 @@ inline std::mutex& Gate() { static std::mutex g; return g; }
 inline std::map<int, int>& OpenCount() { static std::map<int, int> m; return m; }
 inline bool& ModuleLoaded() { static bool b = false; return b; }
 
-inline void Validate(int c) {
-    if (c < 0 || c > 2)
-        throw std::out_of_range("Must be EPN256::Pwm::Epwm0/Epwm1/Epwm2");
+// Pin -> (controller 0..2, channel 0..5). Returns true if the pin is a
+// known PWM pin on EPN256.
+inline bool LookupOutput(int pin, int& controller, int& channel) {
+    switch (pin) {
+        case Pin::PD6:  controller = 0; channel = 0; return true;
+        case Pin::PD7:  controller = 0; channel = 1; return true;
+        case Pin::PD8:  controller = 0; channel = 2; return true;
+        case Pin::PD9:  controller = 0; channel = 3; return true;
+        case Pin::PD10: controller = 0; channel = 4; return true;
+        case Pin::PD11: controller = 0; channel = 5; return true;
+        case Pin::PG4:  controller = 1; channel = 0; return true;
+        case Pin::PK5:  controller = 1; channel = 1; return true;
+        case Pin::PG6:  controller = 1; channel = 2; return true;
+        case Pin::PG7:  controller = 1; channel = 3; return true;
+        case Pin::PG8:  controller = 1; channel = 4; return true;
+        case Pin::PM13: controller = 1; channel = 5; return true;
+        case Pin::PC8:  controller = 2; channel = 0; return true;
+        case Pin::PC9:  controller = 2; channel = 1; return true;
+        case Pin::PC10: controller = 2; channel = 2; return true;
+        case Pin::PC11: controller = 2; channel = 3; return true;
+        case Pin::PB9:  controller = 2; channel = 4; return true;
+        case Pin::PB10: controller = 2; channel = 5; return true;
+        default: return false;
+    }
+}
+
+inline void ValidatePin(int pin, int& controller, int& channel) {
+    if (!LookupOutput(pin, controller, channel))
+        throw std::out_of_range(std::string("Pin ") + std::to_string(pin) + " has no PWM on EPN256");
 }
 
 inline bool TryGetChipId(int controller, int& chipId) {
@@ -258,15 +334,16 @@ inline bool TryGetChipId(int controller, int& chipId) {
     return false;
 }
 
-inline void Initialize(int controller) {
-    Validate(controller);
+inline void Initialize(int pin) {
+    int controller, channel;
+    ValidatePin(pin, controller, channel);
     {
         std::lock_guard lock(Gate());
         if (!ModuleLoaded()) {
             detail::RunChecked("/sbin/modprobe", {"pwm-ma35d1"});
             ModuleLoaded() = true;
         }
-        OpenCount()[controller]++;
+        OpenCount()[pin]++;
     }
     for (int i = 0; i < 50; i++) {
         int chip;
@@ -277,11 +354,12 @@ inline void Initialize(int controller) {
                              PlatformDevices()[controller] + " within 1 s");
 }
 
-inline void UnInitialize(int controller) {
-    Validate(controller);
+inline void UnInitialize(int pin) {
+    int controller, channel;
+    ValidatePin(pin, controller, channel);
     std::lock_guard lock(Gate());
     auto& counts = OpenCount();
-    auto it = counts.find(controller);
+    auto it = counts.find(pin);
     if (it == counts.end() || it->second <= 0) return;
     if (--it->second == 0) counts.erase(it);
     if (counts.empty() && ModuleLoaded()) {
@@ -290,12 +368,20 @@ inline void UnInitialize(int controller) {
     }
 }
 
-inline int GetChipId(int controller) {
-    Validate(controller);
+inline int GetChipId(int pin) {
+    int controller, channel;
+    ValidatePin(pin, controller, channel);
     int chip;
     if (!TryGetChipId(controller, chip))
-        throw std::runtime_error("EPN256::Pwm::Initialize must be called first");
+        throw std::runtime_error(std::string("EPWM") + std::to_string(controller) +
+                                 " is not enabled in this firmware; call Initialize first.");
     return chip;
+}
+
+inline int GetChannelId(int pin) {
+    int controller, channel;
+    ValidatePin(pin, controller, channel);
+    return channel;
 }
 
 }  // namespace Pwm
@@ -379,7 +465,13 @@ inline void WriteSysfs(const std::string& path, const std::string& value) {
     detail::RunChecked("/bin/sh", {"-c", cmd.c_str()});
 }
 
-inline void Initialize(const std::string& device) {
+// enableHardwareFlowControl is accepted for signature parity with the chip-neutral
+// SerialPortController. On EPN256, pin muxing (including RTS/CTS when declared in
+// the board DTS) happens via platform-driver bind at probe time, so the flag has
+// no runtime effect here. Boards without RTS/CTS lines bonded (UART12, UART14 CTS)
+// simply have no DTS pinctrl entry for those lines.
+inline void Initialize(const std::string& device, bool enableHardwareFlowControl = false) {
+    (void)enableHardwareFlowControl;
     auto it = DeviceName().find(device);
     if (it == DeviceName().end())
         throw std::out_of_range("Must be EPN256::SerialPort::Uart11/Uart12/Uart14");

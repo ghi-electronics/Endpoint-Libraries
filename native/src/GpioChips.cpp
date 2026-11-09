@@ -5,6 +5,8 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
+#include <algorithm>
+#include <cctype>
 #include <filesystem>
 #include <map>
 #include <mutex>
@@ -20,6 +22,16 @@ namespace {
 
 std::mutex gate;
 std::optional<std::map<std::string, int>> chips;
+
+// The kernel exposes gpiochip labels verbatim from the SoC's DTS. The STM32MP1
+// vendor DTS uses uppercase ("GPIOA" ... "GPIOZ"); other boards and future
+// firmware revisions may use lowercase or mixed case. Normalise to lowercase
+// so a single Find() path works across every label-case convention.
+std::string ToLower(std::string s) {
+    std::transform(s.begin(), s.end(), s.begin(),
+                   [](unsigned char c) { return std::tolower(c); });
+    return s;
+}
 
 std::map<std::string, int> Scan() {
     std::map<std::string, int> found;
@@ -40,7 +52,7 @@ std::map<std::string, int> Scan() {
         if (result < 0) {
             ThrowSystemError("Cannot read the label of " + entry.path().string());
         }
-        found[info.label] = std::stoi(name.substr(8));
+        found[ToLower(info.label)] = std::stoi(name.substr(8));
     }
     return found;
 }

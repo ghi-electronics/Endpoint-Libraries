@@ -2,7 +2,7 @@ using GHIElectronics.Endpoint.Core.Internal;
 
 namespace GHIElectronics.Endpoint.Core {
     /// <summary>
-    /// Chip-neutral entry point for I²C setup. Call once before using
+    /// Chip-neutral entry point for I2C setup. Call once before using
     /// <see cref="System.Device.I2c.I2cDevice"/>: it brings up the bus and
     /// muxes its pins. Dispatches to the right chip helper based on the
     /// board detected at startup.
