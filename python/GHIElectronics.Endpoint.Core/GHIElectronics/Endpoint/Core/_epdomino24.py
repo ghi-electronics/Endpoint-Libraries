@@ -62,6 +62,7 @@ class EPDomino24:
             PA15 = EPM815.Gpio.Pin.PA15
             PB6 = EPM815.Gpio.Pin.PB6
             PB9 = EPM815.Gpio.Pin.PB9
+            PB11 = EPM815.Gpio.Pin.PB11   # on-board native display FT5xx6 touch IRQ (falling edge)
             PB12 = EPM815.Gpio.Pin.PB12
             PB13 = EPM815.Gpio.Pin.PB13
             PC0 = EPM815.Gpio.Pin.PC0
@@ -87,6 +88,7 @@ class EPDomino24:
             PE12 = EPM815.Gpio.Pin.PE12
             PE13 = EPM815.Gpio.Pin.PE13
             PE14 = EPM815.Gpio.Pin.PE14
+            PF2 = EPM815.Gpio.Pin.PF2    # on-board native display FT5xx6 touch reset (active-low pulse)
             PF3 = EPM815.Gpio.Pin.PF3
             PF4 = EPM815.Gpio.Pin.PF4
             PF5 = EPM815.Gpio.Pin.PF5
@@ -123,6 +125,7 @@ class EPDomino24:
         """I2C buses bonded on EP-Domino24."""
         I2c1 = EPM815.I2c.I2c1  # PD12 (SCL), PD13 (SDA); 40-pin header
         I2c4 = EPM815.I2c.I2c4  # PB6 (SCL), PF15 (SDA); mikroBUS #2
+        I2c5 = EPM815.I2c.I2c5  # PZ4 (SCL), PZ5 (SDA); on-board native display FT5xx6 touch (not on a header)
         I2c6 = EPM815.I2c.I2c6  # PD1 (SCL), PD0 (SDA); mikroBUS #1
 
     class Spi:

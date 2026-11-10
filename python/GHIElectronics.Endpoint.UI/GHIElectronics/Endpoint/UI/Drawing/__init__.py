@@ -366,16 +366,18 @@ class Canvas:
             raise ArgumentException("text must not be None")
         if font is None:
             raise ArgumentException("font must not be None")
-        if self.PixelFormat != PixelFormat.Rgb565:
+        if self.PixelFormat not in (PixelFormat.Rgb565, PixelFormat.Monochrome):
             raise NotSupportedException(
                 f"DrawText into a {self.PixelFormat} canvas is not implemented "
-                "in the managed prototype (Rgb565 target only).")
+                "(Rgb565 and Monochrome targets only).")
         if size_px <= 0 or len(text) == 0:
             return
 
         ascent, _, _ = font.GetMetrics(int(size_px))
         pen_x = int(x)
         baseline_y = int(y) + ascent
+        mono = self.PixelFormat == PixelFormat.Monochrome
+        lit = (color.R | color.G | color.B) != 0
 
         for ch in text:
             codepoint = ord(ch)
@@ -390,8 +392,12 @@ class Canvas:
                                   ctypes.byref(advance))
             try:
                 if bmp and gw.value > 0 and gh.value > 0:
-                    self._alpha_blend_glyph(bmp, gw.value, gh.value,
-                                            pen_x + gxo.value, baseline_y + gyo.value, color)
+                    if mono:
+                        self._stamp_glyph_monochrome(bmp, gw.value, gh.value,
+                                                     pen_x + gxo.value, baseline_y + gyo.value, lit)
+                    else:
+                        self._alpha_blend_glyph(bmp, gw.value, gh.value,
+                                                pen_x + gxo.value, baseline_y + gyo.value, color)
             finally:
                 if bmp:
                     native.image_free(bmp)
@@ -532,6 +538,34 @@ class Canvas:
                     px = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)
                     buf[dst_off + col * 2 + 0] = px & 0xFF
                     buf[dst_off + col * 2 + 1] = (px >> 8) & 0xFF
+
+    def _stamp_glyph_monochrome(self, glyph, gw, gh, dst_x, dst_y, lit):
+        # Stamp an 8-bit grayscale glyph bitmap into a 1bpp Monochrome canvas.
+        # Thresholds alpha: >= 128 sets/clears the bit (anti-aliasing is
+        # meaningless at 1bpp). `glyph` is a ctypes POINTER(c_uint8).
+        src_x0 = max(0, -dst_x)
+        src_y0 = max(0, -dst_y)
+        dst_x0 = dst_x + src_x0
+        dst_y0 = dst_y + src_y0
+        clip_w = min(gw - src_x0, self.Width - dst_x0)
+        clip_h = min(gh - src_y0, self.Height - dst_y0)
+        if clip_w <= 0 or clip_h <= 0:
+            return
+        row_bytes = (self.Width + 7) // 8
+        buf = self._buffer
+        for row in range(clip_h):
+            src_row = (src_y0 + row) * gw + src_x0
+            dst_row = (dst_y0 + row) * row_bytes
+            for col in range(clip_w):
+                if glyph[src_row + col] < 128:
+                    continue
+                x = dst_x0 + col
+                bit = 7 - (x & 7)
+                off = dst_row + (x >> 3)
+                if lit:
+                    buf[off] |= (1 << bit)
+                else:
+                    buf[off] &= ~(1 << bit) & 0xFF
 
     def _alpha_blend_glyph(self, glyph, gw, gh, dst_x, dst_y, color):
         # Alpha-blends an 8-bit grayscale glyph bitmap over the current RGB565

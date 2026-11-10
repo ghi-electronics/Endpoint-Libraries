@@ -205,9 +205,9 @@ namespace GHIElectronics.Endpoint.UI.Drawing {
             ObjectDisposedException.ThrowIf(this.disposed, this);
             ArgumentNullException.ThrowIfNull(text);
             ArgumentNullException.ThrowIfNull(font);
-            if (this.PixelFormat != PixelFormat.Rgb565) {
+            if (this.PixelFormat != PixelFormat.Rgb565 && this.PixelFormat != PixelFormat.Monochrome) {
                 throw new NotSupportedException(
-                    $"DrawText into a {this.PixelFormat} canvas is not implemented in the managed prototype (Rgb565 target only).");
+                    $"DrawText into a {this.PixelFormat} canvas is not implemented (Rgb565 and Monochrome targets only).");
             }
             if (sizePx <= 0 || text.Length == 0) return;
 
@@ -215,6 +215,8 @@ namespace GHIElectronics.Endpoint.UI.Drawing {
                                                      out int ascent, out _, out _));
             int penX = x;
             int baselineY = y + ascent;
+            bool mono = this.PixelFormat == PixelFormat.Monochrome;
+            bool lit = (color.R | color.G | color.B) != 0;
 
             // Enumerate UTF-16 code points (handles surrogate pairs for emoji etc.)
             for (int i = 0; i < text.Length; ) {
@@ -225,7 +227,11 @@ namespace GHIElectronics.Endpoint.UI.Drawing {
                     out byte* bmp, out int gw, out int gh, out int gxo, out int gyo, out int advance));
                 try {
                     if (bmp != null && gw > 0 && gh > 0) {
-                        AlphaBlendGlyph(bmp, gw, gh, penX + gxo, baselineY + gyo, color);
+                        if (mono) {
+                            StampGlyphMonochrome(bmp, gw, gh, penX + gxo, baselineY + gyo, lit);
+                        } else {
+                            AlphaBlendGlyph(bmp, gw, gh, penX + gxo, baselineY + gyo, color);
+                        }
                     }
                 }
                 finally {
@@ -419,6 +425,33 @@ namespace GHIElectronics.Endpoint.UI.Drawing {
                         this.buffer[dstOff]     = (byte)px;
                         this.buffer[dstOff + 1] = (byte)(px >> 8);
                     }
+                }
+            }
+        }
+
+        // Stamp an 8-bit grayscale glyph bitmap into a 1bpp Monochrome canvas.
+        // Thresholds alpha: >= 128 sets/clears the bit (depending on whether
+        // the text color is non-black). Anti-aliasing is meaningless at 1bpp.
+        private void StampGlyphMonochrome(byte* glyph, int gw, int gh, int dstX, int dstY, bool lit) {
+            int srcX0 = Math.Max(0, -dstX);
+            int srcY0 = Math.Max(0, -dstY);
+            int dstX0 = dstX + srcX0;
+            int dstY0 = dstY + srcY0;
+            int clipW = Math.Min(gw - srcX0, this.Width  - dstX0);
+            int clipH = Math.Min(gh - srcY0, this.Height - dstY0);
+            if (clipW <= 0 || clipH <= 0) return;
+
+            int rowBytes = (this.Width + 7) / 8;
+            for (int row = 0; row < clipH; row++) {
+                int srcRow = (srcY0 + row) * gw + srcX0;
+                int dstRow = (dstY0 + row) * rowBytes;
+                for (int col = 0; col < clipW; col++) {
+                    if (glyph[srcRow + col] < 128) continue;
+                    int x = dstX0 + col;
+                    int bit = 7 - (x & 7);
+                    int off = dstRow + (x >> 3);
+                    if (lit) this.buffer[off] |= (byte)(1 << bit);
+                    else     this.buffer[off] &= (byte)~(1 << bit);
                 }
             }
         }

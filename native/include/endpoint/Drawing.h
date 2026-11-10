@@ -351,9 +351,9 @@ public:
     // Alpha-blends against whatever is already in the canvas. The font is
     // rasterized on every call; cache into a Canvas and re-blit for high FPS.
     void DrawText(const std::string& text, const Font& font, int x, int y, int sizePx, Color color) {
-        if (this->format_ != PixelFormat::Rgb565) {
+        if (this->format_ != PixelFormat::Rgb565 && this->format_ != PixelFormat::Monochrome) {
             throw Core::NotSupportedException(
-                "DrawText into a non-Rgb565 canvas is not implemented (Rgb565 target only).");
+                "DrawText into this canvas is not implemented (Rgb565 and Monochrome targets only).");
         }
         if (sizePx <= 0 || text.empty()) return;
 
@@ -361,6 +361,8 @@ public:
         Core::detail::Check(endpoint_font_metrics(font.Handle(), sizePx, &ascent, &descent, &lineGap));
         int penX = x;
         int baselineY = y + ascent;
+        bool mono = this->format_ == PixelFormat::Monochrome;
+        bool lit = (color.R | color.G | color.B) != 0;
 
         // Decode UTF-8 codepoint by codepoint.
         for (size_t i = 0; i < text.size(); ) {
@@ -382,7 +384,11 @@ public:
             Core::detail::Check(endpoint_font_rasterize(font.Handle(), static_cast<int>(codepoint), sizePx,
                                                         &bmp, &gw, &gh, &gxo, &gyo, &advance));
             if (bmp && gw > 0 && gh > 0) {
-                AlphaBlendGlyph(bmp, gw, gh, penX + gxo, baselineY + gyo, color);
+                if (mono) {
+                    StampGlyphMonochrome(bmp, gw, gh, penX + gxo, baselineY + gyo, lit);
+                } else {
+                    AlphaBlendGlyph(bmp, gw, gh, penX + gxo, baselineY + gyo, color);
+                }
             }
             if (bmp) endpoint_image_free(bmp);
             penX += advance;
@@ -502,6 +508,34 @@ private:
                     buf[dstRow + col * 2 + 0] = static_cast<uint8_t>(px & 0xFF);
                     buf[dstRow + col * 2 + 1] = static_cast<uint8_t>(px >> 8);
                 }
+            }
+        }
+    }
+
+    // Stamp an 8-bit grayscale glyph bitmap into a 1bpp Monochrome canvas.
+    // Thresholds alpha: >= 128 sets/clears the bit (anti-aliasing is
+    // meaningless at 1bpp).
+    void StampGlyphMonochrome(const uint8_t* glyph, int gw, int gh, int dstX, int dstY, bool lit) {
+        int srcX0 = std::max(0, -dstX);
+        int srcY0 = std::max(0, -dstY);
+        int dstX0 = dstX + srcX0;
+        int dstY0 = dstY + srcY0;
+        int clipW = std::min(gw - srcX0, this->width_  - dstX0);
+        int clipH = std::min(gh - srcY0, this->height_ - dstY0);
+        if (clipW <= 0 || clipH <= 0) return;
+
+        int rowBytes = (this->width_ + 7) / 8;
+        auto& buf = this->buffer_;
+        for (int row = 0; row < clipH; ++row) {
+            int srcRow = (srcY0 + row) * gw + srcX0;
+            int dstRow = (dstY0 + row) * rowBytes;
+            for (int col = 0; col < clipW; ++col) {
+                if (glyph[srcRow + col] < 128) continue;
+                int x = dstX0 + col;
+                int bit = 7 - (x & 7);
+                int off = dstRow + (x >> 3);
+                if (lit) buf[off] |= static_cast<uint8_t>(1 << bit);
+                else     buf[off] &= static_cast<uint8_t>(~(1 << bit));
             }
         }
     }
