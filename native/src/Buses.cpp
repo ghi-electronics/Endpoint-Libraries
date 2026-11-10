@@ -92,7 +92,7 @@ SpiDeviceImpl::SpiDeviceImpl(const SpiSettings& settings) : settings_(settings) 
     fd_ = open(path.c_str(), O_RDWR | O_CLOEXEC);
     if (fd_ < 0) {
         if (errno == ENOENT) {
-            ThrowInvalidOperation(path + " does not exist: call EPM815.Spi.Initialize for the bus first");
+            ThrowInvalidOperation(path + " does not exist: call SpiController.Initialize for the bus first");
         }
         ThrowSystemError("Cannot open " + path);
     }
@@ -130,7 +130,7 @@ void SpiDeviceImpl::Transfer(const uint8_t* write, uint8_t* read, size_t length)
     if (ioctl(fd_, SPI_IOC_MESSAGE(1), &transfer) < 0) {
         if (errno == EMSGSIZE) {
             ThrowArgument("The SPI transfer of " + std::to_string(length) +
-                          " bytes is longer than the driver's buffer: give a larger size to EPM815.Spi.Initialize");
+                          " bytes is longer than the driver's buffer: give a larger size to SpiController.Initialize");
         }
         ThrowSystemError("SPI transfer on bus " + std::to_string(settings_.busId) + " failed");
     }

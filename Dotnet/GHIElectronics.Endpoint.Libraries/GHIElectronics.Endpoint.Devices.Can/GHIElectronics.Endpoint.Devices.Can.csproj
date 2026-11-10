@@ -4,7 +4,7 @@
 
   <PropertyGroup>
     <PackageId>GHIElectronics.Endpoint.Devices.Can</PackageId>
-    <Description>CAN for Endpoint: .NET IoT's CanRaw (Iot.Device.SocketCan) on the board's CAN ports. EPM815.Can.Initialize sets a port up.</Description>
+    <Description>CAN for Endpoint: .NET IoT's CanRaw (Iot.Device.SocketCan) on the board's CAN ports. CanController.Initialize sets a port up.</Description>
     <Nullable>disable</Nullable>
   </PropertyGroup>
 

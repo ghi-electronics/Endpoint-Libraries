@@ -1,9 +1,9 @@
 """PWM for Endpoint, with the same API as .NET's System.Device.Pwm:
 
-    from GHIElectronics.Endpoint.Core import EPM815
+    from GHIElectronics.Endpoint.Core import PwmController, EPM815
     from GHIElectronics.Endpoint.Devices.Pwm import PwmChannel
 
-    EPM815.Pwm.Initialize(EPM815.Pwm.Pin.PA8)
+    PwmController.Initialize(EPM815.Pwm.Pin.PA8)
     pwm = PwmChannel.Create(EPM815.Pwm.GetChipId(EPM815.Pwm.Pin.PA8),
                             EPM815.Pwm.GetChannelId(EPM815.Pwm.Pin.PA8), 1000, 0.5)
     pwm.Start()
@@ -15,7 +15,7 @@ __all__ = ["PwmChannel"]
 
 
 class PwmChannel:
-    """A PWM output (call EPM815.Pwm.Initialize for the pin first)"""
+    """A PWM output (call PwmController.Initialize for the pin first)"""
 
     def __init__(self, chip, channel, frequency=400, dutyCyclePercentage=0.5):
         handle = native.out_handle()

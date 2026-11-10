@@ -1,9 +1,9 @@
 """I2C for Endpoint, with the same API as .NET's System.Device.I2c:
 
-    from GHIElectronics.Endpoint.Core import EPM815
+    from GHIElectronics.Endpoint.Core import I2cController, EPM815
     from GHIElectronics.Endpoint.Devices.I2c import I2cDevice, I2cConnectionSettings
 
-    EPM815.I2c.Initialize(EPM815.I2c.I2c1)
+    I2cController.Initialize(EPM815.I2c.I2c1)
     device = I2cDevice.Create(I2cConnectionSettings(EPM815.I2c.I2c1, 0x50))
     data = bytearray(2)
     device.WriteRead(bytes([0x00]), data)
@@ -26,7 +26,7 @@ class I2cConnectionSettings:
 
 
 class I2cDevice:
-    """A device on an I2C bus (call EPM815.I2c.Initialize for the bus first)"""
+    """A device on an I2C bus (call I2cController.Initialize for the bus first)"""
 
     def __init__(self, settings):
         handle = native.out_handle()

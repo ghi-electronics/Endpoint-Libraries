@@ -203,7 +203,7 @@ void CanRawImpl::WriteFrame(uint32_t id, const uint8_t* data, size_t length) {
     std::memcpy(frame.data, data, length);
     if (write(socket_, &frame, sizeof frame) != sizeof frame) {
         if (errno == ENETDOWN) {
-            ThrowIO(interface_ + " is not started: call EPM815.Can.Initialize first");
+            ThrowIO(interface_ + " is not started: call CanController.Initialize first");
         }
         ThrowSystemError("Cannot send on " + interface_);
     }

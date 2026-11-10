@@ -1,9 +1,9 @@
 """SPI for Endpoint, with the same API as .NET's System.Device.Spi:
 
-    from GHIElectronics.Endpoint.Core import EPM815
+    from GHIElectronics.Endpoint.Core import SpiController, EPM815
     from GHIElectronics.Endpoint.Devices.Spi import SpiDevice, SpiConnectionSettings, SpiMode
 
-    EPM815.Spi.Initialize(EPM815.Spi.Spi4)
+    SpiController.Initialize(EPM815.Spi.Spi4)
     settings = SpiConnectionSettings(EPM815.Spi.Spi4, 0)
     settings.ClockFrequency = 1_000_000
     device = SpiDevice.Create(settings)
@@ -49,7 +49,7 @@ class SpiConnectionSettings:
 
 
 class SpiDevice:
-    """A device on an SPI bus (call EPM815.Spi.Initialize for the bus first)"""
+    """A device on an SPI bus (call SpiController.Initialize for the bus first)"""
 
     def __init__(self, settings):
         handle = native.out_handle()
