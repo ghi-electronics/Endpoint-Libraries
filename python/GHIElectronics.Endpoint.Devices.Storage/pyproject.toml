@@ -8,14 +8,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "GHIElectronics.Endpoint.Devices.Storage"
-version = "0.5.0"
+version = "0.5.1"
 description = "SD cards and USB drives of GHI Electronics Endpoint: insert and remove events, mounting."
 authors = [{ name = "GHI Electronics, LLC", email = "support@ghielectronics.com" }]
 license = "MIT"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
-    "GHIElectronics.Endpoint.Core>=0.5.0,<0.6",
+    "GHIElectronics.Endpoint.Core>=0.5.1,<0.6",
 ]
 classifiers = ["Programming Language :: Python :: 3", "Operating System :: POSIX :: Linux"]
 
