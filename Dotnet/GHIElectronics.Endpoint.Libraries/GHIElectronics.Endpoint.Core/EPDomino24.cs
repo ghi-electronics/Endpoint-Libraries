@@ -53,6 +53,8 @@ namespace GHIElectronics.Endpoint.Core {
                 public const int PA15 = EPM815.Gpio.Pin.PA15;
                 public const int PB6  = EPM815.Gpio.Pin.PB6;
                 public const int PB9  = EPM815.Gpio.Pin.PB9;
+                /// <summary>On-board native display FT5xx6 touch chip IRQ (falling edge).</summary>
+                public const int PB11 = EPM815.Gpio.Pin.PB11;
                 public const int PB12 = EPM815.Gpio.Pin.PB12;
                 public const int PB13 = EPM815.Gpio.Pin.PB13;
                 public const int PC0  = EPM815.Gpio.Pin.PC0;
@@ -78,6 +80,8 @@ namespace GHIElectronics.Endpoint.Core {
                 public const int PE12 = EPM815.Gpio.Pin.PE12;
                 public const int PE13 = EPM815.Gpio.Pin.PE13;
                 public const int PE14 = EPM815.Gpio.Pin.PE14;
+                /// <summary>On-board native display FT5xx6 touch chip reset (active-low pulse).</summary>
+                public const int PF2  = EPM815.Gpio.Pin.PF2;
                 public const int PF3  = EPM815.Gpio.Pin.PF3;
                 public const int PF4  = EPM815.Gpio.Pin.PF4;
                 public const int PF5  = EPM815.Gpio.Pin.PF5;
@@ -130,12 +134,14 @@ namespace GHIElectronics.Endpoint.Core {
         // header: the peripheral it maps to is called out in the comment.
         // ---------------------------------------------------------------
 
-        /// <summary>I²C buses bonded on EP-Domino24.</summary>
+        /// <summary>I2C buses bonded on EP-Domino24.</summary>
         public static class I2c {
             /// <summary>I2C1: PD12 (SCL), PD13 (SDA); 40-pin header.</summary>
             public const int I2c1 = EPM815.I2c.I2c1;
             /// <summary>I2C4: PB6 (SCL), PF15 (SDA); mikroBUS #2.</summary>
             public const int I2c4 = EPM815.I2c.I2c4;
+            /// <summary>I2C5: PZ4 (SCL), PZ5 (SDA); on-board native display FT5xx6 touch chip (not on a header).</summary>
+            public const int I2c5 = EPM815.I2c.I2c5;
             /// <summary>I2C6: PD1 (SCL), PD0 (SDA); mikroBUS #1.</summary>
             public const int I2c6 = EPM815.I2c.I2c6;
         }

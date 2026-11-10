@@ -58,6 +58,7 @@ struct Gpio {
         static constexpr int PA15 = EPM815::Gpio::Pin::PA15;
         static constexpr int PB6  = EPM815::Gpio::Pin::PB6;
         static constexpr int PB9  = EPM815::Gpio::Pin::PB9;
+        static constexpr int PB11 = EPM815::Gpio::Pin::PB11;  // on-board native display FT5xx6 touch IRQ (falling edge)
         static constexpr int PB12 = EPM815::Gpio::Pin::PB12;
         static constexpr int PB13 = EPM815::Gpio::Pin::PB13;
         static constexpr int PC0  = EPM815::Gpio::Pin::PC0;
@@ -83,6 +84,7 @@ struct Gpio {
         static constexpr int PE12 = EPM815::Gpio::Pin::PE12;
         static constexpr int PE13 = EPM815::Gpio::Pin::PE13;
         static constexpr int PE14 = EPM815::Gpio::Pin::PE14;
+        static constexpr int PF2  = EPM815::Gpio::Pin::PF2;   // on-board native display FT5xx6 touch reset (active-low pulse)
         static constexpr int PF3  = EPM815::Gpio::Pin::PF3;
         static constexpr int PF4  = EPM815::Gpio::Pin::PF4;
         static constexpr int PF5  = EPM815::Gpio::Pin::PF5;
@@ -121,6 +123,7 @@ struct Gpio {
 struct I2c {
     static constexpr int I2c1 = EPM815::I2c::I2c1;  // PD12 (SCL), PD13 (SDA); 40-pin header
     static constexpr int I2c4 = EPM815::I2c::I2c4;  // PB6 (SCL), PF15 (SDA); mikroBUS #2
+    static constexpr int I2c5 = EPM815::I2c::I2c5;  // PZ4 (SCL), PZ5 (SDA); on-board native display FT5xx6 touch (not on a header)
     static constexpr int I2c6 = EPM815::I2c::I2c6;  // PD1 (SCL), PD0 (SDA); mikroBUS #1
 };
 
