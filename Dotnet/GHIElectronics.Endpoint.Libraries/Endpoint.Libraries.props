@@ -41,16 +41,20 @@
   </ItemGroup>
 
   <!-- The packages need each other (GHIElectronics.Endpoint.Core, ...) at their own
-       version or newer, below the next minor version: 0.2.0-beta needs
-       [0.2.0-beta, 0.3.0-0), so updating one package does not break the others.
-       The rule that makes this safe: within a minor version (0.2.x) the libraries
+       version or newer, below the next minor version: 0.5.0 needs
+       [0.5.0, 0.6.0), so updating one package does not break the others.
+       The rule that makes this safe: within a minor version (0.5.x) the libraries
        only add, never change or remove; a breaking change goes to the next one
-       (0.3). The "-0" keeps 0.3's pre-releases (0.3.0-beta) out too. NuGet makes
-       a project reference ">= its version" by itself; this adds the upper end. -->
+       (0.6). NuGet makes a project reference ">= its version" by itself; this
+       adds the upper end. Pre-releases of the next minor (0.6.0-beta) are kept
+       out by NuGet's default stability filter: a stable package never resolves
+       to a prerelease transitive dep unless the consumer opts in. Do NOT use
+       the "-0" upper-bound trick ("0.6.0-0"): nuget.org's server rejects that
+       string as an invalid version even though local pack tools accept it. -->
   <PropertyGroup>
     <_EndpointMajor>$([System.Text.RegularExpressions.Regex]::Replace($(EndpointLibrariesVersion), '^(\d+)\.(\d+).*$', '$1'))</_EndpointMajor>
     <_EndpointMinor>$([System.Text.RegularExpressions.Regex]::Replace($(EndpointLibrariesVersion), '^(\d+)\.(\d+).*$', '$2'))</_EndpointMinor>
-    <EndpointCompatibleBelow>$(_EndpointMajor).$([MSBuild]::Add($(_EndpointMinor), 1)).0-0</EndpointCompatibleBelow>
+    <EndpointCompatibleBelow>$(_EndpointMajor).$([MSBuild]::Add($(_EndpointMinor), 1)).0</EndpointCompatibleBelow>
   </PropertyGroup>
   <Target Name="EndpointDependencyRanges" AfterTargets="_GetProjectReferenceVersions">
     <ItemGroup>
