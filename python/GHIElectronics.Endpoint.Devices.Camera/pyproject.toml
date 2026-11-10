@@ -11,6 +11,8 @@ name = "GHIElectronics.Endpoint.Devices.Camera"
 version = "0.5.0"
 description = "USB webcams and shared camera types for GHI Electronics Endpoint."
 authors = [{ name = "GHI Electronics, LLC", email = "support@ghielectronics.com" }]
+license = "MIT"
+readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
     "GHIElectronics.Endpoint.Core>=0.5.0,<0.6",
@@ -19,6 +21,8 @@ classifiers = ["Programming Language :: Python :: 3", "Operating System :: POSIX
 
 [project.urls]
 Homepage = "https://www.ghielectronics.com/"
+Repository = "https://github.com/ghi-electronics/Endpoint-Libraries"
+Issues = "https://github.com/ghi-electronics/Endpoint-Libraries/issues"
 
 [tool.setuptools.packages.find]
 include = ["GHIElectronics.Endpoint.Devices.Camera"]

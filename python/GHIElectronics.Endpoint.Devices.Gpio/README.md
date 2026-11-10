@@ -1,0 +1,5 @@
+# GHIElectronics.Endpoint.Devices.Gpio
+
+GPIO for GHI Electronics Endpoint, with the API of .NET's System.Device.Gpio.
+
+Part of the [GHI Electronics Endpoint](https://github.com/ghi-electronics/Endpoint-Libraries) libraries. See the repository README for the full package list and getting-started guide.

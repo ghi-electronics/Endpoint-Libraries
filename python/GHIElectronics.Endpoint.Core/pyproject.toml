@@ -9,8 +9,10 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "GHIElectronics.Endpoint.Core"
 version = "0.5.0"
-description = "The EPM815's pins, buses and ports, and the libendpoint library, for GHI Electronics Endpoint (the same API as .NET's GHIElectronics.Endpoint.Core)."
+description = "The Endpoint's pins, buses and ports, and the libendpoint library, for GHI Electronics Endpoint (the same API as .NET's GHIElectronics.Endpoint.Core)."
 authors = [{ name = "GHI Electronics, LLC", email = "support@ghielectronics.com" }]
+license = "MIT"
+readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
 ]
@@ -18,6 +20,8 @@ classifiers = ["Programming Language :: Python :: 3", "Operating System :: POSIX
 
 [project.urls]
 Homepage = "https://www.ghielectronics.com/"
+Repository = "https://github.com/ghi-electronics/Endpoint-Libraries"
+Issues = "https://github.com/ghi-electronics/Endpoint-Libraries/issues"
 
 [tool.setuptools.packages.find]
 include = ["GHIElectronics.Endpoint.Core"]
