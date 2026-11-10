@@ -54,7 +54,18 @@ print(f"Bundled libendpoint for: {', '.join(copied)}")
 
 shutil.rmtree(dist, ignore_errors=True)
 
-for package in sorted(here.glob("GHIElectronics.Endpoint.*")):
+# A real package = a directory GHIElectronics.Endpoint.<X> with a pyproject.toml.
+# Explicit filter so a stray backup folder next door (GHIElectronics.Endpoint.Core.bk,
+# GHIElectronics.Endpoint.Devices.Can.old, GHIElectronics.Endpoint.Scratch, ...)
+# never accidentally ships as a wheel to PyPI.
+packages = sorted(
+    p for p in here.glob("GHIElectronics.Endpoint.*")
+    if p.is_dir() and (p / "pyproject.toml").is_file()
+)
+if not packages:
+    sys.exit("No GHIElectronics.Endpoint.* packages with pyproject.toml found next to this script.")
+
+for package in packages:
     print("Building", package.name)
     subprocess.run([sys.executable, "-m", "pip", "wheel", "--no-deps", "--quiet", "--wheel-dir", str(dist), str(package)],
                    check=True)
