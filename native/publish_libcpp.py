@@ -1,8 +1,8 @@
-"""Packages the C/C++ SDK for Endpoint and stages it for release:
-native/publish/<version>/endpoint-sdk-<version>.zip, plus a one-line
+"""Packages the Endpoint C/C++ library and stages it for release:
+native/publish/<version>/endpoint-libcpp-<version>.zip, plus a one-line
 native/publish/latest.txt pointing at the current version.
 
-    python publish_sdk.py
+    python publish_libcpp.py
 
 The zip contains the whole 'endpoint' folder (headers, libendpoint.a arm +
 arm64, libusb/hidapi link stubs, licenses), staged by copy-sdk.js into the
@@ -40,7 +40,7 @@ if target_dir.exists():
     shutil.rmtree(target_dir)
 target_dir.mkdir(parents=True)
 
-zip_path = target_dir / f"endpoint-sdk-{version}.zip"
+zip_path = target_dir / f"endpoint-libcpp-{version}.zip"
 files = 0
 with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
     for f in sorted(template.rglob("*")):
@@ -54,5 +54,5 @@ with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as z:
 (here / "publish" / "latest.txt").write_text(version + "\n", encoding="utf-8")
 
 size_mb = zip_path.stat().st_size / (1024 * 1024)
-print(f"Published C/C++ SDK {version}: {zip_path.name} ({files} files, {size_mb:.1f} MB)")
+print(f"Published Endpoint C/C++ library {version}: {zip_path.name} ({files} files, {size_mb:.1f} MB)")
 print(f"Updated native/publish/latest.txt -> {version}")
