@@ -118,3 +118,9 @@ target_link_libraries(cpp-media-test PRIVATE endpoint_static)
 add_executable(cpp-camera-test tests/CppCameraTest.cpp)
 target_include_directories(cpp-camera-test PRIVATE include)
 target_link_libraries(cpp-camera-test PRIVATE endpoint_static)
+
+# Header compilation check: Drawing.h + UI.h together, with the new sibling
+# namespace layout (Endpoint::Drawing is no longer nested under Endpoint::UI).
+add_executable(drawing-ui-header-test tests/DrawingUiHeaderTest.cpp)
+target_include_directories(drawing-ui-header-test PRIVATE include)
+target_link_libraries(drawing-ui-header-test PRIVATE endpoint_static)
