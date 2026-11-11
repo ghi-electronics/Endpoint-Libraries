@@ -1,7 +1,7 @@
-"""GHIElectronics.Endpoint.UI.Drawing — off-screen 2D drawing primitives.
+"""GHIElectronics.Endpoint.Drawing, off-screen 2D drawing primitives.
 API mirrors the .NET package character-for-character (PascalCase).
 
-    from GHIElectronics.Endpoint.UI.Drawing import Canvas, Color, PixelFormat
+    from GHIElectronics.Endpoint.Drawing import Canvas, Color, PixelFormat
 
     canvas = Canvas.Create(240, 320, PixelFormat.Rgb565)
     canvas.Clear(Color.Black)

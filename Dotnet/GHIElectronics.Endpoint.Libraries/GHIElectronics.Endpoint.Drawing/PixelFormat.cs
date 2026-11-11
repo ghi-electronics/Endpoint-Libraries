@@ -1,8 +1,8 @@
-namespace GHIElectronics.Endpoint.UI.Drawing {
+namespace GHIElectronics.Endpoint.Drawing {
     /// <summary>
     /// Pixel layout of a <see cref="Canvas"/> buffer. Also the layout
     /// written to the destination device (on-board panel, SPI TFT,
-    /// I²C OLED, …) when the <see cref="Canvas.Buffer"/> is handed
+    /// I2C OLED, …) when the <see cref="Canvas.Buffer"/> is handed
     /// to it.
     /// </summary>
     public enum PixelFormat {

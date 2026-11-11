@@ -1,4 +1,4 @@
-namespace GHIElectronics.Endpoint.UI.Drawing {
+namespace GHIElectronics.Endpoint.Drawing {
     /// <summary>
     /// A 32-bit color with 8 bits each of alpha, red, green, blue. The
     /// <see cref="Canvas"/> maps it to its <see cref="PixelFormat"/> at

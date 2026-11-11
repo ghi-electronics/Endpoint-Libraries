@@ -2,7 +2,7 @@ using System;
 
 using GHIElectronics.Endpoint.Core.Internal;
 
-namespace GHIElectronics.Endpoint.UI.Drawing {
+namespace GHIElectronics.Endpoint.Drawing {
     /// <summary>
     /// A TrueType / OpenType font loaded from raw file bytes. Pass to
     /// <see cref="Canvas.DrawText"/> to render strings at any pixel size.

@@ -3,7 +3,7 @@ using GHIElectronics.Endpoint.Devices.Display;
 #pragma warning disable CA1416  // System.Drawing.Imaging.PixelFormat is Windows-annotated; we only use the int values.
 using SysPixelFormat = System.Drawing.Imaging.PixelFormat;
 
-namespace GHIElectronics.Endpoint.UI.Drawing {
+namespace GHIElectronics.Endpoint.Drawing {
     /// <summary>
     /// Shortcut extensions so a Canvas can be handed to a DisplayController in
     /// one call without the caller spelling out the (Buffer, PixelFormat)

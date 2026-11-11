@@ -11,5 +11,6 @@
   <ItemGroup>
     <ProjectReference Include="..\GHIElectronics.Endpoint.Core\GHIElectronics.Endpoint.Core.csproj" />
     <ProjectReference Include="..\GHIElectronics.Endpoint.Devices.Display\GHIElectronics.Endpoint.Devices.Display.csproj" />
+    <ProjectReference Include="..\GHIElectronics.Endpoint.Drawing\GHIElectronics.Endpoint.Drawing.csproj" />
   </ItemGroup>
 </Project>

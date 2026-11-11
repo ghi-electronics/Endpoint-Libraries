@@ -1,7 +1,7 @@
-// GHIElectronics::Endpoint::UI::Drawing - off-screen 2D drawing primitives.
+// GHIElectronics::Endpoint::Drawing - off-screen 2D drawing primitives.
 // API mirrors the .NET and Python packages.
 //
-//   using namespace GHIElectronics::Endpoint::UI::Drawing;
+//   using namespace GHIElectronics::Endpoint::Drawing;
 //   auto canvas = Canvas::Create(240, 320, PixelFormat::Rgb565);
 //   canvas.Clear(Color::Black());
 //   canvas.DrawLine(10, 10, 230, 310, Color::Red(), /*thickness=*/2);
@@ -26,7 +26,6 @@
 
 namespace GHIElectronics {
 namespace Endpoint {
-namespace UI {
 namespace Drawing {
 
 // Pixel layout of a Canvas buffer. Also the layout written to the destination
@@ -585,6 +584,5 @@ private:
 };
 
 }  // namespace Drawing
-}  // namespace UI
 }  // namespace Endpoint
 }  // namespace GHIElectronics

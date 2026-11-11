@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 
 using GHIElectronics.Endpoint.Core.Internal;
 
-namespace GHIElectronics.Endpoint.UI.Drawing {
+namespace GHIElectronics.Endpoint.Drawing {
     /// <summary>
     /// A decoded image, ready to blit into a <see cref="Canvas"/>. Decoding
     /// (JPEG / PNG / BMP / GIF / TGA, picked from the file's magic bytes)

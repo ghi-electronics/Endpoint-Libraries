@@ -16,6 +16,7 @@ requires-python = ">=3.9"
 dependencies = [
     "GHIElectronics.Endpoint.Core>=0.5.2,<0.6",
     "GHIElectronics.Endpoint.Devices.Display>=0.5.2,<0.6",
+    "GHIElectronics.Endpoint.Drawing>=0.5.2,<0.6",
 ]
 classifiers = ["Programming Language :: Python :: 3", "Operating System :: POSIX :: Linux"]
 

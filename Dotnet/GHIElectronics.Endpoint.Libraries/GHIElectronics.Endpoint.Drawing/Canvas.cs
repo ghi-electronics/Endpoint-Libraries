@@ -2,7 +2,7 @@ using System;
 
 using GHIElectronics.Endpoint.Core.Internal;
 
-namespace GHIElectronics.Endpoint.UI.Drawing {
+namespace GHIElectronics.Endpoint.Drawing {
     /// <summary>
     /// A pixel buffer plus the primitives to draw into it. Pick the
     /// size and <see cref="PixelFormat"/> at <see cref="Create"/> time;

@@ -1,0 +1,29 @@
+# One of the Endpoint Python packages. They share the namespace
+# GHIElectronics.Endpoint (no __init__.py in GHIElectronics/, Endpoint/).
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "GHIElectronics.Endpoint.Drawing"
+version = "0.5.2"
+description = "Off-screen 2D drawing primitives for Endpoint: Canvas, Color, Font, Image, PixelFormat. Pure pixel drawing independent of the LVGL-backed UI widget library. Hand the Canvas buffer to any display, SPI/I2C device, or file."
+authors = [{ name = "GHI Electronics, LLC", email = "support@ghielectronics.com" }]
+license = "MIT"
+readme = "README.md"
+requires-python = ">=3.9"
+dependencies = [
+    "GHIElectronics.Endpoint.Core>=0.5.2,<0.6",
+    "GHIElectronics.Endpoint.Devices.Display>=0.5.2,<0.6",
+]
+classifiers = ["Programming Language :: Python :: 3", "Operating System :: POSIX :: Linux"]
+
+[project.urls]
+Homepage = "https://www.ghielectronics.com/"
+Repository = "https://github.com/ghi-electronics/Endpoint-Libraries"
+Issues = "https://github.com/ghi-electronics/Endpoint-Libraries/issues"
+
+[tool.setuptools.packages.find]
+include = ["GHIElectronics.Endpoint.Drawing", "GHIElectronics.Endpoint.Drawing.*"]
+namespaces = true

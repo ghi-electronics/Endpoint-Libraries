@@ -4,7 +4,7 @@
 using System;
 using System.Runtime.InteropServices;
 using GHIElectronics.Endpoint.Core.Internal;
-using GHIElectronics.Endpoint.UI.Drawing;
+using GHIElectronics.Endpoint.Drawing;
 
 namespace GHIElectronics.Endpoint.UI;
 

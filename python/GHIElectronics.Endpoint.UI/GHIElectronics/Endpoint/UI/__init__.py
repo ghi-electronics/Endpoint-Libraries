@@ -180,7 +180,7 @@ class Font:
     """A TrueType / OpenType font for widget text (Button caption, Label text,
     Chart axis labels, ...). Rasterized on demand by LVGL's lv_tiny_ttf; the
     same Font can be assigned to any number of widgets. Separate from
-    GHIElectronics.Endpoint.UI.Drawing.Font (which is stb_truetype for
+    GHIElectronics.Endpoint.Drawing.Font (which is stb_truetype for
     off-screen Canvas drawing)."""
 
     def __init__(self, handle):
@@ -311,8 +311,8 @@ class Widget:
         """
         # Deferred import: Drawing module imports native too; keep the
         # top-of-module import list short and avoid a circular hazard.
-        from GHIElectronics.Endpoint.UI.Drawing import Image as _DrawingImage
-        from GHIElectronics.Endpoint.UI.Drawing import PixelFormat as _DrawingPixelFormat
+        from GHIElectronics.Endpoint.Drawing import Image as _DrawingImage
+        from GHIElectronics.Endpoint.Drawing import PixelFormat as _DrawingPixelFormat
 
         if isinstance(source, _DrawingImage):
             if source.PixelFormat != _DrawingPixelFormat.Rgb888:
