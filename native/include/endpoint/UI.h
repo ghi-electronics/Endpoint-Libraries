@@ -126,13 +126,22 @@ private:
     void* handle_ = nullptr;
 };
 
-/// Touch input bridge. Call TouchAttach() once after Initialize(), then
-/// call TouchFeed(x, y, pressed) from your touch chip's event handler.
-namespace Touch {
-    inline void Attach() { Core::detail::Check(endpoint_ui_touch_attach()); }
-    inline void Feed(int x, int y, bool pressed) {
+/// Touch input bridge. Call TouchBridge::Attach() once after Initialize(), then
+/// call TouchBridge::Feed(x, y, pressed) from your touch chip's event handler.
+/// Matches .NET's and Python's TouchBridge class for cross-language parity.
+class TouchBridge {
+public:
+    static void Attach() { Core::detail::Check(endpoint_ui_touch_attach()); }
+    static void Feed(int x, int y, bool pressed) {
         Core::detail::Check(endpoint_ui_touch_feed(x, y, pressed ? 1 : 0));
     }
+};
+
+/// Deprecated namespace form; kept so existing code calling UI::Touch::Attach()
+/// / UI::Touch::Feed() keeps compiling. New code should use TouchBridge above.
+namespace Touch {
+    inline void Attach() { TouchBridge::Attach(); }
+    inline void Feed(int x, int y, bool pressed) { TouchBridge::Feed(x, y, pressed); }
 }
 
 /// Thread-safe periodic callback that runs on the UI thread. The lambda
