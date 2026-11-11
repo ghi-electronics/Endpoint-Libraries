@@ -13,7 +13,7 @@ namespace GHIElectronics.Endpoint.Core {
         /// </summary>
         /// <example>
         /// <code>
-        /// EPM815.Spi.Initialize(EPM815.Spi.Spi4);
+        /// SpiController.Initialize(EPM815.Spi.Spi4);
         /// using var device = SpiDevice.Create(new SpiConnectionSettings(EPM815.Spi.Spi4, 0) {
         ///     ClockFrequency = 1_000_000,
         /// });

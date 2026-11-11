@@ -11,7 +11,7 @@ namespace GHIElectronics.Endpoint.Core {
         /// </summary>
         /// <example>
         /// <code>
-        /// EPN128.Can.Initialize(EPN128.Can.Can0, bitrate: 500_000);
+        /// CanController.Initialize(EPN128.Can.Can0, bitrate: 500_000);
         /// </code>
         /// </example>
         public static class Can {

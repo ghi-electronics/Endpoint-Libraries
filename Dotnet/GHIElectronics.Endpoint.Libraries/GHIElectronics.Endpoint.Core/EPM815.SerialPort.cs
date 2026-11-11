@@ -9,7 +9,7 @@ namespace GHIElectronics.Endpoint.Core {
         /// </summary>
         /// <example>
         /// <code>
-        /// EPM815.SerialPort.Initialize(EPM815.SerialPort.Uart4);
+        /// SerialPortController.Initialize(EPM815.SerialPort.Uart4);
         /// using var port = new System.IO.Ports.SerialPort(EPM815.SerialPort.Uart4, 115200);
         /// port.Open();
         /// </code>

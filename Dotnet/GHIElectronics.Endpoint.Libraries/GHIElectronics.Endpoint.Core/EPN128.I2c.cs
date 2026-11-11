@@ -12,7 +12,7 @@ namespace GHIElectronics.Endpoint.Core {
         /// </summary>
         /// <example>
         /// <code>
-        /// EPN128.I2c.Initialize(EPN128.I2c.I2c4);
+        /// I2cController.Initialize(EPN128.I2c.I2c4);
         /// using var device = I2cDevice.Create(new I2cConnectionSettings(EPN128.I2c.I2c4, 0x50));
         /// </code>
         /// </example>

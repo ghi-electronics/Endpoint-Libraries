@@ -12,7 +12,7 @@ namespace GHIElectronics.Endpoint.Core {
         /// </summary>
         /// <example>
         /// <code>
-        /// EPN256.Spi.Initialize(EPN256.Spi.Spi0);
+        /// SpiController.Initialize(EPN256.Spi.Spi0);
         /// using var device = SpiDevice.Create(new SpiConnectionSettings(EPN256.Spi.Spi0, 0) {
         ///     ClockFrequency = 1_000_000,
         /// });

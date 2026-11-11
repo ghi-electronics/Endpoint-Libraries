@@ -14,7 +14,7 @@ namespace GHIElectronics.Endpoint.Core {
         /// </summary>
         /// <example>
         /// <code>
-        /// EPM815.Can.Initialize(EPM815.Can.Can1, 500_000);
+        /// CanController.Initialize(EPM815.Can.Can1, 500_000);
         /// using var can = new CanRaw(EPM815.Can.Can1);
         /// can.WriteFrame(new byte[] { 1, 2, 3 }, new CanId { Standard = 0x123 });
         /// </code>

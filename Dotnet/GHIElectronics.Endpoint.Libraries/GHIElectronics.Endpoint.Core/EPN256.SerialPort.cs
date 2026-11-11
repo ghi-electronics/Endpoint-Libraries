@@ -14,7 +14,7 @@ namespace GHIElectronics.Endpoint.Core {
         /// </summary>
         /// <example>
         /// <code>
-        /// EPN256.SerialPort.Initialize(EPN256.SerialPort.Uart11);
+        /// SerialPortController.Initialize(EPN256.SerialPort.Uart11);
         /// using var port = new System.IO.Ports.SerialPort(EPN256.SerialPort.Uart11, 115200);
         /// </code>
         /// </example>

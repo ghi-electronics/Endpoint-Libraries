@@ -11,7 +11,7 @@ namespace GHIElectronics.Endpoint.Core {
         /// </summary>
         /// <example>
         /// <code>
-        /// EPN256.Can.Initialize(EPN256.Can.Can0, bitrate: 500_000);
+        /// CanController.Initialize(EPN256.Can.Can0, bitrate: 500_000);
         /// // The interface is up as "can0"; use with .NET IoT's CanRaw
         /// // (Iot.Device.SocketCan) as usual.
         /// </code>

@@ -14,7 +14,7 @@ namespace GHIElectronics.Endpoint.Core {
         /// </summary>
         /// <example>
         /// <code>
-        /// EPN256.Pwm.Initialize(EPN256.Pwm.Pin.PK5);
+        /// PwmController.Initialize(EPN256.Pwm.Pin.PK5);
         /// using var pwm = PwmChannel.Create(
         ///     EPN256.Pwm.GetChipId(EPN256.Pwm.Pin.PK5),
         ///     EPN256.Pwm.GetChannelId(EPN256.Pwm.Pin.PK5),

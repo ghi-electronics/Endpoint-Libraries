@@ -14,10 +14,10 @@ namespace GHIElectronics.Endpoint.Core {
         /// </summary>
         /// <example>
         /// <code>
-        /// EPN256.I2c.Initialize(EPN256.I2c.I2c5);
+        /// I2cController.Initialize(EPN256.I2c.I2c5);
         /// using var device = I2cDevice.Create(new I2cConnectionSettings(EPN256.I2c.I2c5, 0x5D));
         /// // ... read / write ...
-        /// EPN256.I2c.UnInitialize(EPN256.I2c.I2c5);
+        /// I2cController.UnInitialize(EPN256.I2c.I2c5);
         /// </code>
         /// </example>
         public static class I2c {

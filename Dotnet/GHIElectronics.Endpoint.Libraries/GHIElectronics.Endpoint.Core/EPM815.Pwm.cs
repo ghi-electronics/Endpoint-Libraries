@@ -10,7 +10,7 @@ namespace GHIElectronics.Endpoint.Core {
         /// </summary>
         /// <example>
         /// <code>
-        /// EPM815.Pwm.Initialize(EPM815.Pwm.Pin.PA8);
+        /// PwmController.Initialize(EPM815.Pwm.Pin.PA8);
         /// using var pwm = PwmChannel.Create(
         ///     EPM815.Pwm.GetChipId(EPM815.Pwm.Pin.PA8),
         ///     EPM815.Pwm.GetChannelId(EPM815.Pwm.Pin.PA8),

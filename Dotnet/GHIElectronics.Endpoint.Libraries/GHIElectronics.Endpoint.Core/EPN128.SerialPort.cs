@@ -12,7 +12,7 @@ namespace GHIElectronics.Endpoint.Core {
         /// </summary>
         /// <example>
         /// <code>
-        /// EPN128.SerialPort.Initialize(EPN128.SerialPort.Uart4);
+        /// SerialPortController.Initialize(EPN128.SerialPort.Uart4);
         /// using var port = new System.IO.Ports.SerialPort(EPN128.SerialPort.Uart4, 115200);
         /// </code>
         /// </example>
