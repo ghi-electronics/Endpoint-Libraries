@@ -8,14 +8,14 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "GHIElectronics.Endpoint.Devices.Touch"
-version = "0.5.2"
+version = "0.5.3"
 description = "Touchscreen support for Endpoint. The Touch class is abstract: subclass it for your panel's chip. Ships one concrete subclass, InputTouch, that wraps a kernel /dev/input/eventN (used for USB touchscreens)."
 authors = [{ name = "GHI Electronics, LLC", email = "support@ghielectronics.com" }]
 license = "MIT"
 readme = "README.md"
 requires-python = ">=3.9"
 dependencies = [
-    "GHIElectronics.Endpoint.Core>=0.5.2,<0.6",
+    "GHIElectronics.Endpoint.Core>=0.5.3,<0.6",
 ]
 classifiers = ["Programming Language :: Python :: 3", "Operating System :: POSIX :: Linux"]
 

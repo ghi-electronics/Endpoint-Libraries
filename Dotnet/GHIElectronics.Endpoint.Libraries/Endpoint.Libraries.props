@@ -8,7 +8,7 @@
          Append "-preview" (or "-beta", "-rc.1", ...) to publish as prerelease.
          nuget.org shows prereleases only when "Include prerelease" is checked
          and never selects them as the "Latest" version for stable consumers. -->
-    <EndpointLibrariesVersion>0.5.2-preview</EndpointLibrariesVersion>
+    <EndpointLibrariesVersion>0.5.3-preview</EndpointLibrariesVersion>
 
     <TargetFramework>net10.0</TargetFramework>
     <LangVersion>latest</LangVersion>
