@@ -45,6 +45,14 @@ Type ClassifyInterface(const std::string& iface) {
     if (iface == "lo") {
         return Type::Ignore;
     }
+    // usb0 is the USB OTG gadget interface to the host PC (endpoint-cli,
+    // endpoint-agent). Although it is ARPHRD_ETHER it must never be offered
+    // as a user-facing Ethernet, otherwise Enable(Ethernet) picks it over
+    // a slower-to-link on-board PHY and DHCP runs on the dead PC side.
+    // See [[no-usb-tethered]].
+    if (iface == "usb0") {
+        return Type::Ignore;
+    }
     std::string base = "/sys/class/net/" + iface;
     if (access((base + "/wireless").c_str(), F_OK) == 0) {
         return Type::Wifi;
@@ -437,17 +445,20 @@ std::string GetInterfaceName(Type wanted) {
 }
 
 void Enable(Type type) {
-    // Load the kernel driver(s) for USB-Ethernet dongles on demand. The
-    // built-in MA35D1 Ethernet uses nuvoton-dwmac, compiled =y, so eth0 /
-    // eth1 are present from boot without modprobe. The USB-Ethernet drivers
-    // ship as modules so boards that never plug in an adapter pay zero
-    // boot cost; the first Enable() modprobes every common chip family.
-    // Each modprobe is independent - a module not matching the customer's
-    // adapter just no-ops (the modprobe either succeeds and the driver sits
-    // idle, or fails silently with "module not found" and we move on).
+    // Load the kernel driver(s) for Ethernet on demand. The on-board MAC
+    // and the USB-Ethernet class drivers all ship as modules so boards
+    // that never enable Ethernet pay zero boot cost. Order matters: the
+    // on-board PHY driver is listed first so the on-board netdev gets eth0
+    // ahead of any USB adapter that happens to be plugged in.
+    // Each modprobe is independent - a module not present on this chip
+    // just no-ops (modprobe either succeeds and the driver sits idle, or
+    // fails silently with "module not found" and we move on). On MA35D1
+    // the on-board DWMAC is compiled =y, so "dwmac-stm32" below fails
+    // silently and the on-board netdev is already up from boot.
     const char* const* modList = nullptr;
     size_t modCount = 0;
     static const char* const ethMods[] = {
+        "dwmac-stm32",       // STM32MP1 on-board DWMAC (DP83848 RMII PHY)
         "usbnet",            // shared USB-NET core
         "r8152",             // Realtek RTL8152 / RTL8153
         "ax88179_178a",      // ASIX AX88179 / AX88178A (gigabit)
@@ -532,7 +543,11 @@ void Enable(Type type) {
     }
     std::string iface;
     for (const auto& candidate : adminUp) {
-        if (WaitForCarrier(candidate, 1000)) {
+        // 8 s: DP83848 (STM32MP1 on-board PHY) typically completes RMII
+        // autonegotiation in 2-3 s but can take longer after a cold reset.
+        // udhcpc on a carrier-less link just drops its broadcasts, so this
+        // wait has to cover the worst normal case.
+        if (WaitForCarrier(candidate, 8000)) {
             iface = candidate;
             break;
         }
