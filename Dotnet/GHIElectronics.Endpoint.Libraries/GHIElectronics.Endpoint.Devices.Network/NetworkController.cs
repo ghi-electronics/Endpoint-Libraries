@@ -1,6 +1,10 @@
 #nullable enable
+using System.Diagnostics;
+using System.Globalization;
+using System.Linq;
 using System.Net;
 using System.Net.NetworkInformation;
+using System.Net.Sockets;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -14,7 +18,7 @@ namespace GHIElectronics.Endpoint.Devices.Network {
     /// controller matches the built-in PHY or any USB Ethernet adapter; a
     /// WiFi controller matches a built-in WiFi module or any WiFi USB stick.
     /// Enable / Disable apply synchronously and throw on failure (no
-    /// interface present, bad settings, wpa_supplicant / udhcpc failure).
+    /// interface present, bad settings, driver / DHCP failure).
     /// Settings persist in <c>/config/network.json</c> through
     /// <see cref="GetInterfaceSettings"/> / <see cref="SetInterfaceSettings"/>.
     /// Status (addresses, link, DNS, speed) is the standard
@@ -35,6 +39,21 @@ namespace GHIElectronics.Endpoint.Devices.Network {
     /// </example>
     public sealed unsafe class NetworkController {
         private const string ConfigPath = "/config/network.json";
+
+        // Pi (and any future non-Endpoint arm64 board) reports Unknown from
+        // ChipDetect and uses the generic userspace fallback. Known Endpoint
+        // chips (EPM815 / EPN256 / EPN128) keep going through Libendpoint so
+        // their chip-specific helpers (built-in PHY wake, firmware bind, LED
+        // coupling) still run.
+        private static bool UseGenericFallback => ChipDetect.Current == Chip.Unknown;
+
+        // Paths used by the generic fallback. Kept together so future boards
+        // that need a different driver module can override via a settings
+        // field if ever needed.
+        private const string GenericWifiModule = "brcmfmac";
+        private const string WpaConfPath = "/run/endpoint-wpa.conf";
+        private const string WpaPidPath = "/run/endpoint-wpa.pid";
+        private const string DhcpPidPath = "/run/endpoint-udhcpc.pid";
 
         private readonly string sectionName;
 
@@ -65,6 +84,18 @@ namespace GHIElectronics.Endpoint.Devices.Network {
         /// of the given type, or an empty string if none is present.
         /// </summary>
         public static string GetName(NetworkType type) {
+            if (UseGenericFallback) {
+                // .NET doesn't reliably set NetworkInterfaceType.Wireless80211
+                // on all drivers (brcmfmac in particular reports Ethernet). Match
+                // on the interface name instead: wlan*/wl* for wireless,
+                // eth*/en* for ethernet.
+                foreach (var nic in NetworkInterface.GetAllNetworkInterfaces()) {
+                    var n = nic.Name;
+                    if (type == NetworkType.Wifi && (n.StartsWith("wlan") || n.StartsWith("wl"))) return n;
+                    if (type == NetworkType.Ethernet && (n.StartsWith("eth") || n.StartsWith("en"))) return n;
+                }
+                return string.Empty;
+            }
             const int bufferSize = 32;
             Span<byte> buffer = stackalloc byte[bufferSize];
             fixed (byte* p = buffer) {
@@ -112,6 +143,11 @@ namespace GHIElectronics.Endpoint.Devices.Network {
         /// <summary>True if the interface is administratively up.</summary>
         public bool IsEnabled {
             get {
+                if (UseGenericFallback) {
+                    if (this.Type == NetworkType.Wifi) return IsPidAlive(WpaPidPath);
+                    var nic = this.NetworkInterface;
+                    return nic != null && nic.OperationalStatus == OperationalStatus.Up;
+                }
                 Libendpoint.Check(Libendpoint.NetworkIsEnabled((int)this.Type, out int result));
                 return result != 0;
             }
@@ -120,6 +156,13 @@ namespace GHIElectronics.Endpoint.Devices.Network {
         /// <summary>True if the interface currently has an IPv4 address.</summary>
         public bool IsConnected {
             get {
+                if (UseGenericFallback) {
+                    var nic = this.NetworkInterface;
+                    if (nic == null || nic.OperationalStatus != OperationalStatus.Up) return false;
+                    return nic.GetIPProperties().UnicastAddresses
+                        .Any(a => a.Address.AddressFamily == AddressFamily.InterNetwork
+                                  && !IPAddress.IsLoopback(a.Address));
+                }
                 Libendpoint.Check(Libendpoint.NetworkIsConnected((int)this.Type, out int result));
                 return result != 0;
             }
@@ -128,17 +171,23 @@ namespace GHIElectronics.Endpoint.Devices.Network {
         /// <summary>
         /// Applies the settings from <c>/config/network.json</c> to this
         /// interface: brings the link up and starts DHCP, or sets the static
-        /// address, or starts wpa_supplicant (WiFi). Throws if the apply fails.
+        /// address, or joins the WiFi network. Throws if the apply fails.
         /// Call synchronously from the user's program; nothing runs
         /// automatically at boot.
         /// </summary>
-        public void Enable() => Libendpoint.Check(Libendpoint.NetworkEnable((int)this.Type));
+        public void Enable() {
+            if (UseGenericFallback) { EnableGeneric(); return; }
+            Libendpoint.Check(Libendpoint.NetworkEnable((int)this.Type));
+        }
 
         /// <summary>
         /// Stops DHCP and brings the interface down. Does not clear the
         /// settings file.
         /// </summary>
-        public void Disable() => Libendpoint.Check(Libendpoint.NetworkDisable((int)this.Type));
+        public void Disable() {
+            if (UseGenericFallback) { DisableGeneric(); return; }
+            Libendpoint.Check(Libendpoint.NetworkDisable((int)this.Type));
+        }
 
         /// <summary>
         /// Reads the current settings for this type from
@@ -258,5 +307,139 @@ namespace GHIElectronics.Endpoint.Devices.Network {
             "wpa3" => WiFiSecurityType.Wpa3,
             _ => WiFiSecurityType.Wpa2,
         };
+
+        // ------- generic fallback (used when ChipDetect = Unknown) -------
+        //
+        // Pure userspace: load the WiFi driver module, run the WPA supplicant
+        // for WPA/WPA2/WPA3 (or skip it for open WiFi / Ethernet), then DHCP
+        // or a static address. Matches what Libendpoint's native NetworkEnable
+        // does on Endpoint boards, just without the chip-specific helpers
+        // Endpoint needs (built-in PHY wake, firmware bind). On Pi this IS the
+        // implementation; on Endpoint it never runs.
+
+        private void EnableGeneric() {
+            var s = this.GetInterfaceSettings();
+            if (this.Type == NetworkType.Wifi) {
+                if (s is not WiFiNetworkInterfaceSettings wifi || string.IsNullOrEmpty(wifi.Ssid))
+                    throw new InvalidOperationException("WiFi SSID is empty. Call SetInterfaceSettings first.");
+                RunCmd("/sbin/modprobe", GenericWifiModule);
+                WaitForInterface(timeoutMs: 5000);
+                var iface = this.Name;
+                RunCmd("/sbin/ip", "link", "set", iface, "up");
+                File.WriteAllText(WpaConfPath, BuildWpaConf(wifi));
+                StopPid(WpaPidPath);
+                RunCmd("/usr/sbin/wpa_supplicant", "-B", "-i", iface, "-c", WpaConfPath, "-P", WpaPidPath);
+                ConfigureIp(s, iface);
+            } else { // Ethernet
+                var iface = this.Name;
+                if (string.IsNullOrEmpty(iface))
+                    throw new InvalidOperationException("No ethernet interface present.");
+                RunCmd("/sbin/ip", "link", "set", iface, "up");
+                ConfigureIp(s, iface);
+            }
+        }
+
+        private void DisableGeneric() {
+            if (this.Type == NetworkType.Wifi) {
+                StopPid(DhcpPidPath);
+                StopPid(WpaPidPath);
+                try { File.Delete(WpaConfPath); } catch { }
+            } else {
+                StopPid(DhcpPidPath);
+            }
+            var iface = this.Name;
+            if (!string.IsNullOrEmpty(iface)) RunCmdNoThrow("/sbin/ip", "link", "set", iface, "down");
+        }
+
+        private static void ConfigureIp(NetworkInterfaceSettings s, string iface) {
+            StopPid(DhcpPidPath);
+            if (s.IsDhcpEnabled) {
+                RunCmd("/sbin/udhcpc", "-i", iface, "-p", DhcpPidPath, "-b", "-q");
+            } else {
+                if (s.Address == null || s.SubnetMask == null)
+                    throw new InvalidOperationException("Static mode: Address and SubnetMask required.");
+                int prefix = MaskToPrefix(s.SubnetMask);
+                RunCmd("/sbin/ip", "addr", "flush", "dev", iface);
+                RunCmd("/sbin/ip", "addr", "add", $"{s.Address}/{prefix}", "dev", iface);
+                if (s.GatewayAddress != null)
+                    RunCmd("/sbin/ip", "route", "replace", "default", "via", s.GatewayAddress.ToString(), "dev", iface);
+                if (s.DnsAddresses is { Length: > 0 })
+                    File.WriteAllText("/etc/resolv.conf",
+                        string.Join("\n", s.DnsAddresses.Select(d => $"nameserver {d}")) + "\n");
+            }
+        }
+
+        private static string BuildWpaConf(WiFiNetworkInterfaceSettings s) {
+            // Minimal config — just the network block. Omitting ctrl_interface=
+            // and update_config= avoids depending on wpa_supplicant build options
+            // that some distros (Buildroot default) compile out.
+            var sb = new StringBuilder();
+            sb.AppendLine("network={");
+            sb.AppendLine($"\tssid=\"{EscapeWpa(s.Ssid)}\"");
+            switch (s.Security) {
+                case WiFiSecurityType.None:
+                    sb.AppendLine("\tkey_mgmt=NONE");
+                    break;
+                case WiFiSecurityType.Wpa3:
+                    sb.AppendLine("\tkey_mgmt=SAE");
+                    sb.AppendLine("\tieee80211w=2");
+                    sb.AppendLine($"\tpsk=\"{EscapeWpa(s.Password)}\"");
+                    break;
+                default:
+                    sb.AppendLine("\tkey_mgmt=WPA-PSK");
+                    sb.AppendLine($"\tpsk=\"{EscapeWpa(s.Password)}\"");
+                    break;
+            }
+            sb.AppendLine("}");
+            return sb.ToString();
+        }
+
+        private static string EscapeWpa(string s) => s.Replace("\\", "\\\\").Replace("\"", "\\\"");
+
+        private void WaitForInterface(int timeoutMs) {
+            var deadline = Environment.TickCount64 + timeoutMs;
+            while (Environment.TickCount64 < deadline) {
+                if (GetName(this.Type).Length > 0) return;
+                System.Threading.Thread.Sleep(100);
+            }
+            throw new InvalidOperationException($"{this.Type} interface did not appear after loading the driver — check kernel modules and firmware files.");
+        }
+
+        private static void StopPid(string pidFile) {
+            if (!File.Exists(pidFile)) return;
+            if (int.TryParse(File.ReadAllText(pidFile).Trim(), out int pid))
+                RunCmdNoThrow("/bin/kill", pid.ToString(CultureInfo.InvariantCulture));
+            try { File.Delete(pidFile); } catch { }
+        }
+
+        private static bool IsPidAlive(string pidFile) {
+            try {
+                if (!int.TryParse(File.ReadAllText(pidFile).Trim(), out int pid)) return false;
+                return Directory.Exists($"/proc/{pid}");
+            } catch { return false; }
+        }
+
+        private static int MaskToPrefix(IPAddress mask) {
+            int prefix = 0;
+            foreach (var b in mask.GetAddressBytes())
+                for (int i = 7; i >= 0; i--) if ((b & (1 << i)) != 0) prefix++; else return prefix;
+            return prefix;
+        }
+
+        private static void RunCmd(string path, params string[] args) {
+            int code = RunCore(path, args);
+            if (code != 0) throw new InvalidOperationException($"{path} {string.Join(' ', args)} failed (exit {code})");
+        }
+
+        private static void RunCmdNoThrow(string path, params string[] args) => RunCore(path, args);
+
+        private static int RunCore(string path, string[] args) {
+            var psi = new ProcessStartInfo(path) { RedirectStandardError = true, UseShellExecute = false };
+            foreach (var a in args) psi.ArgumentList.Add(a);
+            using var p = Process.Start(psi) ?? throw new InvalidOperationException($"cannot start {path}");
+            p.StandardError.ReadToEnd();
+            p.WaitForExit();
+            return p.ExitCode;
+        }
     }
 }
