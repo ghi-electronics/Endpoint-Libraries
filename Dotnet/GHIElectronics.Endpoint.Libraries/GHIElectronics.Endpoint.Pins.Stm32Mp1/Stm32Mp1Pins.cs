@@ -3,110 +3,96 @@ using GHIElectronics.Endpoint.Core.Internal;
 namespace GHIElectronics.Endpoint.Pins.Stm32Mp1 {
     /// <summary>
     /// Pin setup of the STM32MP1 (mode, alternate function, pull, speed,
-    /// output type), written to the GPIO registers. Products built on this
-    /// chip (EPM815) use it; another chip gets its own helper. A pin is a
-    /// port (0 = A ... 10 = K, or <see cref="PortZ"/>) and a line (0 to 15).
-    /// The firmware keeps the port clocks on (kernel patch "pinctrl: stm32:
-    /// keep the GPIO bank clocks on"): without it, reads return 0 and writes
-    /// are lost, and turning a clock on from here would not last, because
-    /// the kernel turns it off after its next access.
+    /// output type). All reads and writes go through the
+    /// <c>/usr/sbin/endpoint-pinmux</c> C binary; no register map lives in
+    /// managed code. See <c>Endpoint-Firmware/pinmux/src/stm32mp1.c</c> for
+    /// the authoritative implementation.
+    ///
+    /// Pin encoding (shared with <c>Pins.EPM815</c>): <c>port * 16 + line</c>
+    /// where <c>port</c> is 0..10 (A..K) or 25 (Z). The EPM815 user API packs
+    /// Z as 9; the translation happens in <see cref="FromPin"/> and <see cref="ToPin"/>.
     /// </summary>
     internal static class Stm32Mp1Pins {
         /// <summary>STM32-specific MODER value (Input / Output / Alternate / Analog).</summary>
         public enum Mode { Input = 0, Output = 1, Alternate = 2, Analog = 3 }
 
-        /// <summary>A pin's whole setup, to put it back later.</summary>
-        public readonly record struct State(Mode Mode, int Alternate, Pull Pull, OutputType Type, Speed Speed);
+        /// <summary>Opaque snapshot of a pin's full register state; pass back to <see cref="Restore"/>.</summary>
+        public readonly record struct State(uint Packed);
 
-        /// <summary>Port Z: its registers and clock are separate from ports A to K.</summary>
+        /// <summary>Port Z: separate bus in silicon, identified as port 25.</summary>
         public const int PortZ = 25;
 
-        /// <summary>
-        /// Decodes an EPM815 pin number (<c>Gpio.Port * 16 + line</c>) into the
-        /// (port, line) pair this chip helper expects. The EPM815 <c>Gpio.Port</c>
-        /// enum numbers Z as 9 (packed right after I = 8), but the STM32MP1
-        /// register layout puts Z's clock + MMIO on a separate bus and this helper
-        /// identifies Z with <see cref="PortZ"/> (= 25).
-        /// </summary>
+        /// <summary>Decode an EPM815 packed pin (<c>port*16 + line</c>, Z=9) into (port, line) with Z=25.</summary>
         public static (int Port, int Line) FromPin(int pin) {
             var port = pin / 16;
             return (port == 9 ? PortZ : port, pin % 16);
         }
 
-        // Reading RCC_MP_AHBxENSETR gives the clocks that are on
-        private const ulong RccAhb4Enable = 0x50000A28;  // GPIOA..K clocks, bit = port
-        private const ulong RccAhb5Enable = 0x50000210;  // GPIOZ clock, bit 0
-        private const ulong GpioABase = 0x50002000;          // GPIOA; B..K follow every 0x1000
-        private const ulong GpioZBase = 0x54004000;
+        // Re-encode (port, line) back to the chip-neutral pin number expected
+        // by the C binary. Z=25 → 9 so the uint16 pin arg stays small.
+        private static int ToPin(int port, int line) => (port == PortZ ? 9 : port) * 16 + line;
 
-        private const ulong Moder = 0x00, OutputTypes = 0x04, Speeds = 0x08, Pulls = 0x0C, AlternateLow = 0x20, AlternateHigh = 0x24;
+        // Function packing. Keep in sync with stm32mp1.c:
+        //   [Mode:2][Type:1][Speed:2][Pull:2][AF:4]
+        private const int AfShift    = 0,  AfMask    = 0xF;
+        private const int PullShift  = 4,  PullMask  = 0x3;
+        private const int SpeedShift = 6,  SpeedMask = 0x3;
+        private const int TypeShift  = 8,  TypeMask  = 0x1;
+        private const int ModeShift  = 9,  ModeMask  = 0x3;
 
-        public static void SetMode(int port, int line, Mode mode) =>
-            PhysicalMemory.Modify(PortBase(port, line) + Moder, 3u << (line * 2), (uint)mode << (line * 2));
+        private static uint Pack(Mode mode, OutputType type, Speed speed, Pull pull, int af) =>
+            (((uint)mode & ModeMask)  << ModeShift)  |
+            (((uint)type & TypeMask)  << TypeShift)  |
+            (((uint)speed & SpeedMask) << SpeedShift) |
+            (((uint)pull & PullMask)   << PullShift)  |
+            (((uint)af   & AfMask)     << AfShift);
 
-        public static void SetPull(int port, int line, Pull pull) =>
-            PhysicalMemory.Modify(PortBase(port, line) + Pulls, 3u << (line * 2), (uint)pull << (line * 2));
+        private static uint Replace(uint v, int shift, uint mask, uint field) =>
+            (v & ~(mask << shift)) | ((field & mask) << shift);
 
-        public static void SetSpeed(int port, int line, Speed speed) =>
-            PhysicalMemory.Modify(PortBase(port, line) + Speeds, 3u << (line * 2), (uint)speed << (line * 2));
+        public static void SetMode(int port, int line, Mode mode) {
+            var pin = ToPin(port, line);
+            Pinmux.Set(pin, Replace(Pinmux.Get(pin), ModeShift, ModeMask, (uint)mode));
+        }
 
-        public static void SetOutputType(int port, int line, OutputType type) =>
-            PhysicalMemory.Modify(PortBase(port, line) + OutputTypes, 1u << line, (uint)type << line);
+        public static void SetPull(int port, int line, Pull pull) {
+            var pin = ToPin(port, line);
+            Pinmux.Set(pin, Replace(Pinmux.Get(pin), PullShift, PullMask, (uint)pull));
+        }
+
+        public static void SetSpeed(int port, int line, Speed speed) {
+            var pin = ToPin(port, line);
+            Pinmux.Set(pin, Replace(Pinmux.Get(pin), SpeedShift, SpeedMask, (uint)speed));
+        }
+
+        public static void SetOutputType(int port, int line, OutputType type) {
+            var pin = ToPin(port, line);
+            Pinmux.Set(pin, Replace(Pinmux.Get(pin), TypeShift, TypeMask, (uint)type));
+        }
 
         public static void SetAlternate(int port, int line, int function) {
             if (function is < 0 or > 15) {
                 throw new ArgumentOutOfRangeException(nameof(function), function, "Alternate functions are 0 to 15");
             }
-            var register = line < 8 ? AlternateLow : AlternateHigh;
-            var shift = (line % 8) * 4;
-            PhysicalMemory.Modify(PortBase(port, line) + register, 0xFu << shift, (uint)function << shift);
+            var pin = ToPin(port, line);
+            Pinmux.Set(pin, Replace(Pinmux.Get(pin), AfShift, AfMask, (uint)function));
         }
 
-        public static State Save(int port, int line) {
-            var b = PortBase(port, line);
-            var alternate = PhysicalMemory.Read(b + (line < 8 ? AlternateLow : AlternateHigh)) >> ((line % 8) * 4);
-            return new State(
-                (Mode)((PhysicalMemory.Read(b + Moder) >> (line * 2)) & 3),
-                (int)(alternate & 0xF),
-                (Pull)((PhysicalMemory.Read(b + Pulls) >> (line * 2)) & 3),
-                (OutputType)((PhysicalMemory.Read(b + OutputTypes) >> line) & 1),
-                (Speed)((PhysicalMemory.Read(b + Speeds) >> (line * 2)) & 3));
-        }
+        /// <summary>Snapshot the pin's full setup so <see cref="Restore"/> can put it back.</summary>
+        public static State Save(int port, int line) =>
+            new State(Pinmux.Get(ToPin(port, line)));
 
-        /// <summary>Puts the setup back, the mode last (no passing through another mode).</summary>
-        public static void Restore(int port, int line, State state) {
-            SetAlternate(port, line, state.Alternate);
-            SetOutputType(port, line, state.Type);
-            SetPull(port, line, state.Pull);
-            SetSpeed(port, line, state.Speed);
-            SetMode(port, line, state.Mode);
-        }
+        /// <summary>Restore the pin to the state captured by <see cref="Save"/>.</summary>
+        public static void Restore(int port, int line, State state) =>
+            Pinmux.Set(ToPin(port, line), state.Packed);
 
-        /// <summary>The pin as a peripheral's pin: alternate function first, then the mode.</summary>
+        /// <summary>Set the pin as a peripheral's pin: alternate function, pull, speed, type, mode all at once.</summary>
         public static void SetFunction(int port, int line, int function, Pull pull = Pull.None,
             OutputType type = OutputType.PushPull, Speed speed = Speed.Low) {
-            SetAlternate(port, line, function);
-            SetOutputType(port, line, type);
-            SetPull(port, line, pull);
-            SetSpeed(port, line, speed);
-            SetMode(port, line, Mode.Alternate);
-        }
-
-        private static ulong PortBase(int port, int line) {
-            if (line is < 0 or > 15) {
-                throw new ArgumentOutOfRangeException(nameof(line), line, "Pins are 0 to 15 in a port");
+            if (function is < 0 or > 15) {
+                throw new ArgumentOutOfRangeException(nameof(function), function, "Alternate functions are 0 to 15");
             }
-            if (port != PortZ && port is < 0 or > 10) {
-                throw new ArgumentOutOfRangeException(nameof(port), port, "Ports are A to K and Z");
-            }
-
-            var (clocks, bit) = port == PortZ ? (RccAhb5Enable, 0) : (RccAhb4Enable, port);
-            if ((PhysicalMemory.Read(clocks) & (1u << bit)) == 0) {
-                var name = port == PortZ ? 'Z' : (char)('A' + port);
-                throw new InvalidOperationException(
-                    $"The clock of GPIO port {name} is off, so its pins cannot be set up: update the board's firmware");
-            }
-            return port == PortZ ? GpioZBase : GpioABase + (ulong)port * 0x1000;
+            Pinmux.Set(ToPin(port, line), Pack(Mode.Alternate, type, speed, pull, function));
         }
     }
 }
