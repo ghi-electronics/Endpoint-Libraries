@@ -1,17 +1,9 @@
 """Chip-neutral CAN controller dispatcher. Mirrors .NET's
-GHIElectronics.Endpoint.Core.CanController: dispatches to the right chip
-helper based on the board detected at startup.
-
-Usage:
-
-    from GHIElectronics.Endpoint.Core import CanController, EPN256
-    CanController.Initialize(EPN256.Can.Can0, 500_000)
+GHIElectronics.Endpoint.Core.CanController: dispatches through
+BoardSupport.Current, which the active Pins.* package registered at import.
 """
 
-from GHIElectronics.Endpoint.Core._chip_detect import Current, Chip
-from GHIElectronics.Endpoint.Core._epm815 import EPM815
-from GHIElectronics.Endpoint.Core._epn128 import EPN128
-from GHIElectronics.Endpoint.Core._epn256 import EPN256
+from GHIElectronics.Endpoint.Core._board_support import BoardSupport
 
 
 class CanController:
@@ -22,19 +14,9 @@ class CanController:
     @staticmethod
     def Initialize(port, bitrate=500_000):
         """Muxes the CAN pins and configures the bitrate."""
-        if Current == Chip.Epn128:
-            EPN128.Can.Initialize(port, bitrate)
-        elif Current == Chip.Epn256:
-            EPN256.Can.Initialize(port, bitrate)
-        else:
-            EPM815.Can.Initialize(port, bitrate)
+        BoardSupport.Current().CanInitialize(port, bitrate)
 
     @staticmethod
     def UnInitialize(port):
         """Takes the interface down and releases its pins."""
-        if Current == Chip.Epn128:
-            EPN128.Can.UnInitialize(port)
-        elif Current == Chip.Epn256:
-            EPN256.Can.UnInitialize(port)
-        else:
-            EPM815.Can.UnInitialize(port)
+        BoardSupport.Current().CanUnInitialize(port)

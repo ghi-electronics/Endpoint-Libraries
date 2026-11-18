@@ -11,8 +11,8 @@
   <ItemGroup>
     <ProjectReference Include="..\GHIElectronics.Endpoint.Core\GHIElectronics.Endpoint.Core.csproj" />
     <!-- DacController is EPM815-only (DAC not bonded on Nuvoton MA35); depends
-         on Pins.EPM815 for EPM815.Dac + EPM815.Gpio. -->
-    <ProjectReference Include="..\GHIElectronics.Endpoint.Pins.EPM815\GHIElectronics.Endpoint.Pins.EPM815.csproj" />
+         on the single Pins package for EPM815.Dac + EPM815.Gpio. -->
+    <ProjectReference Include="..\GHIElectronics.Endpoint.Pins\GHIElectronics.Endpoint.Pins.csproj" />
   </ItemGroup>
 
 </Project>

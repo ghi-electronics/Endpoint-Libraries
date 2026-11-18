@@ -17,13 +17,7 @@
        read BoardSupport.Current.AdcInputs / WatchdogAddress / ... directly.
        Each new board package must be listed here. -->
   <ItemGroup>
-    <InternalsVisibleTo Include="GHIElectronics.Endpoint.Pins.Stm32Mp1" />
-    <InternalsVisibleTo Include="GHIElectronics.Endpoint.Pins.EPM815" />
-    <InternalsVisibleTo Include="GHIElectronics.Endpoint.Pins.EPDomino24" />
-    <InternalsVisibleTo Include="GHIElectronics.Endpoint.Pins.Ma35d1" />
-    <InternalsVisibleTo Include="GHIElectronics.Endpoint.Pins.EPN256" />
-    <InternalsVisibleTo Include="GHIElectronics.Endpoint.Pins.Ma35d0" />
-    <InternalsVisibleTo Include="GHIElectronics.Endpoint.Pins.EPN128" />
+    <InternalsVisibleTo Include="GHIElectronics.Endpoint.Pins" />
     <InternalsVisibleTo Include="GHIElectronics.Endpoint.Devices.Adc" />
     <InternalsVisibleTo Include="GHIElectronics.Endpoint.Devices.Watchdog" />
     <InternalsVisibleTo Include="GHIElectronics.Endpoint.Devices.Dac" />

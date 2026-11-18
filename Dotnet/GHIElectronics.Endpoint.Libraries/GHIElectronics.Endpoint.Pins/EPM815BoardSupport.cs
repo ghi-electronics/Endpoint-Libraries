@@ -1,7 +1,5 @@
-using System.Runtime.CompilerServices;
 using GHIElectronics.Endpoint.Core;
 using GHIElectronics.Endpoint.Core.Internal;
-using GHIElectronics.Endpoint.Pins.Stm32Mp1;
 
 namespace GHIElectronics.Endpoint.Pins {
     /// <summary>
@@ -63,15 +61,5 @@ namespace GHIElectronics.Endpoint.Pins {
 
         public ulong WatchdogAddress => EPM815.Watchdog.Address;
         public string WatchdogId => EPM815.Watchdog.Id;
-    }
-
-    /// <summary>
-    /// Runs at assembly load. Registers <see cref="EPM815BoardSupport"/>
-    /// with Core so <see cref="BoardSupport.Current"/> returns the EPM815
-    /// implementation for every chip-neutral controller call.
-    /// </summary>
-    internal static class ModuleInit {
-        [ModuleInitializer]
-        internal static void Init() => BoardSupport.Register(new EPM815BoardSupport());
     }
 }

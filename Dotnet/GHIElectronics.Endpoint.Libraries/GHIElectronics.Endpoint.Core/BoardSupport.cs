@@ -106,8 +106,8 @@ namespace GHIElectronics.Endpoint.Core {
         /// <summary>The registered board. Throws if no <c>Pins.*</c> package has been added to the project.</summary>
         internal static IBoardSupport Current =>
             current ?? throw new InvalidOperationException(
-                "No GHIElectronics.Endpoint.Pins.* package is referenced. " +
-                "Add one of GHIElectronics.Endpoint.Pins.EPM815 / .EPDomino24 / .EPN256 / .EPN128 to your project.");
+                "No GHIElectronics.Endpoint.Pins package is referenced. " +
+                "Add it to your project.");
 
         /// <summary>True if a board has registered.</summary>
         internal static bool IsRegistered => current != null;

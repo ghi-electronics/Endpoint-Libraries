@@ -1,16 +1,20 @@
-"""GHI Electronics Endpoint: the chip modules' pins, buses and ports, and
-the errors the Endpoint packages raise. The same as .NET's
-GHIElectronics.Endpoint.Core.
+"""GHI Electronics Endpoint chip-neutral runtime. The same shape as .NET's
+GHIElectronics.Endpoint.Core: chip-neutral controllers (I2cController,
+SpiController, ...) that dispatch through BoardSupport.Current, plus the
+error types raised by the Endpoint packages.
 
-    from GHIElectronics.Endpoint.Core import EPM815     # STM32MP15x
-    from GHIElectronics.Endpoint.Core import EPN256     # Nuvoton MA35D1
+Per-chip pin tables, bus constants, and board classes live in the Pins.*
+packages. Import one of them in your program:
+
+    import GHIElectronics.Endpoint.Pins.EPDomino24     # registers EPDomino24
+    from GHIElectronics.Endpoint.Core import I2cController
+    from GHIElectronics.Endpoint.Pins.EPDomino24 import EPDomino24
+
+    I2cController.Initialize(EPDomino24.I2c.I2c1)
 """
 
+from ._board_support import BoardSupport, Pinmux
 from ._connection import DeviceConnectionStatus
-from ._epdomino24 import EPDomino24
-from ._epm815 import EPM815
-from ._epn128 import EPN128
-from ._epn256 import EPN256
 from ._errors import (
     ArgumentException,
     ArgumentOutOfRangeException,
@@ -28,11 +32,9 @@ from ._serial_port_controller import SerialPortController
 from ._can_controller import CanController
 
 __all__ = [
+    "BoardSupport",
+    "Pinmux",
     "DeviceConnectionStatus",
-    "EPDomino24",
-    "EPM815",
-    "EPN128",
-    "EPN256",
     "ArgumentException",
     "ArgumentOutOfRangeException",
     "InvalidOperationException",

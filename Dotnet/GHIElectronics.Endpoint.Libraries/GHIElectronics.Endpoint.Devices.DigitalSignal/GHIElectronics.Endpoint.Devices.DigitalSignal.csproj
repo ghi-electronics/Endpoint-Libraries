@@ -14,8 +14,8 @@
   <ItemGroup>
     <ProjectReference Include="..\GHIElectronics.Endpoint.Core\GHIElectronics.Endpoint.Core.csproj" />
     <!-- DigitalSignalController uses EPM815.Gpio (Edge, pin constants). It's
-         EPM815-only and M4-offline per project memory, so it depends on
-         Pins.EPM815 directly. -->
-    <ProjectReference Include="..\GHIElectronics.Endpoint.Pins.EPM815\GHIElectronics.Endpoint.Pins.EPM815.csproj" />
+         EPM815-only and M4-offline per project memory, so it depends on the
+         single Pins package. -->
+    <ProjectReference Include="..\GHIElectronics.Endpoint.Pins\GHIElectronics.Endpoint.Pins.csproj" />
   </ItemGroup>
 </Project>

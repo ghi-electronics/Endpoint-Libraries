@@ -1,7 +1,5 @@
-using System.Runtime.CompilerServices;
 using GHIElectronics.Endpoint.Core;
 using GHIElectronics.Endpoint.Core.Internal;
-using GHIElectronics.Endpoint.Pins.Ma35d0;
 
 namespace GHIElectronics.Endpoint.Pins {
     /// <summary>
@@ -65,10 +63,5 @@ namespace GHIElectronics.Endpoint.Pins {
 
         public ulong WatchdogAddress => EPN128.Watchdog.Address;
         public string WatchdogId => EPN128.Watchdog.Id;
-    }
-
-    internal static class ModuleInit {
-        [ModuleInitializer]
-        internal static void Init() => BoardSupport.Register(new EPN128BoardSupport());
     }
 }

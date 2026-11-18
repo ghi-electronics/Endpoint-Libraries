@@ -3,7 +3,7 @@ GHIElectronics.Endpoint.Core.EPM815. Initialize connects a bus's or port's
 pins (and sets its speed); then the Endpoint packages, pyserial or
 python-can use it."""
 
-from ._native import native
+from GHIElectronics.Endpoint.Core._native import native
 
 
 def _name(pin):
@@ -199,7 +199,7 @@ class EPM815:
     class I2c:
         """The I2C buses, for GHIElectronics.Endpoint.Devices.I2c:
 
-            EPM815.I2c.Initialize(EPM815.I2c.I2c1)
+            I2cController.Initialize(EPM815.I2c.I2c1)
             device = I2cDevice.Create(I2cConnectionSettings(EPM815.I2c.I2c1, 0x50))
         """
 
@@ -238,7 +238,7 @@ class EPM815:
     class Spi:
         """The SPI buses, for GHIElectronics.Endpoint.Devices.Spi:
 
-            EPM815.Spi.Initialize(EPM815.Spi.Spi4)
+            SpiController.Initialize(EPM815.Spi.Spi4)
             device = SpiDevice.Create(SpiConnectionSettings(EPM815.Spi.Spi4, 0))
 
         Chip select is not driven by the bus: use any GPIO pin."""
@@ -267,9 +267,9 @@ class EPM815:
     class Pwm:
         """PWM pins, for GHIElectronics.Endpoint.Devices.Pwm:
 
-            EPM815.Pwm.Initialize(EPM815.Pwm.Pin.PA8)
-            pwm = PwmChannel.Create(EPM815.Pwm.GetChipId(EPM815.Pwm.Pin.PA8),
-                                    EPM815.Pwm.GetChannelId(EPM815.Pwm.Pin.PA8), 1000, 0.5)
+            PwmController.Initialize(EPM815.Pwm.Pin.PA8)
+            pwm = PwmChannel.Create(PwmController.GetChipId(EPM815.Pwm.Pin.PA8),
+                                    PwmController.GetChannelId(EPM815.Pwm.Pin.PA8), 1000, 0.5)
 
         Channels of one timer share its frequency."""
 
@@ -333,7 +333,7 @@ class EPM815:
     class SerialPort:
         """The serial ports (UARTs), for pyserial:
 
-            EPM815.SerialPort.Initialize(EPM815.SerialPort.Uart4)
+            SerialPortController.Initialize(EPM815.SerialPort.Uart4)
             port = serial.Serial(EPM815.SerialPort.Uart4, 115200)
         """
 
@@ -365,7 +365,7 @@ class EPM815:
     class Can:
         """The CAN ports, for python-can:
 
-            EPM815.Can.Initialize(EPM815.Can.Can1, 500_000)
+            CanController.Initialize(EPM815.Can.Can1, 500_000)
             bus = can.Bus(interface="socketcan", channel=EPM815.Can.Can1)
 
         A port that goes bus-off after too many errors restarts by itself after 100 ms."""

@@ -1,9 +1,11 @@
 """EP-Domino24 Rev B: a board variant of the EPM815 module with a 40-pin
-header, two mikroBUS sockets and a handful of onboard components. Same
-chip and firmware as EPM815; this class is a thin re-naming layer that
-lists only the peripherals and pins actually bonded on the board, so
-application code reads what a user looking at the EP-Domino24 silkscreen
-expects."""
+header, two mikroBUS sockets and a handful of onboard components. Same chip
+and firmware as EPM815; this class is a thin re-naming layer that lists
+only the peripherals and pins actually bonded on the board, so application
+code reads what a user looking at the EP-Domino24 silkscreen expects.
+
+Mirrors .NET's GHIElectronics.Endpoint.Pins.EPDomino24.
+"""
 
 from ._epm815 import EPM815
 
@@ -11,12 +13,9 @@ from ._epm815 import EPM815
 class EPDomino24:
     """EP-Domino24 Rev B (EPM815-based) board"""
 
-    # ---------------------------------------------------------------
-    # Onboard components
-    # ---------------------------------------------------------------
+    # Non-GPIO aliases live at the board top level; GPIO-pin aliases like Led
+    # live inside Gpio, matching every other board's shape.
 
-    Led = EPM815.Gpio.Pin.PC0
-    """User LED on PC0"""
     Buzzer = EPM815.Gpio.Pin.PF9
     """Piezo buzzer on PF9 (also PWM-capable via TIM14 CH1)"""
     ButtonF1 = EPM815.Gpio.Pin.PF3
@@ -28,13 +27,11 @@ class EPDomino24:
     Backlight = EPM815.Gpio.Pin.PD14
     """Panel backlight on PD14 (also PWM-capable via TIM4 CH3)"""
 
-    # ---------------------------------------------------------------
-    # GPIO pins exposed on EP-Domino24's headers (40-pin header + two
-    # mikroBUS sockets + the five onboard component pins).
-    # ---------------------------------------------------------------
-
     class Gpio:
         """GPIO pins exposed on EP-Domino24."""
+
+        Led = EPM815.Gpio.Pin.PC0
+        """User LED on PC0"""
 
         @staticmethod
         def GetChipId(pin):
@@ -116,11 +113,6 @@ class EPDomino24:
             PZ6 = EPM815.Gpio.Pin.PZ6
             PZ7 = EPM815.Gpio.Pin.PZ7
 
-    # ---------------------------------------------------------------
-    # Peripherals bonded on EP-Domino24. A mikroBUS slot is just a
-    # header: the peripheral it maps to is called out in the comment.
-    # ---------------------------------------------------------------
-
     class I2c:
         """I2C buses bonded on EP-Domino24."""
         I2c1 = EPM815.I2c.I2c1  # PD12 (SCL), PD13 (SDA); 40-pin header
@@ -185,20 +177,14 @@ class EPDomino24:
     class Dac:
         """DAC: two analog outputs on PA4 and PA5 (shared with ADC on the same pins)."""
         Id = EPM815.Dac.Id
-        """The DAC's name, for DacController.FromName"""
         PA4 = EPM815.Dac.PA4
-        """DAC channel 1, on PA4"""
         PA5 = EPM815.Dac.PA5
-        """DAC channel 2, on PA5"""
 
     class Watchdog:
         """Watchdog - same as EPM815.Watchdog."""
         Id = EPM815.Watchdog.Id
-        """The watchdog's name, for WatchdogController.FromName"""
 
     class StorageController:
         """Storage controllers bonded on EP-Domino24. Same strings as EPM815.StorageController."""
         SdCard = EPM815.StorageController.SdCard
-        """The SD card slot (mounted on /media/sd/)"""
         UsbHostMassStorage = EPM815.StorageController.UsbHostMassStorage
-        """The USB drives (mounted on /media/usb0/, usb1, ...: the first free number)"""

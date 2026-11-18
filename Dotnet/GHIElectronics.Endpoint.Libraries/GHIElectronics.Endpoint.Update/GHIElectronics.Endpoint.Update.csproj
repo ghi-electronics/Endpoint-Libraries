@@ -15,7 +15,7 @@
     <ProjectReference Include="..\GHIElectronics.Endpoint.Core\GHIElectronics.Endpoint.Core.csproj" />
     <ProjectReference Include="..\GHIElectronics.Endpoint.Native\GHIElectronics.Endpoint.Native.csproj" />
     <!-- Default parameter EPM815.Gpio.Pin.NONE; EPM815-specific today, no
-         chip-neutral replacement yet so depend on Pins.EPM815 directly. -->
-    <ProjectReference Include="..\GHIElectronics.Endpoint.Pins.EPM815\GHIElectronics.Endpoint.Pins.EPM815.csproj" />
+         chip-neutral replacement yet so depend on the single Pins package. -->
+    <ProjectReference Include="..\GHIElectronics.Endpoint.Pins\GHIElectronics.Endpoint.Pins.csproj" />
   </ItemGroup>
 </Project>

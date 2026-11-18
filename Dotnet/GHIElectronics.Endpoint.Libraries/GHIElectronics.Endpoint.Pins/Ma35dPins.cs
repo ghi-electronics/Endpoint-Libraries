@@ -1,6 +1,6 @@
 using GHIElectronics.Endpoint.Core.Internal;
 
-namespace GHIElectronics.Endpoint.Pins.Ma35d1 {
+namespace GHIElectronics.Endpoint.Pins {
     /// <summary>
     /// Pin setup of the Nuvoton MA35D1 / MA35D0 (multi-function pin selection,
     /// mode, pull, slew). All reads and writes go through the

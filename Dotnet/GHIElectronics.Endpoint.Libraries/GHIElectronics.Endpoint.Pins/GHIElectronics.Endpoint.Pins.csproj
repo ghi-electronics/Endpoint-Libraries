@@ -1,0 +1,15 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="..\Endpoint.Libraries.props" />
+
+  <PropertyGroup>
+    <PackageId>GHIElectronics.Endpoint.Pins</PackageId>
+    <Description>Pin constants, bus tables, and board support for every GHI Electronics Endpoint board (EPM815, EPDomino24, EPN256, EPN128). One nupkg covers every Endpoint board; the right board registers itself at startup via ChipDetect. Raspberry Pi Zero 2 W (not an Endpoint board) lives in GHIElectronics.Endpoint.Drivers.RaspberryPi instead.</Description>
+    <Nullable>disable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GHIElectronics.Endpoint.Core\GHIElectronics.Endpoint.Core.csproj" />
+  </ItemGroup>
+</Project>

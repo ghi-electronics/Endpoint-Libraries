@@ -1,6 +1,5 @@
 using System.Device.Gpio;
 using GHIElectronics.Endpoint.Core.Internal;
-using GHIElectronics.Endpoint.Pins.Stm32Mp1;
 
 namespace GHIElectronics.Endpoint.Pins {
     /// <summary>

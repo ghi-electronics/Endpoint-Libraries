@@ -1,6 +1,6 @@
 using GHIElectronics.Endpoint.Core.Internal;
 
-namespace GHIElectronics.Endpoint.Pins.Stm32Mp1 {
+namespace GHIElectronics.Endpoint.Pins {
     /// <summary>
     /// Pin setup of the STM32MP1 (mode, alternate function, pull, speed,
     /// output type). All reads and writes go through the

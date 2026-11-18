@@ -11,9 +11,12 @@ import sys
 import threading
 import time
 
-from GHIElectronics.Endpoint.Core import (EPM815, ArgumentException, ArgumentOutOfRangeException,
-                                          DeviceConnectionStatus, InvalidOperationException, IOException,
-                                          NotImplementedException, NotSupportedException, ObjectDisposedException)
+from GHIElectronics.Endpoint.Core import (ArgumentException, ArgumentOutOfRangeException,
+                                          CanController, DeviceConnectionStatus, I2cController,
+                                          InvalidOperationException, IOException, NotImplementedException,
+                                          NotSupportedException, ObjectDisposedException, PwmController,
+                                          SerialPortController, SpiController)
+from GHIElectronics.Endpoint.Pins.EPM815 import EPM815
 from GHIElectronics.Endpoint.Devices.Adc import AdcController
 from GHIElectronics.Endpoint.Devices.Dac import DacController
 from GHIElectronics.Endpoint.Devices.Gpio import GpioController, PinEventTypes, PinMode, PinValue
@@ -130,8 +133,8 @@ print("=== PWM on PA0, measured by sampling the pin")
 memory = os.open("/dev/mem", os.O_RDONLY | os.O_SYNC)
 gpioa = mmap.mmap(memory, 4096, mmap.MAP_SHARED, mmap.PROT_READ, offset=GPIOA)
 high = lambda samples=200000: sum(gpioa[0x10] & 1 for _ in range(samples)) / samples
-EPM815.Pwm.Initialize(EPM815.Pwm.Pin.PA0)
-with PwmChannel.Create(EPM815.Pwm.GetChipId(EPM815.Pwm.Pin.PA0), EPM815.Pwm.GetChannelId(EPM815.Pwm.Pin.PA0), 1000, 0.25) as pwm:
+PwmController.Initialize(EPM815.Pwm.Pin.PA0)
+with PwmChannel.Create(PwmController.GetChipId(EPM815.Pwm.Pin.PA0), PwmController.GetChannelId(EPM815.Pwm.Pin.PA0), 1000, 0.25) as pwm:
     pwm.Start()
     fraction = high()
     check(abs(fraction - 0.25) < 0.05, f"1 kHz at 25%: high {fraction:.1%} of the time")
@@ -141,11 +144,11 @@ with PwmChannel.Create(EPM815.Pwm.GetChipId(EPM815.Pwm.Pin.PA0), EPM815.Pwm.GetC
     pwm.Frequency = 2000
     check(pwm.Frequency == 2000, "Frequency = 2000")
     pwm.Stop()
-EPM815.Pwm.UnInitialize(EPM815.Pwm.Pin.PA0)
+PwmController.UnInitialize(EPM815.Pwm.Pin.PA0)
 check(mode(GPIOA, 0) != 2, "PA0 given back")
 
 print("=== SPI and I2C")
-EPM815.Spi.Initialize(EPM815.Spi.Spi4)
+SpiController.Initialize(EPM815.Spi.Spi4)
 settings = SpiConnectionSettings(EPM815.Spi.Spi4)  # chip select -1, as .NET's default
 settings.Mode = SpiMode.Mode3
 settings.ClockFrequency = 1_000_000
@@ -155,20 +158,20 @@ with SpiDevice.Create(settings) as spi:
     check(len(received) == 4, f"SPI4 full duplex (read {list(received)}: nothing connected)")
     raises(ArgumentException, lambda: spi.TransferFullDuplex(bytes(4), bytearray(3)), "different lengths")
     raises(TypeError, lambda: spi.Read(bytes(4)), "reading into bytes (not writable)")
-EPM815.Spi.UnInitialize(EPM815.Spi.Spi4)
-EPM815.I2c.Initialize(EPM815.I2c.I2c1)
-check(EPM815.I2c.GetFrequency(EPM815.I2c.I2c1) == 400_000, "I2C1 at 400 kHz")
+SpiController.UnInitialize(EPM815.Spi.Spi4)
+I2cController.Initialize(EPM815.I2c.I2c1)
+check(I2cController.GetFrequency(EPM815.I2c.I2c1) == 400_000, "I2C1 at 400 kHz")
 with I2cDevice.Create(I2cConnectionSettings(EPM815.I2c.I2c1, 0x50)) as device:
     raises(IOException, lambda: device.WriteByte(0), "no device at 0x50")
-EPM815.I2c.UnInitialize(EPM815.I2c.I2c1)
+I2cController.UnInitialize(EPM815.I2c.I2c1)
 
 print("=== Serial port and CAN setup")
-EPM815.SerialPort.Initialize(EPM815.SerialPort.Uart4)
-raises(InvalidOperationException, lambda: EPM815.Can.Initialize(EPM815.Can.Can1, 500_000), "CAN1 while UART4 has PD0/PD1")
-EPM815.SerialPort.UnInitialize(EPM815.SerialPort.Uart4)
-EPM815.Can.Initialize(EPM815.Can.Can1, 500_000)
+SerialPortController.Initialize(EPM815.SerialPort.Uart4)
+raises(InvalidOperationException, lambda: CanController.Initialize(EPM815.Can.Can1, 500_000), "CAN1 while UART4 has PD0/PD1")
+SerialPortController.UnInitialize(EPM815.SerialPort.Uart4)
+CanController.Initialize(EPM815.Can.Can1, 500_000)
 check("state UP" in os.popen("ip link show can0").read(), "CAN1 up at 500 kbit/s")
-EPM815.Can.UnInitialize(EPM815.Can.Can1)
+CanController.UnInitialize(EPM815.Can.Can1)
 
 print("=== Watchdog (never left to run out)")
 raises(ArgumentException, lambda: WatchdogController.FromName("WDT9"), "an unknown watchdog name")
