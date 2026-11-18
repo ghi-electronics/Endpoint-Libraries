@@ -4,8 +4,8 @@
 //   using namespace GHIElectronics::Endpoint::Core;
 //   using namespace GHIElectronics::Endpoint::Devices::Can;
 //
-//   EPM815::Can::Initialize(EPM815::Can::Can1, 500'000);
-//   CanRaw can(EPM815::Can::Can1);
+//   CanController::Initialize(EPDomino24::Can::Can1, 500'000);
+//   CanRaw can(EPDomino24::Can::Can1);
 //   can.WriteFrame(std::array<uint8_t, 3>{1, 2, 3}, CanId{.Standard = 0x123});
 //
 // Classic CAN: up to 8 data bytes. CAN FD comes later.
@@ -54,7 +54,7 @@ struct CanId {
     }
 };
 
-// Reads and writes frames on a CAN port (call EPM815::Can::Initialize first)
+// Reads and writes frames on a CAN port (call CanController::Initialize first)
 class CanRaw {
 public:
     explicit CanRaw(const std::string& networkInterface) {

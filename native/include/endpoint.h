@@ -8,8 +8,8 @@
 //   using namespace GHIElectronics::Endpoint::Devices::Gpio;
 //
 //   GpioController gpio;
-//   gpio.OpenPin(EPM815::Gpio::Pin::PC0, PinMode::Output);
-//   gpio.Write(EPM815::Gpio::Pin::PC0, PinValue::High);
+//   gpio.OpenPin(EPDomino24::Led, PinMode::Output);
+//   gpio.Write(EPDomino24::Led, PinValue::High);
 //
 // Link the program with libendpoint.a. Errors are exceptions with the .NET
 // names (Core::InvalidOperationException...), which are also the standard
@@ -19,26 +19,29 @@
 #include "endpoint/Adc.h"
 #include "endpoint/Camera.h"
 #include "endpoint/Can.h"
+#include "endpoint/CanController.h"
 #include "endpoint/Core.h"
 #include "endpoint/Dac.h"
 #include "endpoint/Display.h"
 #include "endpoint/Drawing.h"
-// EPDomino24 board aliases + EPN128 (MA35D0, Chili Pro) and EPN256 (MA35D1)
-// pin names plus their pay-for-use peripheral helpers — pulled in by
-// default so sample code can write EPN256::StorageController::UsbHostMassStorage
-// without an extra include. (Mirrors the .NET and Python APIs, where these
-// are reachable through the top-level Core import.)
-#include "endpoint/EPDomino24.h"
-#include "endpoint/EPN128.h"
-#include "endpoint/EPN256.h"
 #include "endpoint/Gpio.h"
 #include "endpoint/I2c.h"
+#include "endpoint/I2cController.h"
 #include "endpoint/Network.h"
+// Pin constants and bus tables for every Endpoint board (EPM815,
+// EPDomino24, EPN256, EPN128). Pulled in by default so sample code can
+// write EPN256::StorageController::UsbHostMassStorage without an extra
+// include. Mirrors .NET's GHIElectronics.Endpoint.Pins and Python's
+// GHIElectronics.Endpoint.Pins.
+#include "endpoint/Pins.h"
 #include "endpoint/Ports.h"
 #include "endpoint/Pwm.h"
+#include "endpoint/PwmController.h"
 #include "endpoint/Rtc.h"
+#include "endpoint/SerialPortController.h"
 #include "endpoint/Sound.h"
 #include "endpoint/Spi.h"
+#include "endpoint/SpiController.h"
 #include "endpoint/Storage.h"
 #include "endpoint/Touch.h"
 #include "endpoint/UI.h"

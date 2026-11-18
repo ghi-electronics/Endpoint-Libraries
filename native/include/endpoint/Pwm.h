@@ -3,9 +3,9 @@
 //   using namespace GHIElectronics::Endpoint::Core;
 //   using namespace GHIElectronics::Endpoint::Devices::Pwm;
 //
-//   EPM815::Pwm::Initialize(EPM815::Pwm::Pin::PA8);
-//   auto pwm = PwmChannel::Create(EPM815::Pwm::GetChipId(EPM815::Pwm::Pin::PA8),
-//                                 EPM815::Pwm::GetChannelId(EPM815::Pwm::Pin::PA8), 1000, 0.5);
+//   PwmController::Initialize(EPDomino24::Pwm::Pin::PA10);
+//   auto pwm = PwmChannel::Create(PwmController::GetChipId(EPDomino24::Pwm::Pin::PA10),
+//                                 PwmController::GetChannelId(EPDomino24::Pwm::Pin::PA10), 1000, 0.5);
 //   pwm.Start();
 //
 // .NET's properties are a getter and a setter of the same name:
@@ -16,7 +16,7 @@
 
 namespace GHIElectronics::Endpoint::Devices::Pwm {
 
-// A PWM output (call EPM815::Pwm::Initialize for the pin first)
+// A PWM output (call PwmController::Initialize for the pin first)
 class PwmChannel {
 public:
     // dutyCyclePercentage is 0.0 to 1.0, as in .NET

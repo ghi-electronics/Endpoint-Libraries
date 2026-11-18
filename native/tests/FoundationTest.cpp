@@ -68,8 +68,10 @@ int main() {
     Stm32Mp1Pins::SetFunction(pa0.port, pa0.line, 2, Stm32Mp1Pins::Pull::Up, Stm32Mp1Pins::OutputType::OpenDrain,
                               Stm32Mp1Pins::Speed::High);
     auto changed = Stm32Mp1Pins::Save(pa0.port, pa0.line);
-    Check(changed.mode == Stm32Mp1Pins::Mode::Alternate && changed.alternate == 2 && changed.pull == Stm32Mp1Pins::Pull::Up &&
-              changed.type == Stm32Mp1Pins::OutputType::OpenDrain && changed.speed == Stm32Mp1Pins::Speed::High,
+    Check(changed.GetMode() == Stm32Mp1Pins::Mode::Alternate && changed.GetAlternate() == 2 &&
+              changed.GetPull() == Stm32Mp1Pins::Pull::Up &&
+              changed.GetOutputType() == Stm32Mp1Pins::OutputType::OpenDrain &&
+              changed.GetSpeed() == Stm32Mp1Pins::Speed::High,
           "PA0 set to AF2, pull-up, open drain, high speed");
     Stm32Mp1Pins::Restore(pa0.port, pa0.line, before);
     Check(Stm32Mp1Pins::Save(pa0.port, pa0.line) == before, "PA0 restored exactly");

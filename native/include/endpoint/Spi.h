@@ -3,8 +3,8 @@
 //   using namespace GHIElectronics::Endpoint::Core;
 //   using namespace GHIElectronics::Endpoint::Devices::Spi;
 //
-//   EPM815::Spi::Initialize(EPM815::Spi::Spi4);
-//   SpiConnectionSettings settings(EPM815::Spi::Spi4);
+//   SpiController::Initialize(EPDomino24::Spi::Spi4);
+//   SpiConnectionSettings settings(EPDomino24::Spi::Spi4);
 //   settings.ClockFrequency = 1'000'000;
 //   auto device = SpiDevice::Create(settings);
 //   uint8_t received[4];
@@ -37,7 +37,7 @@ struct SpiConnectionSettings {
     Gpio::PinValue ChipSelectLineActiveState = Gpio::PinValue::Low;
 };
 
-// A device on an SPI bus (call EPM815::Spi::Initialize for the bus first)
+// A device on an SPI bus (call SpiController::Initialize for the bus first)
 class SpiDevice {
 public:
     static SpiDevice Create(const SpiConnectionSettings& settings) { return SpiDevice(settings); }

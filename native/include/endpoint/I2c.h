@@ -3,8 +3,8 @@
 //   using namespace GHIElectronics::Endpoint::Core;
 //   using namespace GHIElectronics::Endpoint::Devices::I2c;
 //
-//   EPM815::I2c::Initialize(EPM815::I2c::I2c1);
-//   auto device = I2cDevice::Create(I2cConnectionSettings(EPM815::I2c::I2c1, 0x50));
+//   I2cController::Initialize(EPDomino24::I2c::I2c1);
+//   auto device = I2cDevice::Create(I2cConnectionSettings(EPDomino24::I2c::I2c1, 0x50));
 //   uint8_t data[2];
 //   device.WriteRead(std::array<uint8_t, 1>{0x00}, data);
 #pragma once
@@ -23,7 +23,7 @@ struct I2cConnectionSettings {
     int DeviceAddress;
 };
 
-// A device on an I2C bus (call EPM815::I2c::Initialize for the bus first)
+// A device on an I2C bus (call I2cController::Initialize for the bus first)
 class I2cDevice {
 public:
     static I2cDevice Create(const I2cConnectionSettings& settings) { return I2cDevice(settings); }

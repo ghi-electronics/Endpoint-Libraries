@@ -4,8 +4,8 @@
 //   using namespace GHIElectronics::Endpoint::Core;
 //   using namespace GHIElectronics::Endpoint::Devices::Ports;
 //
-//   EPM815::SerialPort::Initialize(EPM815::SerialPort::Uart4);
-//   SerialPort port(EPM815::SerialPort::Uart4, 115200);
+//   SerialPortController::Initialize(EPDomino24::SerialPort::Uart4);
+//   SerialPort port(EPDomino24::SerialPort::Uart4, 115200);
 //   port.Open();
 //   port.WriteLine("Hello");
 //   std::string reply = port.ReadLine();

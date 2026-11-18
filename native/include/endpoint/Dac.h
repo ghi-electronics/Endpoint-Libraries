@@ -15,6 +15,7 @@
 
 #include <string>
 
+#include "EPM815.h"
 #include "detail/Handle.h"
 
 namespace GHIElectronics::Endpoint::Devices::Dac {

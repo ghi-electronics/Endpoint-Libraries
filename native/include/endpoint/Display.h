@@ -24,6 +24,8 @@
 #include <vector>
 
 #include "Core.h"
+#include "EPM815.h"
+#include "EPN256.h"
 #include "detail/CApi.h"
 
 namespace GHIElectronics::Endpoint::Devices::Display {

@@ -14,6 +14,7 @@
 #include <string>
 
 #include "Core.h"
+#include "EPM815.h"
 #include "EPN256.h"
 #include "EPN128.h"
 

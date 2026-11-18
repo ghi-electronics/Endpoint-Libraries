@@ -15,7 +15,7 @@
 
 #pragma once
 
-#include "Core.h"
+#include "EPM815.h"
 
 namespace GHIElectronics::Endpoint::Core::EPDomino24 {
 
