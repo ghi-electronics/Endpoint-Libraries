@@ -3,7 +3,8 @@ using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 using GHIElectronics.Endpoint.Core;
-using static GHIElectronics.Endpoint.Core.EPM815.Gpio;
+using GHIElectronics.Endpoint.Pins;
+using static GHIElectronics.Endpoint.Pins.EPM815.Gpio;
 
 
 namespace GHIElectronics.Endpoint.Devices.DigitalSignal {

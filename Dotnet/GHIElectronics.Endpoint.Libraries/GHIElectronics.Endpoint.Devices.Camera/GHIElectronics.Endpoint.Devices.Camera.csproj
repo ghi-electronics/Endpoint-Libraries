@@ -10,6 +10,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\GHIElectronics.Endpoint.Core\GHIElectronics.Endpoint.Core.csproj" />
+    <!-- DcmiController is EPM815-only (parallel DCMI pins only bonded there);
+         depends on Pins.EPM815 for EPM815.Dcmi.PinSettings + EPM815.Gpio. -->
+    <ProjectReference Include="..\GHIElectronics.Endpoint.Pins.EPM815\GHIElectronics.Endpoint.Pins.EPM815.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,5 +1,3 @@
-using GHIElectronics.Endpoint.Core.Chips;
-
 namespace GHIElectronics.Endpoint.Core.Internal {
     /// <summary>One pin of a peripheral (I2C, SPI, PWM, UART...) and how to set it up</summary>
     internal readonly record struct PinFunction(int Pin, int Alternate,
@@ -18,11 +16,9 @@ namespace GHIElectronics.Endpoint.Core.Internal {
     /// The device tree leaves these pins alone (empty pinctrl), so the kernel
     /// does not change them behind our back.
     ///
-    /// Dispatches to the right chip helper (<see cref="Stm32Mp1Pins"/> for
-    /// EPM815, <see cref="Ma35dPins"/> for EPN256 / EPN128) based on the
-    /// chip detected at startup (see <see cref="ChipDetect"/>). Both helpers
-    /// expose the same shape of SetFunction / Save / Restore; the per-chip
-    /// State object is boxed in <see cref="Saved"/> so this file can stay
+    /// Dispatches through <see cref="BoardSupport.Current"/>, which the
+    /// board's <c>Pins.*</c> package registers at startup. The per-chip
+    /// pin state is boxed in <see cref="Saved"/> so this file can stay
     /// chip-neutral.
     /// </summary>
     internal static class PeripheralPins {
@@ -95,68 +91,36 @@ namespace GHIElectronics.Endpoint.Core.Internal {
             }
         }
 
-        // ============== Chip dispatch ==============
+        // ============== Chip dispatch (through BoardSupport.Current) ==============
 
-        private static (int Port, int Line) ChipFromPin(int pin) => ChipDetect.IsMa35
-            ? Ma35dPins.FromPin(pin)
-            : Stm32Mp1Pins.FromPin(pin);
+        private static (int Port, int Line) ChipFromPin(int pin) =>
+            BoardSupport.Current.PinDecode(pin);
 
-        private static object ChipSave(int port, int line) => ChipDetect.IsMa35
-            ? Ma35dPins.Save(port, line)
-            : Stm32Mp1Pins.Save(port, line);
+        private static object ChipSave(int port, int line) =>
+            BoardSupport.Current.PinSave(port, line);
 
         private static void ChipSetFunction(int port, int line, int function,
-                                            Pull pull, OutputType type, Speed speed) {
-            if (ChipDetect.IsMa35) {
-                Ma35dPins.SetFunction(port, line, function, pull, type, speed);
-            }
-            else {
-                Stm32Mp1Pins.SetFunction(port, line, function, pull, type, speed);
-            }
-        }
+                                            Pull pull, OutputType type, Speed speed) =>
+            BoardSupport.Current.PinSetFunction(port, line, function, pull, type, speed);
 
-        private static void ChipSetAnalog(int port, int line) {
-            // STM32: Analog is a MODE value. MA35: no analog mode; ADC pins
-            // are picked by MFP like any other peripheral function (callers
-            // for Adc on Nuvoton use SetFunction with the ADC MFP value, not
-            // this path). Nothing to do here on MA35.
-            if (!ChipDetect.IsMa35) {
-                Stm32Mp1Pins.SetPull(port, line, Pull.None);
-                Stm32Mp1Pins.SetMode(port, line, Stm32Mp1Pins.Mode.Analog);
-            }
-        }
+        private static void ChipSetAnalog(int port, int line) =>
+            BoardSupport.Current.PinSetAnalog(port, line);
 
-        private static void ChipRestore(int port, int line, object state) {
-            if (ChipDetect.IsMa35) {
-                Ma35dPins.Restore(port, line, (Ma35dPins.State)state);
-            }
-            else {
-                Stm32Mp1Pins.Restore(port, line, (Stm32Mp1Pins.State)state);
-            }
-        }
+        private static void ChipRestore(int port, int line, object state) =>
+            BoardSupport.Current.PinRestore(port, line, state);
 
         /// <summary>
-        /// Linux gpiochip number for the pin, dispatched to the right chip's
-        /// <c>Gpio.GetChipId</c> based on <see cref="ChipDetect.Current"/>.
-        /// Chip-neutral entry point so callers (e.g. DisplayController's
-        /// backlight serializer) can turn a packed pin into chip + line
-        /// without caring which board they're on. Falls back to EPM815 when
-        /// the chip is unknown (dev host, test machine).
+        /// Linux gpiochip number for the pin. Chip-neutral entry point so
+        /// callers (for example DisplayController's backlight serializer) can
+        /// turn a packed pin into chip + line without caring which board
+        /// they're on.
         /// </summary>
-        public static int ChipGetChipId(int pin) => ChipDetect.Current switch {
-            Chip.Epn256 => EPN256.Gpio.GetChipId(pin),
-            Chip.Epn128 => EPN128.Gpio.GetChipId(pin),
-            _ => EPM815.Gpio.GetChipId(pin),
-        };
+        public static int ChipGetChipId(int pin) => BoardSupport.Current.GpioChipId(pin);
 
         /// <summary>
         /// Line number within the gpiochip for the pin. Pairs with
         /// <see cref="ChipGetChipId"/>.
         /// </summary>
-        public static int ChipGetLineId(int pin) => ChipDetect.Current switch {
-            Chip.Epn256 => EPN256.Gpio.GetLineId(pin),
-            Chip.Epn128 => EPN128.Gpio.GetLineId(pin),
-            _ => EPM815.Gpio.GetLineId(pin),
-        };
+        public static int ChipGetLineId(int pin) => BoardSupport.Current.GpioLineId(pin);
     }
 }

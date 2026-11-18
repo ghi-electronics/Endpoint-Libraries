@@ -37,9 +37,9 @@ namespace GHIElectronics.Endpoint.Devices.Watchdog {
         /// <summary>The board's watchdog</summary>
         public static WatchdogController GetDefault() => new();
 
-        /// <summary>The watchdog named <paramref name="name"/>: EPM815.Watchdog.Id, EPN256.Watchdog.Id, or EPN128.Watchdog.Id.</summary>
+        /// <summary>The watchdog named <paramref name="name"/>: the board's <c>Watchdog.Id</c> constant.</summary>
         public static WatchdogController FromName(string name) =>
-            name == EPM815.Watchdog.Id || name == EPN256.Watchdog.Id || name == EPN128.Watchdog.Id
+            name == BoardSupport.Current.WatchdogId
                 ? new WatchdogController()
                 : throw new ArgumentException($"There is no watchdog named \"{name}\": use the chip's Watchdog.Id constant", nameof(name));
 
@@ -141,12 +141,7 @@ namespace GHIElectronics.Endpoint.Devices.Watchdog {
         // /dev/watchdogN (N depends on the order drivers bound in). Pick the
         // address of the chip's watchdog block; same /sys/class scanning for all.
         private static string Device() {
-            var address = ChipDetect.Current switch {
-                Chip.Epn128 => EPN128.Watchdog.Address,
-                Chip.Epn256 => EPN256.Watchdog.Address,
-                _           => EPM815.Watchdog.Address,
-            };
-            var number = EndpointDevices.Find("watchdog", "watchdog", address);
+            var number = EndpointDevices.Find("watchdog", "watchdog", BoardSupport.Current.WatchdogAddress);
             return number >= 0
                 ? $"/dev/watchdog{number}"
                 : throw new InvalidOperationException("The watchdog is not enabled in this firmware: update the board's firmware");

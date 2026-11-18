@@ -1,5 +1,3 @@
-using GHIElectronics.Endpoint.Core.Internal;
-
 namespace GHIElectronics.Endpoint.Core {
     /// <summary>
     /// Chip-neutral entry point for UART / serial-port setup. Call once before
@@ -19,21 +17,11 @@ namespace GHIElectronics.Endpoint.Core {
         /// Muxes the port's pins. When <paramref name="enableHardwareFlowControl"/>
         /// is set, RTS and (where bonded out) CTS are muxed too.
         /// </summary>
-        public static void Initialize(string portName, bool enableHardwareFlowControl = false) {
-            switch (ChipDetect.Current) {
-                case Chip.Epn128: EPN128.SerialPort.Initialize(portName, enableHardwareFlowControl); break;
-                case Chip.Epn256: EPN256.SerialPort.Initialize(portName, enableHardwareFlowControl); break;
-                default:          EPM815.SerialPort.Initialize(portName, enableHardwareFlowControl); break;
-            }
-        }
+        public static void Initialize(string portName, bool enableHardwareFlowControl = false) =>
+            BoardSupport.Current.SerialPortInitialize(portName, enableHardwareFlowControl);
 
         /// <summary>Releases the port's pins back to free GPIO.</summary>
-        public static void UnInitialize(string portName) {
-            switch (ChipDetect.Current) {
-                case Chip.Epn128: EPN128.SerialPort.UnInitialize(portName); break;
-                case Chip.Epn256: EPN256.SerialPort.UnInitialize(portName); break;
-                default:          EPM815.SerialPort.UnInitialize(portName); break;
-            }
-        }
+        public static void UnInitialize(string portName) =>
+            BoardSupport.Current.SerialPortUnInitialize(portName);
     }
 }

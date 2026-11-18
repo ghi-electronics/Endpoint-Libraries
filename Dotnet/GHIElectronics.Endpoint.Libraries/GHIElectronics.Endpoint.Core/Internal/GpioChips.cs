@@ -13,9 +13,9 @@ namespace GHIElectronics.Endpoint.Core.Internal {
         private static readonly object Gate = new();
         private static Dictionary<string, int> chips;
 
-        /// <summary>The gpiochip number of the port (A = 0 ... I = 8, Z = 9)</summary>
+        /// <summary>The gpiochip number of the port. Label is picked by the board's <see cref="IBoardSupport.GpioChipLabel"/>.</summary>
         public static int Find(int port) {
-            var label = "GPIO" + (port == (int)EPM815.Gpio.Port.Z ? 'Z' : (char)('A' + port));
+            var label = BoardSupport.Current.GpioChipLabel(port);
             lock (Gate) {
                 chips ??= Scan();
                 return chips.TryGetValue(label, out var chip)

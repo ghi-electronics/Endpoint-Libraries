@@ -12,7 +12,7 @@ namespace GHIElectronics.Endpoint.Core.Internal {
             lock (Gate) {
                 foreach (var pin in pins) {
                     if (Owners.TryGetValue(pin, out var current)) {
-                        throw new InvalidOperationException($"Pin {EPM815.Gpio.Name(pin)} is already in use ({current})");
+                        throw new InvalidOperationException($"Pin {BoardSupport.Current.GpioName(pin)} is already in use ({current})");
                     }
                 }
                 foreach (var pin in pins) {

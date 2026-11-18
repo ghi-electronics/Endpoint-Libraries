@@ -44,19 +44,11 @@ namespace GHIElectronics.Endpoint.Devices.Adc {
             return new AdcInputPin(this, input, Converter.Get(input.IioName));
         }
 
-        // Chip-dispatched access to the pin table. The whole rest of this
-        // class only touches these two members, so a new chip adds one case.
-        private static AnalogInput[] Inputs => ChipDetect.Current switch {
-            Chip.Epn128 => EPN128.Adc.Inputs,
-            Chip.Epn256 => EPN256.Adc.Inputs,
-            _           => EPM815.Adc.Inputs,
-        };
+        // Chip-dispatched access to the pin table; the registered board's
+        // Pins.* package provides the table, Core has no chip knowledge.
+        private static AnalogInput[] Inputs => BoardSupport.Current.AdcInputs;
 
-        private static AnalogInput? Find(int pin) => ChipDetect.Current switch {
-            Chip.Epn128 => EPN128.Adc.Find(pin),
-            Chip.Epn256 => EPN256.Adc.Find(pin),
-            _           => EPM815.Adc.Find(pin),
-        };
+        private static AnalogInput? Find(int pin) => BoardSupport.Current.AdcFind(pin);
 
         private static AnalogInput Get(int pin) =>
             Find(pin) ?? throw new ArgumentException(

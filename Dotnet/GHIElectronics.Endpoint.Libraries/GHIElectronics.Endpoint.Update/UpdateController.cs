@@ -3,6 +3,7 @@ using System.Device.Gpio.Drivers;
 using System.Net;
 using GHIElectronics.Endpoint.Core;
 using GHIElectronics.Endpoint.Native;
+using GHIElectronics.Endpoint.Pins;
 
 namespace GHIElectronics.Endpoint.Update {
     /// <summary>

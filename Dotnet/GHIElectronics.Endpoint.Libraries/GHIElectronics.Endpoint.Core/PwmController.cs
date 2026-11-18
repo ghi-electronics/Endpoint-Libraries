@@ -1,5 +1,3 @@
-using GHIElectronics.Endpoint.Core.Internal;
-
 namespace GHIElectronics.Endpoint.Core {
     /// <summary>
     /// Chip-neutral entry point for PWM setup. Call once before using
@@ -22,44 +20,21 @@ namespace GHIElectronics.Endpoint.Core {
         /// chip's namespace (for example <c>EPM815.Pwm.Pin.PA8</c> or
         /// <c>EPN256.Pwm.Pin.PK5</c>); only that pin is claimed.
         /// </summary>
-        public static void Initialize(int pin) {
-            switch (ChipDetect.Current) {
-                case Chip.Epn128: throw new PlatformNotSupportedException(
-                    "EPN128 (MA35D0 Chili Pro) does not bond out EPWM pins.");
-                case Chip.Epn256: EPN256.Pwm.Initialize(pin); break;
-                default:          EPM815.Pwm.Initialize(pin); break;
-            }
-        }
+        public static void Initialize(int pin) => BoardSupport.Current.PwmInitialize(pin);
 
         /// <summary>Releases the PWM pin back to free GPIO.</summary>
-        public static void UnInitialize(int pin) {
-            switch (ChipDetect.Current) {
-                case Chip.Epn128: return;
-                case Chip.Epn256: EPN256.Pwm.UnInitialize(pin); break;
-                default:          EPM815.Pwm.UnInitialize(pin); break;
-            }
-        }
+        public static void UnInitialize(int pin) => BoardSupport.Current.PwmUnInitialize(pin);
 
         /// <summary>
         /// Kernel <c>pwmchipN</c> index to pass to
         /// <see cref="System.Device.Pwm.PwmChannel.Create(int, int, int, double)"/>.
         /// </summary>
-        public static int GetChipId(int pin) => ChipDetect.Current switch {
-            Chip.Epn128 => throw new PlatformNotSupportedException(
-                "EPN128 (MA35D0 Chili Pro) does not bond out EPWM pins."),
-            Chip.Epn256 => EPN256.Pwm.GetChipId(pin),
-            _           => EPM815.Pwm.GetChipId(pin),
-        };
+        public static int GetChipId(int pin) => BoardSupport.Current.PwmGetChipId(pin);
 
         /// <summary>
         /// Channel index within the PWM chip to pass to
         /// <see cref="System.Device.Pwm.PwmChannel.Create(int, int, int, double)"/>.
         /// </summary>
-        public static int GetChannelId(int pin) => ChipDetect.Current switch {
-            Chip.Epn128 => throw new PlatformNotSupportedException(
-                "EPN128 (MA35D0 Chili Pro) does not bond out EPWM pins."),
-            Chip.Epn256 => EPN256.Pwm.GetChannelId(pin),
-            _           => EPM815.Pwm.GetChannelId(pin),
-        };
+        public static int GetChannelId(int pin) => BoardSupport.Current.PwmGetChannelId(pin);
     }
 }

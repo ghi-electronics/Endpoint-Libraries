@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="..\Endpoint.Libraries.props" />
+
+  <PropertyGroup>
+    <PackageId>GHIElectronics.Endpoint.Pins.EPN128</PackageId>
+    <Description>EPN128 (Chili Pro) board pin constants and peripheral bus tables for Endpoint. Reference this from a project that targets EPN128; it transitively pulls in Core and the MA35D0 chip helpers.</Description>
+    <Nullable>disable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GHIElectronics.Endpoint.Core\GHIElectronics.Endpoint.Core.csproj" />
+    <ProjectReference Include="..\GHIElectronics.Endpoint.Pins.Ma35d0\GHIElectronics.Endpoint.Pins.Ma35d0.csproj" />
+  </ItemGroup>
+</Project>

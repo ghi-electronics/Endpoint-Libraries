@@ -2,6 +2,7 @@ using System.Globalization;
 using System.Text;
 using GHIElectronics.Endpoint.Core;
 using GHIElectronics.Endpoint.Core.Internal;
+using GHIElectronics.Endpoint.Pins;
 using Microsoft.Win32.SafeHandles;
 
 namespace GHIElectronics.Endpoint.Devices.Dac {

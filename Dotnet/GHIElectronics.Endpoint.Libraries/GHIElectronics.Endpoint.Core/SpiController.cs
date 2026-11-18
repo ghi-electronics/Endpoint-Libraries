@@ -1,5 +1,3 @@
-using GHIElectronics.Endpoint.Core.Internal;
-
 namespace GHIElectronics.Endpoint.Core {
     /// <summary>
     /// Chip-neutral entry point for SPI setup. Call once before using
@@ -23,22 +21,11 @@ namespace GHIElectronics.Endpoint.Core {
         /// is accepted for signature parity and otherwise ignored (those
         /// chips use a fixed DMA buffer).
         /// </summary>
-        public static void Initialize(int bus, int bufferSize = 2048) {
-            switch (ChipDetect.Current) {
-                case Chip.Epn128: throw new PlatformNotSupportedException(
-                    "EPN128 (MA35D0 Chili Pro) does not bond out SPI pins.");
-                case Chip.Epn256: EPN256.Spi.Initialize(bus); break;
-                default:          EPM815.Spi.Initialize(bus, bufferSize); break;
-            }
-        }
+        public static void Initialize(int bus, int bufferSize = 2048) =>
+            BoardSupport.Current.SpiInitialize(bus, bufferSize);
 
         /// <summary>Releases the bus's pins back to free GPIO.</summary>
-        public static void UnInitialize(int bus) {
-            switch (ChipDetect.Current) {
-                case Chip.Epn128: return;
-                case Chip.Epn256: EPN256.Spi.UnInitialize(bus); break;
-                default:          EPM815.Spi.UnInitialize(bus); break;
-            }
-        }
+        public static void UnInitialize(int bus) =>
+            BoardSupport.Current.SpiUnInitialize(bus);
     }
 }

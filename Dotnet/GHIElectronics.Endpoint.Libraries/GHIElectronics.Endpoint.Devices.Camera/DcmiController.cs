@@ -2,7 +2,8 @@ using System.Collections;
 using System.Runtime.InteropServices;
 using System.Runtime.Loader;
 using GHIElectronics.Endpoint.Core;
-using static GHIElectronics.Endpoint.Core.EPM815;
+using GHIElectronics.Endpoint.Pins;
+using static GHIElectronics.Endpoint.Pins.EPM815;
 
 namespace GHIElectronics.Endpoint.Devices.Camera {
 

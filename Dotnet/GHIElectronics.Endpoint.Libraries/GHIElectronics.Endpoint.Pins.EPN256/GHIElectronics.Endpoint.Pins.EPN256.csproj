@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <Import Project="..\Endpoint.Libraries.props" />
+
+  <PropertyGroup>
+    <PackageId>GHIElectronics.Endpoint.Pins.EPN256</PackageId>
+    <Description>EPN256 board pin constants and peripheral bus tables for Endpoint. Reference this from a project that targets EPN256; it transitively pulls in Core and the MA35D1 chip helpers.</Description>
+    <Nullable>disable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\GHIElectronics.Endpoint.Core\GHIElectronics.Endpoint.Core.csproj" />
+    <ProjectReference Include="..\GHIElectronics.Endpoint.Pins.Ma35d1\GHIElectronics.Endpoint.Pins.Ma35d1.csproj" />
+  </ItemGroup>
+</Project>
