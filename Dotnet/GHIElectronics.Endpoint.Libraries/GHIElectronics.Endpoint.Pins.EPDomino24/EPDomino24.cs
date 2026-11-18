@@ -10,17 +10,17 @@ namespace GHIElectronics.Endpoint.Pins {
     /// <example>
     /// <code>
     /// using var gpio = new GpioController(new EPDomino24.Gpio.Driver());
-    /// gpio.OpenPin(EPDomino24.Led, PinMode.Output);
-    /// gpio.Write(EPDomino24.Led, PinValue.High);
+    /// gpio.OpenPin(EPDomino24.Gpio.Led, PinMode.Output);
+    /// gpio.Write(EPDomino24.Gpio.Led, PinValue.High);
     /// </code>
     /// </example>
     public static class EPDomino24 {
         // ---------------------------------------------------------------
-        // Onboard components
+        // Onboard components (non-GPIO aliases live at the board top level;
+        // GPIO-pin aliases like Led live inside Gpio, matching every other
+        // board's shape).
         // ---------------------------------------------------------------
 
-        /// <summary>User LED on PC0.</summary>
-        public const int Led = EPM815.Gpio.Pin.PC0;
         /// <summary>Piezo buzzer on PF9 (also PWM-capable via TIM14 CH1).</summary>
         public const int Buzzer = EPM815.Gpio.Pin.PF9;
         /// <summary>Function button F1 on PF3.</summary>
@@ -39,6 +39,9 @@ namespace GHIElectronics.Endpoint.Pins {
 
         /// <summary>GPIO pins and the board's <see cref="Driver"/>.</summary>
         public static class Gpio {
+            /// <summary>User LED on PC0.</summary>
+            public const int Led = EPM815.Gpio.Pin.PC0;
+
             /// <summary>Pins bonded on EP-Domino24. Subset of <see cref="EPM815.Gpio.Pin"/>.</summary>
             public static class Pin {
                 public const int PA0  = EPM815.Gpio.Pin.PA0;

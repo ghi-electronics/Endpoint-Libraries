@@ -11,9 +11,6 @@ namespace GHIElectronics.Endpoint.Pins {
     /// same pinctrl layout, the chips differ in how many pins are bonded out.
     /// </summary>
     public static partial class EPN128 {
-        /// <summary>User LED (LED2, green) on PB8. Active-low: write <see cref="PinValue.Low"/> to light.</summary>
-        public const int Led = Gpio.Pin.PB8;
-
         /// <summary>
         /// GPIO pins and the module-level pin numbering scheme. Pin numbers are
         /// packed as <c>port * 16 + line</c>, where port is a <see cref="Port"/>
@@ -22,6 +19,9 @@ namespace GHIElectronics.Endpoint.Pins {
         /// rather than the module-level helpers.
         /// </summary>
         public static partial class Gpio {
+            /// <summary>User LED (LED2, green) on PB8. Active-low: write <see cref="PinValue.Low"/> to light.</summary>
+            public const int Led = Pin.PB8;
+
             /// <summary>GPIO ports on EPN128 (one gpiochip per port, in order).</summary>
             /// <remarks>Values are the port's index (A = 0 ... N = 13).</remarks>
             public enum Port : uint { A = 0, B = 1, C = 2, D = 3, E = 4, F = 5, G = 6, H = 7, I = 8, J = 9, K = 10, L = 11, M = 12, N = 13 }
