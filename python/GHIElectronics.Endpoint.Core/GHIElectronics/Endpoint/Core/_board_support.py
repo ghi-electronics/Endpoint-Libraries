@@ -23,42 +23,93 @@ format (see Endpoint-Firmware/pinmux/src/pinmux.h for each chip's packing).
 import subprocess
 
 
-class BoardSupport:
-    """Core's view of the currently-active board. Pins.* packages fill it in
-    on import; user code never touches this class directly."""
+class UnknownBoardSupport:
+    """Default board support. Every peripheral method throws a
+    NotImplementedError whose message names the missing package.
 
-    _current = None
+    Concrete board classes (EPM815BoardSupport, EPN256BoardSupport,
+    EPN128BoardSupport, Zero2WBoardSupport) inherit this and override only
+    the methods their board actually implements. Methods they don't override
+    keep the throwing default, which is the right answer for peripherals
+    that don't exist on that board (e.g. CAN on Pi, DAC on Nuvoton).
+
+    Also the instance registered in BoardSupport.Current before any package
+    has imported — so peripheral calls on a bare install throw a helpful
+    "add the right package" message instead of an AttributeError.
+    """
+
+    Name = "Unknown"
+
+    # ---------- GPIO introspection ----------
+    def GpioChipLabel(self, port): self._nope("GPIO introspection")
+    def GpioChipId(self, pin):     self._nope("GPIO introspection")
+    def GpioLineId(self, pin):     self._nope("GPIO introspection")
+    def GpioName(self, pin):       self._nope("GPIO introspection")
+
+    # ---------- Peripheral dispatch ----------
+    def I2cInitialize(self, bus, frequency): self._nope("I2C")
+    def I2cUnInitialize(self, bus):          self._nope("I2C")
+    def I2cGetFrequency(self, bus):          self._nope("I2C")
+
+    def SpiInitialize(self, bus, buffer_size): self._nope("SPI")
+    def SpiUnInitialize(self, bus):            self._nope("SPI")
+
+    def PwmInitialize(self, pin):      self._nope("PWM")
+    def PwmUnInitialize(self, pin):    self._nope("PWM")
+    def PwmGetChipId(self, pin):       self._nope("PWM")
+    def PwmGetChannelId(self, pin):    self._nope("PWM")
+
+    def CanInitialize(self, port, bitrate): self._nope("CAN")
+    def CanUnInitialize(self, port):        self._nope("CAN")
+
+    def SerialPortInitialize(self, port_name, enable_hw_flow_control):
+        self._nope("serial port")
+    def SerialPortUnInitialize(self, port_name):
+        self._nope("serial port")
+
+    def _nope(self, what):
+        raise NotImplementedError(
+            f"{what} is not supported on this board ('{self.Name}'). "
+            "If this is an Endpoint board (EPM815 / EPDomino24 / EPN256 / EPN128), "
+            "import GHIElectronics.Endpoint.Pins.<Board>. "
+            "If this is a Raspberry Pi Zero 2 W, "
+            "import GHIElectronics.Endpoint.Drivers.RaspberryPi."
+        )
+
+
+class BoardSupport:
+    """Core's view of the currently-active board. Pins.* / Drivers.*
+    packages fill it in on import; user code never touches this class
+    directly."""
+
+    _current = UnknownBoardSupport()
 
     @staticmethod
     def Current():
-        """Returns the registered board support object. Throws if no Pins.*
-        package is imported yet."""
-        if BoardSupport._current is None:
-            raise RuntimeError(
-                "No GHIElectronics.Endpoint.Pins.* package is imported. "
-                "Add `import GHIElectronics.Endpoint.Pins.EPDomino24` "
-                "(or .EPM815 / .EPN256 / .EPN128) to your program."
-            )
+        """Returns the registered board support. Starts as
+        UnknownBoardSupport so peripheral calls before registration throw
+        a clear "add the right package" message instead of None errors."""
         return BoardSupport._current
 
     @staticmethod
     def IsRegistered():
-        """True if a Pins.* package has registered its board."""
-        return BoardSupport._current is not None
+        """True if a real board (not UnknownBoardSupport) has registered."""
+        return not isinstance(BoardSupport._current, UnknownBoardSupport)
 
     @staticmethod
     def Register(board):
-        """Called by a Pins.* package on import. Same-name registrations are
-        idempotent (so re-imports work); a different Name throws."""
+        """Called on module import. Replacing UnknownBoardSupport is always
+        allowed; replacing with the same-named board is a no-op; replacing
+        with a different real board throws."""
         if board is None:
             raise ValueError("board is None")
-        if BoardSupport._current is None or BoardSupport._current.Name == board.Name:
+        if isinstance(BoardSupport._current, UnknownBoardSupport) or BoardSupport._current.Name == board.Name:
             BoardSupport._current = board
             return
         raise RuntimeError(
             f"Board '{BoardSupport._current.Name}' is already registered; "
             f"cannot also register '{board.Name}'. A program must import "
-            "only one Pins.* board package."
+            "only one board package (Pins.* for Endpoint, Drivers.RaspberryPi for Pi)."
         )
 
 

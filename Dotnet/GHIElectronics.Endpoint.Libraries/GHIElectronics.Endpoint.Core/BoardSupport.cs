@@ -96,37 +96,37 @@ namespace GHIElectronics.Endpoint.Core {
     }
 
     /// <summary>
-    /// The one place Core looks up the current board. Each <c>Pins.*</c>
-    /// package calls <see cref="Register"/> from its module initializer; user
-    /// code never touches this type.
+    /// The one place Core looks up the current board. Each <c>Pins.*</c> or
+    /// <c>Drivers.*</c> package calls <see cref="Register"/> from its module
+    /// initializer; user code never touches this type.
     /// </summary>
     internal static class BoardSupport {
-        private static IBoardSupport? current;
+        /// <summary>
+        /// The registered board. Starts as <see cref="UnknownBoardSupport"/>
+        /// so any peripheral call before registration throws a clear "add the
+        /// right package" message instead of a null-reference crash.
+        /// </summary>
+        internal static IBoardSupport Current { get; private set; } = new UnknownBoardSupport();
 
-        /// <summary>The registered board. Throws if no <c>Pins.*</c> package has been added to the project.</summary>
-        internal static IBoardSupport Current =>
-            current ?? throw new InvalidOperationException(
-                "No GHIElectronics.Endpoint.Pins package is referenced. " +
-                "Add it to your project.");
-
-        /// <summary>True if a board has registered.</summary>
-        internal static bool IsRegistered => current != null;
+        /// <summary>True if a real board (not <see cref="UnknownBoardSupport"/>) has registered.</summary>
+        internal static bool IsRegistered => Current is not UnknownBoardSupport;
 
         /// <summary>
-        /// Called from the board's <c>[ModuleInitializer]</c>. Same-name
-        /// registrations replace the current one (so a specific Pins.*
-        /// package can supersede the transitional legacy adapter during the
-        /// refactor); different-name registrations throw.
+        /// Called from the board's <c>[ModuleInitializer]</c>. Replacing the
+        /// default <see cref="UnknownBoardSupport"/> is always allowed;
+        /// replacing with the same-named board is a no-op; replacing with a
+        /// different real board throws (project must reference at most one
+        /// board package).
         /// </summary>
         internal static void Register(IBoardSupport board) {
             if (board == null) throw new ArgumentNullException(nameof(board));
-            if (current == null || current.Name == board.Name) {
-                current = board;
+            if (Current is UnknownBoardSupport || Current.Name == board.Name) {
+                Current = board;
                 return;
             }
             throw new InvalidOperationException(
-                $"Board '{current.Name}' is already registered; cannot also register '{board.Name}'. " +
-                "A project must reference only one Pins.* board package.");
+                $"Board '{Current.Name}' is already registered; cannot also register '{board.Name}'. " +
+                "A project must reference only one board package (Pins.* for Endpoint, Drivers.RaspberryPi for Pi).");
         }
     }
 }

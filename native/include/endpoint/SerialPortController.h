@@ -1,7 +1,7 @@
 // Chip-neutral entry point for UART / serial-port setup. Call once before
 // opening a serial port: it muxes the TX/RX pins (plus RTS/CTS when flow
-// control is on) and makes /dev/ttyS* usable. Dispatches to the right
-// per-chip helper based on the board detected at startup.
+// control is on) and makes /dev/ttyS* usable. Dispatches via
+// BoardSupport::Current().
 //
 //   using namespace GHIElectronics::Endpoint::Core;
 //   SerialPortController::Initialize(EPN256::SerialPort::Uart12);
@@ -14,31 +14,17 @@
 
 #include <string>
 
-#include "Core.h"
-#include "EPM815.h"
-#include "EPN256.h"
-#include "EPN128.h"
+#include "BoardSupport.h"
 
 namespace GHIElectronics::Endpoint::Core {
 
 struct SerialPortController {
-    // Muxes the port's pins. When enableHardwareFlowControl is set, RTS
-    // and (where bonded out) CTS are muxed too.
     static void Initialize(const std::string& portName, bool enableHardwareFlowControl = false) {
-        switch (ChipDetect::Current()) {
-            case Chip::Epn128: EPN128::SerialPort::Initialize(portName, enableHardwareFlowControl); break;
-            case Chip::Epn256: EPN256::SerialPort::Initialize(portName, enableHardwareFlowControl); break;
-            default:           EPM815::SerialPort::Initialize(portName, enableHardwareFlowControl); break;
-        }
+        BoardSupport::Current().SerialPortInitialize(portName, enableHardwareFlowControl);
     }
 
-    // Releases the port's pins back to free GPIO.
     static void UnInitialize(const std::string& portName) {
-        switch (ChipDetect::Current()) {
-            case Chip::Epn128: EPN128::SerialPort::UnInitialize(portName); break;
-            case Chip::Epn256: EPN256::SerialPort::UnInitialize(portName); break;
-            default:           EPM815::SerialPort::UnInitialize(portName); break;
-        }
+        BoardSupport::Current().SerialPortUnInitialize(portName);
     }
 };
 

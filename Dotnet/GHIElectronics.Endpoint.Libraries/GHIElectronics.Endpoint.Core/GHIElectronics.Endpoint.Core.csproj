@@ -18,6 +18,7 @@
        Each new board package must be listed here. -->
   <ItemGroup>
     <InternalsVisibleTo Include="GHIElectronics.Endpoint.Pins" />
+    <InternalsVisibleTo Include="GHIElectronics.Endpoint.Drivers.RaspberryPi" />
     <InternalsVisibleTo Include="GHIElectronics.Endpoint.Devices.Adc" />
     <InternalsVisibleTo Include="GHIElectronics.Endpoint.Devices.Watchdog" />
     <InternalsVisibleTo Include="GHIElectronics.Endpoint.Devices.Dac" />
