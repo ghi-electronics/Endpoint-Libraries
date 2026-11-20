@@ -8,8 +8,8 @@
 //   using namespace GHIElectronics::Endpoint::Devices::Gpio;
 //
 //   GpioController gpio;
-//   gpio.OpenPin(EPDomino24::Led, PinMode::Output);
-//   gpio.Write(EPDomino24::Led, PinValue::High);
+//   gpio.OpenPin(EPDomino24::Gpio::Led, PinMode::Output);
+//   gpio.Write(EPDomino24::Gpio::Led, PinValue::High);
 //
 // Link the program with libendpoint.a. Errors are exceptions with the .NET
 // names (Core::InvalidOperationException...), which are also the standard

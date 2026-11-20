@@ -13,12 +13,23 @@
 #include "endpoint/EPM815.h"
 #include "endpoint/EPN256.h"
 #include "endpoint/EPN128.h"
+#include "GpioChips.h"
 
 namespace GHIElectronics::Endpoint::Core {
 
 namespace {
 
-struct EPM815BoardSupport : UnknownBoardSupport {
+// All Endpoint-board chips (STM32MP1 for EPM815 / EPDomino24, MA35D1 for
+// EPN256, MA35D0 for EPN128) share the same GPIO layout convention: 16 lines
+// per /dev/gpiochip, chips labelled gpioa / gpiob / ... in the kernel DTS.
+// So the pin-to-(chip, line) math is identical across all three; factor it
+// into a mixin that each board inherits.
+struct Stm32StyleGpio : UnknownBoardSupport {
+    int GpioChipId(int pin) override { return Internal::GpioChips::Find(pin / 16); }
+    int GpioLineId(int pin) override { return pin % 16; }
+};
+
+struct EPM815BoardSupport : Stm32StyleGpio {
     const std::string& Name() const override {
         static const std::string n = "EPM815";
         return n;
@@ -47,7 +58,7 @@ struct EPM815BoardSupport : UnknownBoardSupport {
     }
 };
 
-struct EPN256BoardSupport : UnknownBoardSupport {
+struct EPN256BoardSupport : Stm32StyleGpio {
     const std::string& Name() const override {
         static const std::string n = "EPN256";
         return n;
@@ -79,7 +90,7 @@ struct EPN256BoardSupport : UnknownBoardSupport {
 // EPN128 (Chili Pro): no SPI / PWM bonded out — inherit UnknownBoardSupport's
 // throwing defaults for those. I2C / CAN / SerialPort are the same pay-for-use
 // modprobe shape as EPN256.
-struct EPN128BoardSupport : UnknownBoardSupport {
+struct EPN128BoardSupport : Stm32StyleGpio {
     const std::string& Name() const override {
         static const std::string n = "EPN128";
         return n;

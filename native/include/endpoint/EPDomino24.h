@@ -10,8 +10,8 @@
 //   using namespace GHIElectronics::Endpoint::Devices::Gpio;
 //
 //   GpioController gpio;
-//   gpio.OpenPin(EPDomino24::Led, PinMode::Output);
-//   gpio.Write(EPDomino24::Led, PinValue::High);
+//   gpio.OpenPin(EPDomino24::Gpio::Led, PinMode::Output);
+//   gpio.Write(EPDomino24::Gpio::Led, PinValue::High);
 
 #pragma once
 

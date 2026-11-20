@@ -11,6 +11,7 @@
 #include <chrono>
 #include <cstring>
 
+#include "endpoint/BoardSupport.h"
 #include "Errors.h"
 #include "GpioChips.h"
 #include "PinReservations.h"
@@ -73,20 +74,25 @@ GpioControllerImpl::~GpioControllerImpl() {
 int GpioControllerImpl::PinCount() const { return Pins::Last + 1; }
 
 GpioControllerImpl::Line& GpioControllerImpl::OpenLine(int pin) {
-    auto chip = Pins::ToChip(pin);
-    auto port = pin / 16;
-    auto found = chips.find(port);
+    // Dispatch the (pin -> chip, line) mapping through the registered
+    // BoardSupport so each board picks its own convention. Endpoint boards
+    // keep the STM32-style "16 lines per gpio<letter> chip" math via
+    // Stm32StyleGpio in BoardSupportInit.cpp; the Pi overrides both to
+    // return chip 0 and the BCM pin number directly (Zero2W.h).
+    auto chipId = Core::BoardSupport::Current().GpioChipId(pin);
+    auto lineId = Core::BoardSupport::Current().GpioLineId(pin);
+    auto found = chips.find(chipId);
     if (found == chips.end()) {
-        auto path = "/dev/gpiochip" + std::to_string(GpioChips::Find(port));
+        auto path = "/dev/gpiochip" + std::to_string(chipId);
         auto fd = open(path.c_str(), O_RDWR | O_CLOEXEC);
         if (fd < 0) {
             ThrowSystemError("Cannot open " + path);
         }
-        found = chips.emplace(port, fd).first;
+        found = chips.emplace(chipId, fd).first;
     }
 
     gpio_v2_line_request request{};
-    request.offsets[0] = chip.line;
+    request.offsets[0] = lineId;
     request.num_lines = 1;
     std::strncpy(request.consumer, "endpoint", sizeof request.consumer - 1);
     if (ioctl(found->second, GPIO_V2_GET_LINE_IOCTL, &request) < 0) {

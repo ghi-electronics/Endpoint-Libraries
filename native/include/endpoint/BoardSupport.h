@@ -33,6 +33,17 @@ struct IBoardSupport {
 
     virtual const std::string& Name() const = 0;
 
+    // ---------- GPIO dispatch ----------
+    // The /dev/gpiochipN number the pin lives on, and the line within that
+    // chip. Endpoint boards (EPM815 / EPN256 / EPN128) share the STM32-style
+    // convention "16 lines per chip, chips labelled gpioa/gpiob/..."; those
+    // defaults are provided by the concrete board-support classes in
+    // BoardSupportInit.cpp. The Pi driver (Zero2W.h) overrides both to
+    // return chip 0 and the BCM pin number directly, because the Pi exposes
+    // every GPIO on a single /dev/gpiochip0.
+    virtual int GpioChipId(int pin) = 0;
+    virtual int GpioLineId(int pin) = 0;
+
     // ---------- Peripheral dispatch ----------
     virtual void I2cInitialize(int bus, int frequency) = 0;
     virtual void I2cUnInitialize(int bus) = 0;
@@ -60,6 +71,9 @@ struct UnknownBoardSupport : IBoardSupport {
         static const std::string n = "Unknown";
         return n;
     }
+
+    int  GpioChipId(int) override                  { Nope("GPIO"); return 0; }
+    int  GpioLineId(int) override                  { Nope("GPIO"); return 0; }
 
     void I2cInitialize(int, int) override          { Nope("I2C"); }
     void I2cUnInitialize(int) override             { Nope("I2C"); }
