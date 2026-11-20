@@ -155,6 +155,37 @@ inline void Register(IBoardSupport* board) {
 
 }  // namespace GHIElectronics::Endpoint::Core
 
+// Force-link marker for BoardSupportInit.o out of libendpoint.a. The archive
+// member containing EPM815BoardSupport / EPN256BoardSupport / EPN128BoardSupport
+// and the chip-auto-register static initializer has no symbol the user's code
+// references directly (the lambda is anonymous-namespace, the board support
+// classes are internal). Without this reference, the linker's default archive-
+// member selection drops the TU entirely and the chip never auto-registers;
+// GPIO then throws "GPIO is not supported on this board ('Unknown')" on every
+// Endpoint board.
+//
+// The symbol below is defined in BoardSupportInit.cpp. endpoint.h transitively
+// includes BoardSupport.h for every user, so every user's object file ends up
+// with an unresolved reference to it, which only BoardSupportInit.o can
+// satisfy. The linker is then forced to pull the TU out of the archive, and
+// its static initializer runs at program start, registering the right board
+// for the detected chip.
+//
+// Not needed for shared-library consumers (libendpoint.so) because .so link
+// rules do not do archive member selection.
+extern "C" int endpoint_internal_board_support_init_token;
+
+// Globally-unique namespace name so this does not shadow any
+// GHIElectronics::Endpoint::Core::Internal name lookup inside src/.
+namespace endpoint_board_support_force_link {
+    // __attribute__((used)): tell the compiler this variable is in use so it
+    // does not optimize away the initializer's read of the external token.
+    // -O0 (debug builds) would keep it anyway, but a Release build at -O2 can
+    // and will drop an apparently-unused static with internal linkage.
+    __attribute__((used))
+    inline const int _token = endpoint_internal_board_support_init_token;
+}
+
 // C ABI entry point for board driver .so files that live outside libendpoint
 // (endpoint-drivers/cpp/RaspberryPi for Pi today). A driver .so links against
 // libendpoint, declares its own BoardSupport subclass, and in its

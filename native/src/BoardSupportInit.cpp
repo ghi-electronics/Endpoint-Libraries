@@ -129,6 +129,11 @@ const auto _register_chip = []() {
 
 }  // namespace GHIElectronics::Endpoint::Core
 
+// Force-link marker referenced from BoardSupport.h. See the comment above
+// its forward declaration in that header for why this exists. The value is
+// irrelevant; only the symbol presence matters.
+extern "C" int endpoint_internal_board_support_init_token = 0;
+
 // See the comment above the declaration in endpoint/BoardSupport.h.
 extern "C" __attribute__((visibility("default")))
 void endpoint_register_board_support(void* board_support_impl) {

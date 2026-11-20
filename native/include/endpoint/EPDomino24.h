@@ -20,10 +20,12 @@
 namespace GHIElectronics::Endpoint::Core::EPDomino24 {
 
 // ---------------------------------------------------------------
-// Onboard components
+// Onboard components. Non-GPIO aliases live at the board top level;
+// GPIO-pin aliases like Led live inside Gpio (below), matching every
+// other board's shape (Zero2W::Gpio::Led, EPN256::Gpio::Led) and the
+// .NET and Python Pins packages' convention.
 // ---------------------------------------------------------------
 
-inline constexpr int Led      = EPM815::Gpio::Pin::PC0;  // User LED on PC0
 inline constexpr int Buzzer   = EPM815::Gpio::Pin::PF9;  // Piezo buzzer on PF9 (also PWM-capable via TIM14 CH1)
 inline constexpr int ButtonF1 = EPM815::Gpio::Pin::PF3;  // Function button F1 on PF3
 inline constexpr int ButtonF2 = EPM815::Gpio::Pin::PH2;  // Function button F2 on PH2
@@ -36,6 +38,12 @@ inline constexpr int Backlight = EPM815::Gpio::Pin::PD14;  // Panel backlight on
 // ---------------------------------------------------------------
 
 struct Gpio {
+    // User LED on PC0. Lives inside Gpio (like every other board's Led)
+    // so template main.cpp / Program.cs / main.py read identically:
+    //     EPDomino24::Gpio::Led  (C/C++)
+    //     EPDomino24.Gpio.Led    (.NET, Python)
+    static constexpr int Led = EPM815::Gpio::Pin::PC0;
+
     // Linux gpiochip number for the pin. Delegates to EPM815::Gpio::GetChipId
     // because EP-Domino24 is an EPM815-based board.
     static int GetChipId(int pin) { return EPM815::Gpio::GetChipId(pin); }
