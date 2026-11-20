@@ -128,3 +128,10 @@ const auto _register_chip = []() {
 }  // namespace
 
 }  // namespace GHIElectronics::Endpoint::Core
+
+// See the comment above the declaration in endpoint/BoardSupport.h.
+extern "C" __attribute__((visibility("default")))
+void endpoint_register_board_support(void* board_support_impl) {
+    using namespace GHIElectronics::Endpoint::Core;
+    BoardSupport::Register(static_cast<IBoardSupport*>(board_support_impl));
+}

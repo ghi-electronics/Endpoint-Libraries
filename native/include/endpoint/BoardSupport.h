@@ -154,3 +154,30 @@ inline void Register(IBoardSupport* board) {
 }  // namespace BoardSupport
 
 }  // namespace GHIElectronics::Endpoint::Core
+
+// C ABI entry point for board driver .so files that live outside libendpoint
+// (endpoint-drivers/cpp/RaspberryPi for Pi today). A driver .so links against
+// libendpoint, declares its own BoardSupport subclass, and in its
+// __attribute__((constructor)) calls:
+//
+//     endpoint_register_board_support(new Zero2WBoardSupport());
+//
+// The call is a thin wrapper around GHIElectronics::Endpoint::Core::
+// BoardSupport::Register: takes ownership of the pointer, replaces
+// UnknownBoardSupport silently, replaces the same-named board as a no-op,
+// throws if a different real board is already registered. Exported via
+// libendpoint.map's `endpoint_*` pattern so it is visible from dlopen'd
+// callers.
+//
+// Needed because Python and .NET load the driver .so at runtime; they cannot
+// trigger a C++ translation unit's static initializer the way a C/C++ user's
+// `#include <endpoint/Zero2W.h>` does. The .so's constructor runs on dlopen
+// and calls this entry point, giving all three languages the same registration
+// behavior.
+// visibility("default") is needed in addition to the extern "C" linkage
+// because libendpoint's CMake build sets CXX_VISIBILITY_PRESET=hidden; the
+// version script (libendpoint.map) can only promote symbols that are already
+// visible at object level. Matches the ENDPOINT_API macro used by every
+// other extern "C" entry point inside src/.
+extern "C" __attribute__((visibility("default")))
+void endpoint_register_board_support(void* board_support_impl);

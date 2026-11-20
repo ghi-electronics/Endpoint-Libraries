@@ -31,7 +31,15 @@ def _library_path():
     return candidate
 
 
-_library = ctypes.CDLL(_library_path())
+# RTLD_GLOBAL so a later-loaded board driver .so (e.g. libendpoint-zero2w
+# bundled with GHIElectronics.Endpoint.Drivers.RaspberryPi) can resolve
+# libendpoint's endpoint_register_board_support via dlsym(RTLD_DEFAULT) from
+# its __attribute__((constructor)). Default RTLD_LOCAL keeps the symbols
+# scoped to Python's ctypes handle and the dlsym call returns NULL, so the
+# driver's constructor silently does nothing and the native BoardSupport
+# stays as UnknownBoardSupport (what the Pi GPIO error message complains
+# about). Harmless on Endpoint boards where libendpoint auto-registers.
+_library = ctypes.CDLL(_library_path(), mode=ctypes.RTLD_GLOBAL)
 _library.endpoint_last_error.restype = ctypes.c_char_p
 _library.endpoint_version.restype = ctypes.c_char_p
 
