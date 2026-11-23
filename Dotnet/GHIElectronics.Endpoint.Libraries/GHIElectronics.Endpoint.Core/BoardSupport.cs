@@ -1,4 +1,5 @@
 #nullable enable
+using System.Reflection;
 using GHIElectronics.Endpoint.Core.Internal;
 
 namespace GHIElectronics.Endpoint.Core {
@@ -101,15 +102,67 @@ namespace GHIElectronics.Endpoint.Core {
     /// initializer; user code never touches this type.
     /// </summary>
     internal static class BoardSupport {
+        private static IBoardSupport current = new UnknownBoardSupport();
+        private static bool registered;
+        private static bool autoLoadDone;
+        private static readonly object AutoLoadGate = new object();
+
+        // The assemblies whose [ModuleInitializer] calls Register.
+        private const string PinsAssembly = "GHIElectronics.Endpoint.Pins";
+        private const string RaspberryPiAssembly = "GHIElectronics.Endpoint.Drivers.RaspberryPi";
+
         /// <summary>
         /// The registered board. Starts as <see cref="UnknownBoardSupport"/>
         /// so any peripheral call before registration throws a clear "add the
         /// right package" message instead of a null-reference crash.
         /// </summary>
-        internal static IBoardSupport Current { get; private set; } = new UnknownBoardSupport();
+        internal static IBoardSupport Current {
+            get {
+                if (!registered) EnsureBoardLoaded();
+                return current;
+            }
+        }
 
-        /// <summary>True if a real board (not <see cref="UnknownBoardSupport"/>) has registered.</summary>
-        internal static bool IsRegistered => Current is not UnknownBoardSupport;
+        /// <summary>True if a board package has registered its implementation.</summary>
+        internal static bool IsRegistered {
+            get {
+                if (!registered) EnsureBoardLoaded();
+                return registered;
+            }
+        }
+
+        // A board package registers itself from a [ModuleInitializer], which
+        // the CLR runs only once something loads that assembly. Pin constants
+        // are `const`, so the compiler bakes their values into the call site
+        // and the IL never names the package: an app whose first line is
+        // I2cController.Initialize(EPDomino24.I2c.I2c1) leaves the package on
+        // disk, unloaded, and every peripheral call throws "not supported on
+        // this board". Loading by name here is what makes that first line work.
+        private static void EnsureBoardLoaded() {
+            lock (AutoLoadGate) {
+                if (autoLoadDone) return;
+                autoLoadDone = true;
+                // ChipDetect has already read the device tree, so probe the
+                // package that can actually register first. Getting the order
+                // wrong costs a thrown-and-caught FileNotFoundException, which
+                // is the one part of this that is not free.
+                if (ChipDetect.Current == Chip.Unknown) {
+                    TryLoad(RaspberryPiAssembly);
+                    if (!registered) TryLoad(PinsAssembly);
+                }
+                else {
+                    TryLoad(PinsAssembly);
+                    if (!registered) TryLoad(RaspberryPiAssembly);
+                }
+            }
+        }
+
+        // Loading the assembly runs its module initializer, which calls
+        // Register on this class before Load returns.
+        private static void TryLoad(string assemblyName) {
+            try { Assembly.Load(assemblyName); }
+            catch { /* package not referenced by this project */ }
+        }
 
         /// <summary>
         /// Called from the board's <c>[ModuleInitializer]</c>. Replacing the
@@ -120,12 +173,17 @@ namespace GHIElectronics.Endpoint.Core {
         /// </summary>
         internal static void Register(IBoardSupport board) {
             if (board == null) throw new ArgumentNullException(nameof(board));
-            if (Current is UnknownBoardSupport || Current.Name == board.Name) {
-                Current = board;
+            // Tracked by a flag, not by `current is UnknownBoardSupport`:
+            // Zero2WBoardSupport derives from UnknownBoardSupport, so the type
+            // test would report "nothing registered" on a Pi and let a second
+            // board silently overwrite the first.
+            if (!registered || current.Name == board.Name) {
+                current = board;
+                registered = true;
                 return;
             }
             throw new InvalidOperationException(
-                $"Board '{Current.Name}' is already registered; cannot also register '{board.Name}'. " +
+                $"Board '{current.Name}' is already registered; cannot also register '{board.Name}'. " +
                 "A project must reference only one board package (Pins.* for Endpoint, Drivers.RaspberryPi for Pi).");
         }
     }

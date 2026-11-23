@@ -110,13 +110,19 @@ namespace BoardSupport {
 namespace detail {
     inline std::mutex& Gate() { static std::mutex g; return g; }
 
-    // Meyers singleton — thread-safe lazy init guarantees the slot is
+    // Meyers singleton. Thread-safe lazy init guarantees the slot is
     // live before any static initializer tries to use it, regardless of
     // translation-unit init order.
     inline IBoardSupport*& Slot() {
         static IBoardSupport* instance = new UnknownBoardSupport();
         return instance;
     }
+
+    // Tracked by a flag rather than `dynamic_cast<UnknownBoardSupport*>`:
+    // the concrete boards derive from UnknownBoardSupport to inherit its
+    // throwing defaults, so the cast succeeds even once a real board is in
+    // the slot and would report "nothing registered" forever.
+    inline bool& Registered() { static bool r = false; return r; }
 }
 
 // The registered board. Returns UnknownBoardSupport if nothing registered
@@ -127,10 +133,10 @@ inline IBoardSupport& Current() {
     return *detail::Slot();
 }
 
-// True if a real board (not UnknownBoardSupport) has registered.
+// True if a board has registered its implementation.
 inline bool IsRegistered() {
     std::lock_guard<std::mutex> lock(detail::Gate());
-    return dynamic_cast<UnknownBoardSupport*>(detail::Slot()) == nullptr;
+    return detail::Registered();
 }
 
 // Called from each board's static-initializer. Replacing UnknownBoardSupport
@@ -140,9 +146,10 @@ inline void Register(IBoardSupport* board) {
     if (!board) throw std::invalid_argument("board is null");
     std::lock_guard<std::mutex> lock(detail::Gate());
     auto*& slot = detail::Slot();
-    if (dynamic_cast<UnknownBoardSupport*>(slot) != nullptr || slot->Name() == board->Name()) {
+    if (!detail::Registered() || slot->Name() == board->Name()) {
         delete slot;
         slot = board;
+        detail::Registered() = true;
         return;
     }
     const std::string msg = "Board '" + slot->Name() + "' is already registered; "

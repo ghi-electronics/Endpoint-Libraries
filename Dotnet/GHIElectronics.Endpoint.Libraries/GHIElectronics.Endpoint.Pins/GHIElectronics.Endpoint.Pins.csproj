@@ -12,4 +12,10 @@
   <ItemGroup>
     <ProjectReference Include="..\GHIElectronics.Endpoint.Core\GHIElectronics.Endpoint.Core.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <!-- buildTransitive, not build: applies to the direct consumer and also
+         flows through a package that depends on this one. -->
+    <None Include="buildTransitive\GHIElectronics.Endpoint.Pins.targets" Pack="true" PackagePath="buildTransitive\" />
+  </ItemGroup>
 </Project>

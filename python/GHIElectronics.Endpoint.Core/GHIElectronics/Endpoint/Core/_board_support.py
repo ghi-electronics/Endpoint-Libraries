@@ -84,6 +84,12 @@ class BoardSupport:
 
     _current = UnknownBoardSupport()
 
+    # Tracked by a flag rather than `isinstance(_current, UnknownBoardSupport)`:
+    # a board class is free to derive from UnknownBoardSupport to inherit its
+    # throwing defaults (the C++ and .NET boards do), and the isinstance test
+    # would then report "nothing registered" even with a real board in place.
+    _registered = False
+
     @staticmethod
     def Current():
         """Returns the registered board support. Starts as
@@ -93,8 +99,8 @@ class BoardSupport:
 
     @staticmethod
     def IsRegistered():
-        """True if a real board (not UnknownBoardSupport) has registered."""
-        return not isinstance(BoardSupport._current, UnknownBoardSupport)
+        """True if a board has registered its implementation."""
+        return BoardSupport._registered
 
     @staticmethod
     def Register(board):
@@ -103,8 +109,9 @@ class BoardSupport:
         with a different real board throws."""
         if board is None:
             raise ValueError("board is None")
-        if isinstance(BoardSupport._current, UnknownBoardSupport) or BoardSupport._current.Name == board.Name:
+        if not BoardSupport._registered or BoardSupport._current.Name == board.Name:
             BoardSupport._current = board
+            BoardSupport._registered = True
             return
         raise RuntimeError(
             f"Board '{BoardSupport._current.Name}' is already registered; "
