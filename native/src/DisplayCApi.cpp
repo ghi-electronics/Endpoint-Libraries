@@ -78,6 +78,42 @@ void SaveDisplayConfig(const nlohmann::json& j) {
     }
 }
 
+constexpr const char* kSplashPath = "/config/splash.env";
+
+// U-Boot paints the boot logo and has no JSON parser, so mirror the three
+// values it needs into a key=value file it reads with "env import -t". Same
+// file name and same keys on EPM815 and EPN.
+void SaveSplashEnv(const endpoint_display_settings_t* in) {
+    std::string logo = in->logo;
+    // The name goes into U-Boot's environment verbatim, so anything outside a
+    // plain filename is dropped rather than escaped.
+    if (logo.find_first_of("\n\r=/\\") != std::string::npos) logo.clear();
+
+    std::string text = "splash=";
+    text += (in->enable_at_boot != 0 && !logo.empty()) ? "on\n" : "off\n";
+    if (!logo.empty()) text += "splash_logo=" + logo + "\n";
+
+    if (in->has_backlight && in->backlight_pin >= 0) {
+        // U-Boot names each 16-line GPIO bank gpioa, gpiob, ... in chip order,
+        // so the bank letter is the chip index.
+        text += "splash_backlight=gpio";
+        text += static_cast<char>('a' + in->backlight_chip);
+        text += std::to_string(in->backlight_line) + "\n";
+        text += in->backlight_active_polarity != 0 ? "splash_backlight_on=0\n"
+                                                   : "splash_backlight_on=1\n";
+    }
+
+    std::string tmp = std::string(kSplashPath) + ".tmp";
+    {
+        std::ofstream f(tmp);
+        f << text;
+    }
+    if (std::rename(tmp.c_str(), kSplashPath) != 0) {
+        std::remove(tmp.c_str());
+        throw EndpointError(ErrorKind::IO, "failed to write /config/splash.env");
+    }
+}
+
 nlohmann::json ObjectOrEmpty(const nlohmann::json& j, const char* key) {
     auto it = j.find(key);
     return (it != j.end() && it->is_object()) ? *it : nlohmann::json::object();
@@ -204,5 +240,6 @@ ENDPOINT_API int endpoint_display_set_settings(const endpoint_display_settings_t
         }
 
         SaveDisplayConfig(config);
+        SaveSplashEnv(in);
     });
 }

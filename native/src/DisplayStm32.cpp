@@ -1,7 +1,7 @@
 // STM32MP15x (armv7) display driver glue.
 //
-// Unlike Nuvoton, the STM32 LTDC + panel-simple pair gets its panel timings
-// as a module parameter. We build the ltdc_generic_setting= string from
+// The STM32 LTDC + panel-simple pair gets its panel timings as a module
+// parameter. We build the ltdc_generic_setting= string from
 // /config/display.json, modprobe stm_drm first (panel-simple does not pull
 // it in as a dependency), then modprobe panel-simple with the param. The
 // panel probes synchronously and /dev/fb0 appears.

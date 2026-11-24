@@ -26,6 +26,7 @@ from GHIElectronics.Endpoint.Core._native import native
 
 
 _CONFIG_PATH = "/config/display.json"
+_SPLASH_PATH = "/config/splash.env"
 
 
 class DisplayType(IntEnum):
@@ -198,6 +199,7 @@ class DisplayController(abc.ABC):
         for stale in ("nativeLcd", "spi", "i2c", "touch"):
             config.pop(stale, None)
         _save_config(config)
+        _save_splash_env(settings)
 
     @staticmethod
     def GetDefault():
@@ -327,6 +329,44 @@ def _save_config(config):
         with os.fdopen(fd, "w") as f:
             json.dump(config, f, indent=2)
         os.replace(tmp, _CONFIG_PATH)
+    except Exception:
+        try: os.unlink(tmp)
+        except OSError: pass
+        raise
+
+
+_UNSAFE_LOGO_CHARS = "\n\r=\0/\\"
+
+
+def _save_splash_env(settings):
+    """U-Boot paints the boot logo and has no JSON parser, so mirror the three
+    values it needs into a key=value file it reads with "env import -t". Same
+    file name and same keys on EPM815 and EPN."""
+    logo = settings.Logo
+    # The name goes into U-Boot's environment verbatim, so anything outside a
+    # plain filename is dropped rather than escaped.
+    if logo and any(c in logo for c in _UNSAFE_LOGO_CHARS):
+        logo = None
+
+    lines = ["splash=%s" % ("on" if settings.EnableAtBoot and logo else "off")]
+    if logo:
+        lines.append("splash_logo=%s" % logo)
+
+    b = settings.Backlight
+    if b is not None and b.Pin >= 0:
+        # U-Boot names each 16-line GPIO bank gpioa, gpiob, ... in chip order,
+        # so the bank letter is the chip index.
+        bank = chr(ord("a") + _chip_get_chip_id(b.Pin))
+        lines.append("splash_backlight=gpio%s%d" % (bank, _chip_get_line_id(b.Pin)))
+        lines.append("splash_backlight_on=%d"
+                     % (0 if b.ActivePolarity == SignalPolarity.ActiveLow else 1))
+
+    directory = os.path.dirname(_SPLASH_PATH) or "."
+    fd, tmp = tempfile.mkstemp(prefix=".splash", suffix=".env.tmp", dir=directory)
+    try:
+        with os.fdopen(fd, "w") as f:
+            f.write("\n".join(lines) + "\n")
+        os.replace(tmp, _SPLASH_PATH)
     except Exception:
         try: os.unlink(tmp)
         except OSError: pass

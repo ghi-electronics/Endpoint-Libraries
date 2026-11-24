@@ -36,6 +36,7 @@ namespace GHIElectronics.Endpoint.Devices.Display {
     /// </example>
     public abstract class DisplayController : IDisposable {
         private const string ConfigPath = "/config/display.json";
+        private const string SplashPath = "/config/splash.env";
 
         /// <summary>Visible width of the panel in pixels.</summary>
         public abstract int Width { get; }
@@ -128,6 +129,7 @@ namespace GHIElectronics.Endpoint.Devices.Display {
             config.Remove("touch");
 
             SaveConfig(config);
+            SaveSplashEnv(settings);
         }
 
         /// <summary>
@@ -202,6 +204,37 @@ namespace GHIElectronics.Endpoint.Devices.Display {
             }
             return o;
         }
+
+        // U-Boot paints the boot logo, and it has no JSON parser, so the three
+        // values it needs are mirrored into a key=value file it reads with
+        // "env import -t". Same file name and same keys on EPM815 and EPN.
+        private static void SaveSplashEnv(DisplaySettings settings) {
+            var logo = settings.Logo;
+            // The name goes into U-Boot's environment verbatim, so anything
+            // outside a plain filename is dropped rather than escaped.
+            if (!string.IsNullOrEmpty(logo) && logo.IndexOfAny(UnsafeLogoChars) >= 0) logo = null;
+
+            var text = new System.Text.StringBuilder();
+            text.Append("splash=").Append(settings.EnableAtBoot && logo != null ? "on" : "off").Append('\n');
+            if (logo != null) text.Append("splash_logo=").Append(logo).Append('\n');
+
+            var b = settings.Backlight;
+            if (b != null && b.Pin >= 0) {
+                // U-Boot names each 16-line GPIO bank gpioa, gpiob, ... in chip
+                // order, so the bank letter is the chip index.
+                int chip = PeripheralPins.ChipGetChipId(b.Pin);
+                int line = PeripheralPins.ChipGetLineId(b.Pin);
+                text.Append("splash_backlight=gpio").Append((char)('a' + chip)).Append(line).Append('\n');
+                text.Append("splash_backlight_on=")
+                    .Append(b.ActivePolarity == SignalPolarity.ActiveLow ? '0' : '1').Append('\n');
+            }
+
+            var tmp = SplashPath + ".tmp";
+            File.WriteAllText(tmp, text.ToString());
+            File.Move(tmp, SplashPath, overwrite: true);
+        }
+
+        private static readonly char[] UnsafeLogoChars = { '\n', '\r', '=', '\0', '/', '\\' };
 
         private static SignalPolarity ParsePolarity(string? s) =>
             s?.ToLowerInvariant() == "activelow" ? SignalPolarity.ActiveLow : SignalPolarity.ActiveHigh;
