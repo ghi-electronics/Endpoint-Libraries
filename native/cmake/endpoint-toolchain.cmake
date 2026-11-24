@@ -2,8 +2,8 @@
 # that "endpoint-cli c++" uses. One toolchain covers both architectures;
 # pick via the ENDPOINT_ARCH cache variable:
 #
-#   aarch64 (default) — Nuvoton MA35D1 / MA35D0 (Cortex-A35, 64-bit)
-#   arm               — ST STM32MP153       (Cortex-A7,  32-bit, hard float)
+#   aarch64 (default): Nuvoton MA35D1 / MA35D0 (Cortex-A35, 64-bit)
+#   arm:               ST STM32MP153        (Cortex-A7,  32-bit, hard float)
 #
 # Use through the matching preset:
 #

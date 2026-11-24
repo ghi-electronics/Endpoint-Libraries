@@ -11,8 +11,8 @@ namespace GHIElectronics.Endpoint.Core.Internal {
     /// Keeps chip-specific register knowledge in one place (the C binary) so
     /// .NET, Python, and C/C++ don't each re-implement it.
     ///
-    /// <paramref name="function"/> is a chip-specific packed <see cref="uint"/>
-    /// — see <c>pinmux.h</c> for each chip's layout. Example (STM32MP1):
+    /// A function value is a chip-specific packed <see cref="uint"/>. See
+    /// <c>pinmux.h</c> for each chip's layout. Example (STM32MP1):
     /// <c>[Mode:2][Type:1][Speed:2][Pull:2][AF:4]</c>.
     /// </summary>
     internal static class Pinmux {

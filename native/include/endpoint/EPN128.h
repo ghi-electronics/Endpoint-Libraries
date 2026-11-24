@@ -5,12 +5,13 @@
 // (I2C4/I2C5, four CAN buses, five user UARTs, two ADC channels).
 //
 // Pay-for-use rule: the kernel drivers (i2c-ma35d1, m_can_platform) are
-// built as modules; nothing probes at boot. Initialize modprobes the
-// driver, which triggers the kernel's pinctrl framework to claim the
-// peripheral's pins. UnInitialize unloads the driver (ref-counted across
-// controllers) so pins return to free GPIO. SerialPort uses the kernel's
-// standard UART binding - no modprobe/bind needed, pinctrl claims the
-// TX/RX pins at Initialize.
+// built as modules; nothing probes at boot. The device tree also strips
+// pinctrl-0 from every peripheral node, so the kernel never muxes a pin.
+// Initialize modprobes the driver and selects the peripheral's pins
+// through /usr/sbin/endpoint-pinmux; UnInitialize restores the pins to
+// whatever they were and unloads the driver (ref-counted across
+// controllers). SerialPort uses the kernel's standard UART binding, so it
+// only needs the pin selection.
 //
 //   using namespace GHIElectronics::Endpoint::Core;
 //   I2cController::Initialize(EPN128::I2c::I2c4);
@@ -111,6 +112,13 @@ using GHIElectronics::Endpoint::Core::EPN256::detail::TryRun;
 using GHIElectronics::Endpoint::Core::EPN256::detail::WaitPath;
 using GHIElectronics::Endpoint::Core::EPN256::detail::ReadTrim;
 using GHIElectronics::Endpoint::Core::EPN256::detail::ToLower;
+using GHIElectronics::Endpoint::Core::EPN256::detail::MuxPin;
+using GHIElectronics::Endpoint::Core::EPN256::detail::UnmuxPin;
+using GHIElectronics::Endpoint::Core::EPN256::detail::MuxPins;
+using GHIElectronics::Endpoint::Core::EPN256::detail::UnmuxPins;
+using GHIElectronics::Endpoint::Core::EPN256::detail::PullNone;
+using GHIElectronics::Endpoint::Core::EPN256::detail::PullUp;
+using GHIElectronics::Endpoint::Core::EPN256::detail::PullDown;
 
 }  // namespace GHIElectronics::Endpoint::Core::EPN128::detail
 
@@ -131,6 +139,17 @@ inline bool& ModuleLoaded() { static bool b = false; return b; }
 inline void Validate(int bus) {
     if (bus != I2c4 && bus != I2c5)
         throw std::out_of_range("The I2C buses on EPN128 are I2c4 and I2c5");
+}
+
+// Multi-function pin value that selects I2C on these lines. Same table as
+// .NET's EPN128.I2c.
+inline constexpr int Mfp = 0x4;
+
+struct BusPins { int scl; int sda; };
+
+inline BusPins PinsOf(int bus) {
+    return bus == I2c4 ? BusPins{Gpio::Pin::PC1, Gpio::Pin::PC0}
+                       : BusPins{Gpio::Pin::PC5, Gpio::Pin::PC4};
 }
 
 // MMIO addresses from arch/arm64/.../ma35d0.dtsi.
@@ -158,7 +177,10 @@ inline void Initialize(int bus, int frequency = DefaultFrequency) {
             detail::RunChecked("/sbin/modprobe", {"i2c-ma35d1"});
             ModuleLoaded() = true;
         }
-        OpenCount()[bus]++;
+        if (OpenCount()[bus]++ == 0) {
+            auto p = PinsOf(bus);
+            detail::MuxPins({{p.scl, Mfp}, {p.sda, Mfp}}, detail::PullUp);
+        }
     }
     char dev[32];
     std::snprintf(dev, sizeof dev, "/dev/i2c-%d", bus);
@@ -175,7 +197,11 @@ inline void UnInitialize(int bus) {
     auto& counts = OpenCount();
     auto it = counts.find(bus);
     if (it == counts.end() || it->second <= 0) return;
-    if (--it->second == 0) counts.erase(it);
+    if (--it->second == 0) {
+        counts.erase(it);
+        auto p = PinsOf(bus);
+        detail::UnmuxPins({p.scl, p.sda});
+    }
     if (counts.empty() && ModuleLoaded()) {
         detail::TryRun("/sbin/rmmod", {"i2c-ma35d1"});
         ModuleLoaded() = false;
@@ -211,28 +237,47 @@ inline void Validate(const std::string& iface) {
         throw std::out_of_range("Must be EPN128::Can::Can0 / Can1 / Can2 / Can3");
 }
 
+// Multi-function pin values per bus. Same table as .NET's EPN128.Can.
+struct PortPins { int rxd; int txd; int mfp; };
+
+inline PortPins PinsOf(const std::string& iface) {
+    if (iface == "can0") return {Gpio::Pin::PC2,  Gpio::Pin::PC3,  0x3};
+    if (iface == "can1") return {Gpio::Pin::PC6,  Gpio::Pin::PC7,  0x3};
+    if (iface == "can2") return {Gpio::Pin::PA15, Gpio::Pin::PG1,  0x5};
+    return {Gpio::Pin::PG8, Gpio::Pin::PG9, 0x3};
+}
+
 inline void Initialize(const std::string& iface, int bitrate = 500'000) {
     Validate(iface);
     if (bitrate < MinBitrate || bitrate > MaxBitrate)
         throw std::out_of_range("CAN bitrate must be 10 kbit/s to 1 Mbit/s");
+    bool first;
     {
         std::lock_guard lock(Gate());
         if (!ModuleLoaded()) {
             detail::RunChecked("/sbin/modprobe", {"m_can_platform"});
             ModuleLoaded() = true;
         }
-        OpenCount()[iface]++;
+        first = OpenCount()[iface]++ == 0;
     }
     if (!detail::WaitPath("/sys/class/net/" + iface, true)) {
         throw std::runtime_error("m_can_platform loaded but " + iface +
                                  " did not appear within 1 s");
     }
+    auto p = PinsOf(iface);
+    if (first) detail::MuxPins({{p.rxd, p.mfp}, {p.txd, p.mfp}});
     char rate[16];
     std::snprintf(rate, sizeof rate, "%d", bitrate);
-    detail::RunChecked("/sbin/ip", {"link", "set", iface.c_str(), "down"});
-    detail::RunChecked("/sbin/ip", {"link", "set", iface.c_str(), "type", "can",
-                                     "bitrate", rate});
-    detail::RunChecked("/sbin/ip", {"link", "set", iface.c_str(), "up"});
+    try {
+        detail::RunChecked("/sbin/ip", {"link", "set", iface.c_str(), "down"});
+        detail::RunChecked("/sbin/ip", {"link", "set", iface.c_str(), "type", "can",
+                                         "bitrate", rate});
+        detail::RunChecked("/sbin/ip", {"link", "set", iface.c_str(), "up"});
+    }
+    catch (...) {
+        if (first) detail::UnmuxPins({p.rxd, p.txd});
+        throw;
+    }
 }
 
 inline void UnInitialize(const std::string& iface) {
@@ -244,6 +289,8 @@ inline void UnInitialize(const std::string& iface) {
     if (--it->second == 0) {
         counts.erase(it);
         detail::TryRun("/sbin/ip", {"link", "set", iface.c_str(), "down"});
+        auto p = PinsOf(iface);
+        detail::UnmuxPins({p.rxd, p.txd});
     }
     if (counts.empty() && ModuleLoaded()) {
         detail::TryRun("/sbin/rmmod", {"m_can_platform"});
@@ -270,18 +317,60 @@ inline bool IsValidPort(const std::string& device) {
            device == "/dev/ttyS13";
 }
 
-inline void Initialize(const std::string& device, bool /*enableHardwareFlowControl*/ = false) {
+// RXD / TXD / RTS / CTS and the MFP they share (ma35d1-pinfunc.h). -1 means
+// the signal is not bonded out on Chili Pro.
+struct PortPins { int rxd, txd, rts, cts, mfp; };
+
+inline PortPins PinsOf(const std::string& device) {
+    using P = Gpio::Pin;
+    if (device == "/dev/ttyS4") return {P::PI10, P::PI11, P::PI9, P::PI8, 0x2};
+    if (device == "/dev/ttyS5") return {P::PG6,  P::PG7,  -1,     -1,     0x2};
+    if (device == "/dev/ttyS7") return {P::PL14, P::PG0,  -1,     -1,     0x2};
+    if (device == "/dev/ttyS9") return {P::PG2,  P::PG3,  -1,     -1,     0x2};
+    return {P::PK4, P::PG10, -1, -1, 0x3};
+}
+
+inline std::mutex& Gate() { static std::mutex g; return g; }
+inline std::map<std::string, int>& OpenCount() { static std::map<std::string, int> m; return m; }
+
+// The ma35d1-uart driver auto-binds at boot, but the board DTS strips its
+// pinctrl-0, so the pins stay free GPIO until Initialize selects them.
+// enableHardwareFlowControl adds RTS and CTS where they are bonded out.
+inline void Initialize(const std::string& device, bool enableHardwareFlowControl = false) {
     if (!IsValidPort(device))
         throw std::out_of_range(
             "Must be one of EPN128::SerialPort::Uart4 / Uart5 / Uart7 / Uart9 / Uart13");
     if (access(device.c_str(), F_OK) != 0) {
         throw std::runtime_error(device + " does not exist: this firmware is missing the uart.");
     }
+    std::lock_guard lock(Gate());
+    if (OpenCount()[device]++ != 0) return;
+    auto p = PinsOf(device);
+    try {
+        detail::MuxPins({{p.rxd, p.mfp}, {p.txd, p.mfp}});
+        if (enableHardwareFlowControl) {
+            if (p.rts >= 0) detail::MuxPin(p.rts, p.mfp);
+            if (p.cts >= 0) detail::MuxPin(p.cts, p.mfp);
+        }
+    }
+    catch (...) {
+        OpenCount().erase(device);
+        throw;
+    }
 }
 
-inline void UnInitialize(const std::string& /*device*/) {
-    // No-op: EPN128 UARTs use the kernel's standard UART binding, so there
-    // is nothing to unbind on close.
+inline void UnInitialize(const std::string& device) {
+    if (!IsValidPort(device)) return;
+    std::lock_guard lock(Gate());
+    auto cnt = OpenCount().find(device);
+    if (cnt == OpenCount().end() || cnt->second <= 0) return;
+    if (--cnt->second == 0) {
+        OpenCount().erase(cnt);
+        auto p = PinsOf(device);
+        detail::UnmuxPins({p.rxd, p.txd});
+        if (p.rts >= 0) detail::UnmuxPin(p.rts);
+        if (p.cts >= 0) detail::UnmuxPin(p.cts);
+    }
 }
 
 }  // namespace SerialPort

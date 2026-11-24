@@ -155,6 +155,25 @@ class Pinmux:
         )
 
     @staticmethod
+    def Save(pin):
+        """Stash the pin's current function so Restore can put it back.
+
+        The binary keeps the snapshot under /run, not in this process, so a
+        pin saved by one program is still restorable by another.
+        """
+        Pinmux._run("save", str(int(pin)))
+
+    @staticmethod
+    def Restore(pin):
+        """Put the pin back to what Save captured. Best effort: a pin that
+        was never saved is left alone rather than raising, so cleanup paths
+        stay simple."""
+        try:
+            Pinmux._run("restore", str(int(pin)))
+        except (RuntimeError, OSError):
+            pass
+
+    @staticmethod
     def _run(*args):
         try:
             subprocess.run(

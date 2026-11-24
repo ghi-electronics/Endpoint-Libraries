@@ -3,6 +3,9 @@
 #include <map>
 #include <mutex>
 
+#include <endpoint/Core.h>
+
+#include "Ma35dPins.h"
 #include "PinReservations.h"
 #include "Stm32Mp1Pins.h"
 
@@ -10,18 +13,54 @@ namespace GHIElectronics::Endpoint::Internal::PeripheralPins {
 
 namespace {
 
+// The two chips pack a pin's state differently, so a snapshot taken on one is
+// meaningless on the other. Keep both packings in the saved state and only
+// ever read back the one the running chip wrote.
 struct Saved {
     int pin;
-    Stm32Mp1Pins::PortLine chip;
-    Stm32Mp1Pins::State state;
+    int port;
+    int line;
+    uint32_t packed;
 };
+
+bool IsMa35() { return Core::ChipDetect::IsMa35(); }
 
 std::mutex gate;
 std::map<std::string, std::vector<Saved>> connected;
 
+Saved Save(int pin) {
+    if (IsMa35()) {
+        auto chip = Ma35dPins::FromPin(pin);
+        return Saved{pin, chip.port, chip.line, Ma35dPins::Save(chip.port, chip.line).packed};
+    }
+    auto chip = Stm32Mp1Pins::FromPin(pin);
+    return Saved{pin, chip.port, chip.line, Stm32Mp1Pins::Save(chip.port, chip.line).packed};
+}
+
+void Apply(const Saved& s, const PinFunction& p) {
+    if (IsMa35()) {
+        // MA35 has no analog mode: ADC pins select via MFP like any other
+        // peripheral function, so the board's pin table carries the MFP value
+        // and PinFunction::Analog never reaches here on Nuvoton.
+        Ma35dPins::SetFunction(s.port, s.line, p.alternate, p.pull, p.type, p.speed);
+        return;
+    }
+    if (p.alternate == PinFunction::AnalogFunction) {
+        Stm32Mp1Pins::SetPull(s.port, s.line, Stm32Mp1Pins::Pull::None);
+        Stm32Mp1Pins::SetMode(s.port, s.line, Stm32Mp1Pins::Mode::Analog);
+        return;
+    }
+    Stm32Mp1Pins::SetFunction(s.port, s.line, p.alternate, p.pull, p.type, p.speed);
+}
+
 void Restore(const std::vector<Saved>& saved) {
     for (const auto& s : saved) {
-        Stm32Mp1Pins::Restore(s.chip.port, s.chip.line, s.state);
+        if (IsMa35()) {
+            Ma35dPins::Restore(s.port, s.line, Ma35dPins::State{s.packed});
+        }
+        else {
+            Stm32Mp1Pins::Restore(s.port, s.line, Stm32Mp1Pins::State{s.packed});
+        }
     }
 }
 
@@ -45,18 +84,8 @@ bool Connect(const std::string& owner, const std::vector<PinFunction>& pins) {
     std::vector<Saved> saved;
     try {
         for (const auto& p : pins) {
-            // Stm32Mp1Pins uses PortZ (= 25), not 9, for the Z bank; translate
-            // packed pin numbers to its port encoding. Mirrors .NET's
-            // Stm32Mp1Pins.FromPin so port Z never slips through as port J.
-            auto chip = Stm32Mp1Pins::FromPin(p.pin);
-            saved.push_back(Saved{p.pin, chip, Stm32Mp1Pins::Save(chip.port, chip.line)});
-            if (p.alternate == PinFunction::AnalogFunction) {
-                Stm32Mp1Pins::SetPull(chip.port, chip.line, Stm32Mp1Pins::Pull::None);
-                Stm32Mp1Pins::SetMode(chip.port, chip.line, Stm32Mp1Pins::Mode::Analog);
-            }
-            else {
-                Stm32Mp1Pins::SetFunction(chip.port, chip.line, p.alternate, p.pull, p.type, p.speed);
-            }
+            saved.push_back(Save(p.pin));
+            Apply(saved.back(), p);
         }
     }
     catch (...) {

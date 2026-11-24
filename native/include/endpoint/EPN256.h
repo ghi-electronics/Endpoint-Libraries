@@ -3,12 +3,13 @@
 // code reads the same shape in every language.
 //
 // Pay-for-use rule: the kernel drivers (spi-ma35d1-spi, pwm-ma35d1,
-// m_can_platform, i2c-ma35d1) are built as modules; nothing probes at
-// boot. Initialize modprobes the driver, which triggers the kernel's
-// pinctrl framework to claim the peripheral's pins. UnInitialize unloads
-// the driver (ref-counted across controllers) so pins return to free
-// GPIO. Call Initialize before using a Linux API (open /dev/spidev0.0,
-// read /sys/class/pwm/...), call UnInitialize when done.
+// m_can_platform, i2c-ma35d1) are built as modules and the board DTS strips
+// pinctrl-0 from every peripheral node, so nothing probes and nothing mux's
+// at boot. Initialize modprobes the driver and then selects the peripheral's
+// pins through endpoint-pinmux; UnInitialize puts those pins back as it
+// found them and unloads the driver (ref-counted across controllers). Call
+// Initialize before using a Linux API (open /dev/spidev0.0, read
+// /sys/class/pwm/...), call UnInitialize when done.
 //
 //   using namespace GHIElectronics::Endpoint::Core;
 //   SpiController::Initialize(EPN256::Spi::Spi0);
@@ -39,6 +40,7 @@
 #include <sys/wait.h>
 #include <thread>
 #include <unistd.h>
+#include <utility>
 #include <vector>
 
 #include "Core.h"
@@ -167,6 +169,61 @@ inline bool EndsWithDotName(const std::string& platform, const std::string& ofNa
         haystack.compare(haystack.size() - expected.size(), expected.size(), expected) == 0;
 }
 
+// ---------- pin muxing ----------
+// The board DTS strips pinctrl-0 from every peripheral node, so the kernel
+// never mux's a pin behind our back: binding a driver is not enough, the
+// library has to select the pin's MFP itself. Everything goes through
+// /usr/sbin/endpoint-pinmux, which also stashes the pre-Initialize state in
+// /run so UnInitialize can put the pin back. Same contract as .NET's
+// PeripheralPins + Ma35dPins and Python's Pinmux.
+
+inline constexpr const char* PinmuxPath = "/usr/sbin/endpoint-pinmux";
+
+inline constexpr int PullNone = 0, PullUp = 1, PullDown = 2;
+
+// MA35D function packing, matching Endpoint-Firmware/pinmux/src/ma35d.c:
+//   [Slew:2][Pull:2][Mode:2][MFP:4]. Mode stays Input; the peripheral owns
+//   the pin once MFP is non-zero.
+inline unsigned PackFunction(int mfp, int pull) {
+    return ((static_cast<unsigned>(pull) & 0x3u) << 6) | (static_cast<unsigned>(mfp) & 0xFu);
+}
+
+// Select the pin's peripheral function, remembering what it was.
+inline void MuxPin(int pin, int mfp, int pull = PullNone) {
+    char p[16], f[16];
+    std::snprintf(p, sizeof p, "%d", pin);
+    std::snprintf(f, sizeof f, "0x%X", PackFunction(mfp, pull));
+    RunChecked(PinmuxPath, {"save", p});
+    RunChecked(PinmuxPath, {"set", p, f});
+}
+
+// Put the pin back as MuxPin found it. Best effort: UnInitialize must not
+// throw over a pin that was never muxed.
+inline void UnmuxPin(int pin) {
+    char p[16];
+    std::snprintf(p, sizeof p, "%d", pin);
+    TryRun(PinmuxPath, {"restore", p});
+}
+
+// All or nothing: if one pin fails to mux, roll back the ones already done.
+inline void MuxPins(std::initializer_list<std::pair<int, int>> pinsAndMfps, int pull = PullNone) {
+    std::vector<int> done;
+    try {
+        for (auto [pin, mfp] : pinsAndMfps) {
+            MuxPin(pin, mfp, pull);
+            done.push_back(pin);
+        }
+    }
+    catch (...) {
+        for (int pin : done) UnmuxPin(pin);
+        throw;
+    }
+}
+
+inline void UnmuxPins(std::initializer_list<int> pins) {
+    for (int pin : pins) UnmuxPin(pin);
+}
+
 }  // namespace GHIElectronics::Endpoint::Core::EPN256::detail
 
 namespace GHIElectronics::Endpoint::Core::EPN256::Spi {
@@ -185,8 +242,23 @@ inline void Validate(int bus) {
         throw std::out_of_range("Must be EPN256::Spi::Spi0/Spi1/Spi2/Spi3");
 }
 
+// SS / CLK / MOSI / MISO per bus. All four pins of an MA35D1 SPI bus share
+// MFP 0x5 (include/dt-bindings/pinctrl/ma35d1-pinfunc.h).
+inline constexpr int Mfp = 0x5;
+
+inline std::array<int, 4> PinsOf(int bus) {
+    using P = EPN256::Gpio::Pin;
+    switch (bus) {
+        case Spi0: return {P::PB8, P::PB9, P::PB10, P::PB11};
+        case Spi1: return {P::PC8, P::PC9, P::PC10, P::PC11};
+        case Spi2: return {P::PG8, P::PG9, P::PG10, P::PK4};
+        default:   return {P::PL8, P::PL9, P::PL4,  P::PL5};
+    }
+}
+
 inline void Initialize(int bus) {
     Validate(bus);
+    bool first;
     {
         std::lock_guard lock(Gate());
         if (!ModuleLoaded()) {
@@ -194,13 +266,17 @@ inline void Initialize(int bus) {
             detail::RunChecked("/sbin/modprobe", {"spidev"});
             ModuleLoaded() = true;
         }
-        OpenCount()[bus]++;
+        first = OpenCount()[bus]++ == 0;
     }
     char dev[32];
     std::snprintf(dev, sizeof dev, "/dev/spidev%d.0", bus);
     if (!detail::WaitPath(dev, false)) {
         throw std::runtime_error(std::string("spi-ma35d1 loaded but ") + dev +
                                  " did not appear within 1 s");
+    }
+    if (first) {
+        auto p = PinsOf(bus);
+        detail::MuxPins({{p[0], Mfp}, {p[1], Mfp}, {p[2], Mfp}, {p[3], Mfp}});
     }
 }
 
@@ -210,7 +286,11 @@ inline void UnInitialize(int bus) {
     auto& counts = OpenCount();
     auto it = counts.find(bus);
     if (it == counts.end() || it->second <= 0) return;
-    if (--it->second == 0) counts.erase(it);
+    if (--it->second == 0) {
+        counts.erase(it);
+        auto p = PinsOf(bus);
+        detail::UnmuxPins({p[0], p[1], p[2], p[3]});
+    }
     if (counts.empty() && ModuleLoaded()) {
         detail::TryRun("/sbin/rmmod", {"spidev"});
         detail::TryRun("/sbin/rmmod", {"spi-ma35d1-spi"});
@@ -241,23 +321,43 @@ inline void Validate(int bus) {
         throw std::out_of_range("Must be EPN256::I2c::I2c1..I2c5");
 }
 
+// SCL / SDA and their MFP per bus (ma35d1-pinfunc.h). Both lines of a bus
+// share one MFP value.
+struct BusPins { int scl, sda, mfp; };
+
+inline BusPins PinsOf(int bus) {
+    using P = EPN256::Gpio::Pin;
+    switch (bus) {
+        case I2c1: return {P::PB11, P::PB10, 0xC};
+        case I2c2: return {P::PB9,  P::PB8,  0x4};
+        case I2c3: return {P::PM15, P::PM14, 0x6};
+        case I2c4: return {P::PL5,  P::PL4,  0x4};
+        default:   return {P::PJ13, P::PJ12, 0x4};
+    }
+}
+
 inline void Initialize(int bus, int frequency = DefaultFrequency) {
     Validate(bus);
     if (frequency < MinFrequency || frequency > MaxFrequency)
         throw std::out_of_range("I2C speeds are 10 kHz to 1 MHz");
+    bool first;
     {
         std::lock_guard lock(Gate());
         if (!ModuleLoaded()) {
             detail::RunChecked("/sbin/modprobe", {"i2c-ma35d1"});
             ModuleLoaded() = true;
         }
-        OpenCount()[bus]++;
+        first = OpenCount()[bus]++ == 0;
     }
     char dev[32];
     std::snprintf(dev, sizeof dev, "/dev/i2c-%d", bus);
     if (!detail::WaitPath(dev, false)) {
         throw std::runtime_error(std::string("i2c-ma35d1 loaded but ") + dev +
                                  " did not appear within 1 s");
+    }
+    if (first) {
+        auto p = PinsOf(bus);
+        detail::MuxPins({{p.scl, p.mfp}, {p.sda, p.mfp}}, detail::PullUp);
     }
 }
 
@@ -267,7 +367,11 @@ inline void UnInitialize(int bus) {
     auto& counts = OpenCount();
     auto it = counts.find(bus);
     if (it == counts.end() || it->second <= 0) return;
-    if (--it->second == 0) counts.erase(it);
+    if (--it->second == 0) {
+        counts.erase(it);
+        auto p = PinsOf(bus);
+        detail::UnmuxPins({p.scl, p.sda});
+    }
     if (counts.empty() && ModuleLoaded()) {
         detail::TryRun("/sbin/rmmod", {"i2c-ma35d1"});
         ModuleLoaded() = false;
@@ -328,9 +432,7 @@ struct Pin {
     static constexpr int PB10 = 26;   // EPWM2 channel 5
 };
 
-// MMIO base per EPWM controller (arch/arm64/.../ma35d1.dtsi). Pin MFPs
-// are set by the kernel's pinctrl framework through the pwm DTS groups;
-// userspace only needs the pin -> (controller, channel) map.
+// MMIO base per EPWM controller (arch/arm64/.../ma35d1.dtsi).
 inline std::array<const char*, 3> PlatformDevices() {
     return {"40580000.epwm0", "40590000.epwm1", "405a0000.epwm2"};
 }
@@ -339,16 +441,18 @@ inline std::mutex& Gate() { static std::mutex g; return g; }
 inline std::map<int, int>& OpenCount() { static std::map<int, int> m; return m; }
 inline bool& ModuleLoaded() { static bool b = false; return b; }
 
-// Pin -> (controller 0..2, channel 0..5). Returns true if the pin is a
-// known PWM pin on EPN256.
-inline bool LookupOutput(int pin, int& controller, int& channel) {
+// Pin -> (controller 0..2, channel 0..5, MFP). Returns true if the pin is a
+// known PWM pin on EPN256. MFP values are from ma35d1-pinfunc.h: the EPWM0
+// pins on port D use 0x8, everything else uses 0x1.
+inline bool LookupOutput(int pin, int& controller, int& channel, int& mfp) {
+    mfp = 0x1;
     switch (pin) {
-        case Pin::PD6:  controller = 0; channel = 0; return true;
-        case Pin::PD7:  controller = 0; channel = 1; return true;
-        case Pin::PD8:  controller = 0; channel = 2; return true;
-        case Pin::PD9:  controller = 0; channel = 3; return true;
-        case Pin::PD10: controller = 0; channel = 4; return true;
-        case Pin::PD11: controller = 0; channel = 5; return true;
+        case Pin::PD6:  controller = 0; channel = 0; mfp = 0x8; return true;
+        case Pin::PD7:  controller = 0; channel = 1; mfp = 0x8; return true;
+        case Pin::PD8:  controller = 0; channel = 2; mfp = 0x8; return true;
+        case Pin::PD9:  controller = 0; channel = 3; mfp = 0x8; return true;
+        case Pin::PD10: controller = 0; channel = 4; mfp = 0x8; return true;
+        case Pin::PD11: controller = 0; channel = 5; mfp = 0x8; return true;
         case Pin::PG4:  controller = 1; channel = 0; return true;
         case Pin::PK5:  controller = 1; channel = 1; return true;
         case Pin::PG6:  controller = 1; channel = 2; return true;
@@ -365,8 +469,8 @@ inline bool LookupOutput(int pin, int& controller, int& channel) {
     }
 }
 
-inline void ValidatePin(int pin, int& controller, int& channel) {
-    if (!LookupOutput(pin, controller, channel))
+inline void ValidatePin(int pin, int& controller, int& channel, int& mfp) {
+    if (!LookupOutput(pin, controller, channel, mfp))
         throw std::out_of_range(std::string("Pin ") + std::to_string(pin) + " has no PWM on EPN256");
 }
 
@@ -393,19 +497,23 @@ inline bool TryGetChipId(int controller, int& chipId) {
 }
 
 inline void Initialize(int pin) {
-    int controller, channel;
-    ValidatePin(pin, controller, channel);
+    int controller, channel, mfp;
+    ValidatePin(pin, controller, channel, mfp);
+    bool first;
     {
         std::lock_guard lock(Gate());
         if (!ModuleLoaded()) {
             detail::RunChecked("/sbin/modprobe", {"pwm-ma35d1"});
             ModuleLoaded() = true;
         }
-        OpenCount()[pin]++;
+        first = OpenCount()[pin]++ == 0;
     }
     for (int i = 0; i < 50; i++) {
         int chip;
-        if (TryGetChipId(controller, chip)) return;
+        if (TryGetChipId(controller, chip)) {
+            if (first) detail::MuxPin(pin, mfp);
+            return;
+        }
         std::this_thread::sleep_for(std::chrono::milliseconds(20));
     }
     throw std::runtime_error(std::string("pwm-ma35d1 loaded but no pwmchip matched ") +
@@ -413,13 +521,16 @@ inline void Initialize(int pin) {
 }
 
 inline void UnInitialize(int pin) {
-    int controller, channel;
-    ValidatePin(pin, controller, channel);
+    int controller, channel, mfp;
+    ValidatePin(pin, controller, channel, mfp);
     std::lock_guard lock(Gate());
     auto& counts = OpenCount();
     auto it = counts.find(pin);
     if (it == counts.end() || it->second <= 0) return;
-    if (--it->second == 0) counts.erase(it);
+    if (--it->second == 0) {
+        counts.erase(it);
+        detail::UnmuxPin(pin);
+    }
     if (counts.empty() && ModuleLoaded()) {
         detail::TryRun("/sbin/rmmod", {"pwm-ma35d1"});
         ModuleLoaded() = false;
@@ -427,8 +538,8 @@ inline void UnInitialize(int pin) {
 }
 
 inline int GetChipId(int pin) {
-    int controller, channel;
-    ValidatePin(pin, controller, channel);
+    int controller, channel, mfp;
+    ValidatePin(pin, controller, channel, mfp);
     int chip;
     if (!TryGetChipId(controller, chip))
         throw std::runtime_error(std::string("EPWM") + std::to_string(controller) +
@@ -437,8 +548,8 @@ inline int GetChipId(int pin) {
 }
 
 inline int GetChannelId(int pin) {
-    int controller, channel;
-    ValidatePin(pin, controller, channel);
+    int controller, channel, mfp;
+    ValidatePin(pin, controller, channel, mfp);
     return channel;
 }
 
@@ -458,28 +569,47 @@ inline void Validate(const std::string& iface) {
         throw std::out_of_range("Must be EPN256::Can::Can0 or Can1");
 }
 
+// RXD / TXD and their MFP per interface (ma35d1-pinfunc.h). can0 is the DTS
+// alias for CAN1 silicon, can1 for CAN3.
+struct PortPins { int rxd, txd, mfp; };
+
+inline PortPins PinsOf(const std::string& iface) {
+    using P = EPN256::Gpio::Pin;
+    return iface == "can0" ? PortPins{P::PL14, P::PL15, 0x4}
+                           : PortPins{P::PL10, P::PL11, 0x3};
+}
+
 inline void Initialize(const std::string& iface, int bitrate = 500'000) {
     Validate(iface);
     if (bitrate < 10'000 || bitrate > 1'000'000)
         throw std::out_of_range("CAN bitrate must be 10 kbit/s to 1 Mbit/s");
+    bool first;
     {
         std::lock_guard lock(Gate());
         if (!ModuleLoaded()) {
             detail::RunChecked("/sbin/modprobe", {"m_can_platform"});
             ModuleLoaded() = true;
         }
-        OpenCount()[iface]++;
+        first = OpenCount()[iface]++ == 0;
     }
     if (!detail::WaitPath("/sys/class/net/" + iface, true)) {
         throw std::runtime_error("m_can_platform loaded but " + iface +
                                  " did not appear within 1 s");
     }
+    auto p = PinsOf(iface);
+    if (first) detail::MuxPins({{p.rxd, p.mfp}, {p.txd, p.mfp}});
     char rate[16];
     std::snprintf(rate, sizeof rate, "%d", bitrate);
-    detail::RunChecked("/sbin/ip", {"link", "set", iface.c_str(), "down"});
-    detail::RunChecked("/sbin/ip", {"link", "set", iface.c_str(), "type", "can",
-                                     "bitrate", rate});
-    detail::RunChecked("/sbin/ip", {"link", "set", iface.c_str(), "up"});
+    try {
+        detail::RunChecked("/sbin/ip", {"link", "set", iface.c_str(), "down"});
+        detail::RunChecked("/sbin/ip", {"link", "set", iface.c_str(), "type", "can",
+                                         "bitrate", rate});
+        detail::RunChecked("/sbin/ip", {"link", "set", iface.c_str(), "up"});
+    }
+    catch (...) {
+        if (first) detail::UnmuxPins({p.rxd, p.txd});
+        throw;
+    }
 }
 
 inline void UnInitialize(const std::string& iface) {
@@ -491,6 +621,8 @@ inline void UnInitialize(const std::string& iface) {
     if (--it->second == 0) {
         counts.erase(it);
         detail::TryRun("/sbin/ip", {"link", "set", iface.c_str(), "down"});
+        auto p = PinsOf(iface);
+        detail::UnmuxPins({p.rxd, p.txd});
     }
     if (counts.empty() && ModuleLoaded()) {
         detail::TryRun("/sbin/rmmod", {"m_can_platform"});
@@ -515,6 +647,17 @@ inline const std::map<std::string, std::string>& DeviceName() {
     return m;
 }
 
+// RXD / TXD / RTS / CTS and the MFP they share (ma35d1-pinfunc.h). -1 means
+// the signal is not bonded out on EPN256.
+struct PortPins { int rxd, txd, rts, cts, mfp; };
+
+inline PortPins PinsOf(const std::string& device) {
+    using P = EPN256::Gpio::Pin;
+    if (device == "/dev/ttyS11") return {P::PL2, P::PL3, P::PL1, P::PL0, 0x2};
+    if (device == "/dev/ttyS12") return {P::PI2, P::PI3, P::PI1, -1,     0x2};
+    return {P::PI6, P::PI7, P::PI5, -1, 0x2};
+}
+
 inline std::mutex& Gate() { static std::mutex g; return g; }
 inline std::map<std::string, int>& OpenCount() { static std::map<std::string, int> m; return m; }
 
@@ -523,17 +666,14 @@ inline void WriteSysfs(const std::string& path, const std::string& value) {
     detail::RunChecked("/bin/sh", {"-c", cmd.c_str()});
 }
 
-// enableHardwareFlowControl is accepted for signature parity with the chip-neutral
-// SerialPortController. On EPN256, pin muxing (including RTS/CTS when declared in
-// the board DTS) happens via platform-driver bind at probe time, so the flag has
-// no runtime effect here. Boards without RTS/CTS lines bonded (UART12, UART14 CTS)
-// simply have no DTS pinctrl entry for those lines.
+// enableHardwareFlowControl mux's RTS and CTS as well as RXD / TXD. UART12 and
+// UART14 have no CTS pin bonded out, so CTS is skipped silently on those.
 inline void Initialize(const std::string& device, bool enableHardwareFlowControl = false) {
-    (void)enableHardwareFlowControl;
     auto it = DeviceName().find(device);
     if (it == DeviceName().end())
         throw std::out_of_range("Must be EPN256::SerialPort::Uart11/Uart12/Uart14");
     const std::string& platform = it->second;
+    bool first;
     {
         std::lock_guard lock(Gate());
         int n = OpenCount()[device];
@@ -542,10 +682,25 @@ inline void Initialize(const std::string& device, bool enableHardwareFlowControl
             WriteSysfs("/sys/bus/platform/drivers/ma35d1-uart/bind", platform);
         }
         OpenCount()[device] = n + 1;
+        first = n == 0;
     }
     if (!detail::WaitPath(device, false)) {
         throw std::runtime_error("Bound " + platform + " but " + device +
                                  " did not appear within 1 s");
+    }
+    if (!first) return;
+
+    // The ma35d1-uart driver is built in and auto-binds at boot, but the board
+    // DTS strips its pinctrl-0, so binding alone leaves the pins free GPIO.
+    auto p = PinsOf(device);
+    if (!enableHardwareFlowControl) {
+        detail::MuxPins({{p.rxd, p.mfp}, {p.txd, p.mfp}});
+    }
+    else if (p.cts < 0) {
+        detail::MuxPins({{p.rxd, p.mfp}, {p.txd, p.mfp}, {p.rts, p.mfp}});
+    }
+    else {
+        detail::MuxPins({{p.rxd, p.mfp}, {p.txd, p.mfp}, {p.rts, p.mfp}, {p.cts, p.mfp}});
     }
 }
 
@@ -558,6 +713,10 @@ inline void UnInitialize(const std::string& device) {
     if (cnt == OpenCount().end() || cnt->second <= 0) return;
     if (--cnt->second == 0) {
         OpenCount().erase(cnt);
+        auto p = PinsOf(device);
+        detail::UnmuxPins({p.rxd, p.txd});
+        if (p.rts >= 0) detail::UnmuxPin(p.rts);
+        if (p.cts >= 0) detail::UnmuxPin(p.cts);
         try {
             WriteSysfs("/sys/bus/platform/drivers/ma35d1-uart/unbind", platform);
         } catch (...) {}

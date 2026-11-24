@@ -8,6 +8,10 @@ import subprocess
 import threading
 import time
 
+# MA35D0 and MA35D1 pack a pin's function the same way, so EPN128 reuses
+# EPN256's pinmux helpers rather than repeating them.
+from ._epn256 import PULL_UP, _mux_pins, _unmux_pins
+
 
 def _name(pin):
     if 0 <= pin <= 223:
@@ -288,16 +292,23 @@ class EPN128:
 
     # Pay-for-use peripheral initializers. Same pattern + same side-effects as
     # the .NET GHIElectronics.Endpoint.Core.EPN128.* classes: Initialize loads
-    # the kernel driver (or binds a platform device via sysfs), the kernel's
-    # pinctrl framework claims the pins at probe time, and UnInitialize
-    # reverses it so unused pins return to free GPIO.
+    # the kernel driver (or binds a platform device via sysfs) and selects the
+    # peripheral's pins through endpoint-pinmux, and UnInitialize reverses both
+    # so unused pins return to free GPIO. The board DTS strips pinctrl-0 from
+    # every peripheral node, so the kernel never mux's a pin for us.
 
     class I2c:
         """MA35D0 I2C buses on Chili Pro. Initialize modprobes i2c-ma35d1
-        (same driver as MA35D1); pinctrl claims the bus's pins at probe.
-        Only I2C4 and I2C5 are bonded out. Mirrors .NET's EPN128.I2c."""
+        (same driver as MA35D1) and mux's the bus's SCL / SDA pins. Only
+        I2C4 and I2C5 are bonded out. Mirrors .NET's EPN128.I2c."""
         I2c4 = 4  # PC0 (SDA), PC1 (SCL); /dev/i2c-4
         I2c5 = 5  # PC4 (SDA), PC5 (SCL); /dev/i2c-5
+
+        # (SCL, SDA, MFP) per bus. Same table as .NET's EPN128.I2c.
+        _pins = {
+            4: (33, 32, 0x4),  # PC1, PC0
+            5: (37, 36, 0x4),  # PC5, PC4
+        }
 
         DefaultFrequency = 400_000
         """The speed when none is given: 400 kHz (fast mode)"""
@@ -325,7 +336,11 @@ class EPN128:
                 if not cls._module_loaded:
                     _run("/sbin/modprobe", cls._module_name)
                     cls._module_loaded = True
+                first = cls._open_count.get(bus, 0) == 0
                 cls._open_count[bus] = cls._open_count.get(bus, 0) + 1
+                if first:
+                    scl, sda, mfp = cls._pins[bus]
+                    _mux_pins([(scl, mfp), (sda, mfp)], PULL_UP)
             dev = f"/dev/i2c-{bus}"
             if not _wait_path(dev, timeout_s=1.0):
                 raise OSError(f"i2c-ma35d1 loaded but {dev} did not appear within 1 s.")
@@ -340,6 +355,8 @@ class EPN128:
                     return
                 if n == 1:
                     cls._open_count.pop(bus, None)
+                    scl, sda, _mfp = cls._pins[bus]
+                    _unmux_pins((scl, sda))
                 else:
                     cls._open_count[bus] = n - 1
                 if not cls._open_count and cls._module_loaded:
@@ -385,6 +402,14 @@ class EPN128:
         Can2 = "can2"  # PA15 (RXD), PG1 (TXD)
         Can3 = "can3"  # PG8 (RXD), PG9 (TXD)
 
+        # (RXD, TXD, MFP) per interface. Same table as .NET's EPN128.Can.
+        _pins = {
+            "can0": (34, 35, 0x3),    # PC2, PC3
+            "can1": (38, 39, 0x3),    # PC6, PC7
+            "can2": (15, 97, 0x5),    # PA15, PG1
+            "can3": (104, 105, 0x3),  # PG8, PG9
+        }
+
         MinBitrate = 10_000
         """The slowest supported bitrate: 10 kbit/s"""
         MaxBitrate = 1_000_000
@@ -409,12 +434,21 @@ class EPN128:
                 if not cls._module_loaded:
                     _run("/sbin/modprobe", cls._module_name)
                     cls._module_loaded = True
+                first = cls._open_count.get(iface, 0) == 0
                 cls._open_count[iface] = cls._open_count.get(iface, 0) + 1
             if not _wait_path(f"/sys/class/net/{iface}", is_dir=True, timeout_s=1.0):
                 raise OSError(f"m_can_platform loaded but {iface} did not appear within 1 s.")
-            _run("/sbin/ip", "link", "set", iface, "down")
-            _run("/sbin/ip", "link", "set", iface, "type", "can", "bitrate", str(bitrate))
-            _run("/sbin/ip", "link", "set", iface, "up")
+            rxd, txd, mfp = cls._pins[iface]
+            if first:
+                _mux_pins([(rxd, mfp), (txd, mfp)])
+            try:
+                _run("/sbin/ip", "link", "set", iface, "down")
+                _run("/sbin/ip", "link", "set", iface, "type", "can", "bitrate", str(bitrate))
+                _run("/sbin/ip", "link", "set", iface, "up")
+            except BaseException:
+                if first:
+                    _unmux_pins((rxd, txd))
+                raise
 
         @classmethod
         def UnInitialize(cls, iface):
@@ -427,6 +461,8 @@ class EPN128:
                 if n == 1:
                     cls._open_count.pop(iface, None)
                     _try_run("/sbin/ip", "link", "set", iface, "down")
+                    rxd, txd, _mfp = cls._pins[iface]
+                    _unmux_pins((rxd, txd))
                 else:
                     cls._open_count[iface] = n - 1
                 if not cls._open_count and cls._module_loaded:
@@ -436,9 +472,8 @@ class EPN128:
     class SerialPort:
         """MA35D0 user UARTs on Chili Pro (the console UART is reserved for
         the kernel and not exposed). Unlike EPN256.SerialPort, EPN128's
-        UARTs use the kernel's standard UART binding — no sysfs bind or
-        modprobe needed; pinctrl claims the TX/RX pins at Initialize.
-        Mirrors .NET's EPN128.SerialPort."""
+        UARTs use the kernel's standard UART binding, so Initialize only
+        has to mux the port's pins. Mirrors .NET's EPN128.SerialPort."""
         Uart4 = "/dev/ttyS4"    # PI10 (RXD), PI11 (TXD), PI8 (CTS), PI9 (RTS)
         Uart5 = "/dev/ttyS5"    # PG6 (RXD), PG7 (TXD); no flow-control pins bonded
         Uart7 = "/dev/ttyS7"    # PL14 (RXD), PG0 (TXD); no flow-control pins bonded
@@ -447,8 +482,23 @@ class EPN128:
 
         _ports = ("/dev/ttyS4", "/dev/ttyS5", "/dev/ttyS7", "/dev/ttyS9", "/dev/ttyS13")
 
+        # (RXD, TXD, RTS, CTS, MFP) per port; -1 means the signal is not
+        # bonded out on Chili Pro. Same table as .NET's EPN128.SerialPort.
+        _pins = {
+            "/dev/ttyS4":  (138, 139, 137, 136, 0x2),  # PI10, PI11, PI9, PI8
+            "/dev/ttyS5":  (102, 103, -1, -1, 0x2),    # PG6, PG7
+            "/dev/ttyS7":  (190, 96, -1, -1, 0x2),     # PL14, PG0
+            "/dev/ttyS9":  (98, 99, -1, -1, 0x2),      # PG2, PG3
+            "/dev/ttyS13": (164, 106, -1, -1, 0x3),    # PK4, PG10
+        }
+
+        _gate = threading.Lock()
+        _open_count = {}
+
         @classmethod
         def Initialize(cls, device, enableHardwareFlowControl=False):
+            """Mux's RXD and TXD. enableHardwareFlowControl adds RTS and CTS
+            where they are bonded out; only UART4 has them on Chili Pro."""
             if device not in cls._ports:
                 raise ValueError(
                     f"Must be one of EPN128.SerialPort.Uart4 / Uart5 / Uart7 / Uart9 / Uart13, got {device}")
@@ -456,12 +506,38 @@ class EPN128:
                 suffix = device[len("/dev/ttyS"):]
                 raise OSError(
                     f"{device} does not exist: this firmware is missing uart{suffix}.")
+            with cls._gate:
+                n = cls._open_count.get(device, 0)
+                cls._open_count[device] = n + 1
+                if n != 0:
+                    return
+                rxd, txd, rts, cts, mfp = cls._pins[device]
+                wanted = [(rxd, mfp), (txd, mfp)]
+                if enableHardwareFlowControl:
+                    if rts >= 0:
+                        wanted.append((rts, mfp))
+                    if cts >= 0:
+                        wanted.append((cts, mfp))
+                try:
+                    _mux_pins(wanted)
+                except BaseException:
+                    cls._open_count.pop(device, None)
+                    raise
 
         @classmethod
         def UnInitialize(cls, device):
-            # No-op: EPN128 UARTs use the kernel's standard UART binding,
-            # so there is nothing to unbind on close.
-            pass
+            if device not in cls._ports:
+                return
+            with cls._gate:
+                n = cls._open_count.get(device, 0)
+                if n <= 0:
+                    return
+                if n == 1:
+                    cls._open_count.pop(device, None)
+                    rxd, txd, rts, cts, _mfp = cls._pins[device]
+                    _unmux_pins(p for p in (rxd, txd, rts, cts) if p >= 0)
+                else:
+                    cls._open_count[device] = n - 1
 
     class Adc:
         """MA35D0 ADC on Chili Pro via Linux IIO. 4-channel 10-bit ADC

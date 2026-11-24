@@ -7,6 +7,50 @@ import subprocess
 import threading
 import time
 
+from GHIElectronics.Endpoint.Core._board_support import Pinmux
+
+# MA35D pull settings, as packed into the function word below.
+PULL_NONE = 0
+PULL_UP = 1
+PULL_DOWN = 2
+
+
+def _pack_function(mfp, pull=PULL_NONE):
+    """MA35D packed function word: [Slew:2][Pull:2][Mode:2][MFP:4].
+    Slew and Mode stay 0 (normal slew, input mode) because the peripheral
+    drives the pin once its MFP is selected. Keep in sync with
+    Endpoint-Firmware/pinmux/src/ma35d.c."""
+    return ((pull & 0x3) << 6) | (mfp & 0xF)
+
+
+def _mux_pin(pin, mfp, pull=PULL_NONE):
+    """Save the pin's current setup, then select the peripheral function."""
+    Pinmux.Save(pin)
+    Pinmux.Set(pin, _pack_function(mfp, pull))
+
+
+def _unmux_pin(pin):
+    """Put the pin back to whatever _mux_pin saved."""
+    Pinmux.Restore(pin)
+
+
+def _mux_pins(pins_and_mfps, pull=PULL_NONE):
+    """All or nothing: if any pin fails, the ones already done are rolled back."""
+    done = []
+    try:
+        for pin, mfp in pins_and_mfps:
+            _mux_pin(pin, mfp, pull)
+            done.append(pin)
+    except BaseException:
+        for pin in done:
+            _unmux_pin(pin)
+        raise
+
+
+def _unmux_pins(pins):
+    for pin in pins:
+        _unmux_pin(pin)
+
 
 def _name(pin):
     if 0 <= pin <= 223:
@@ -287,14 +331,15 @@ class EPN256:
 
     # Pay-for-use peripheral initializers. Same pattern + same side-effects as
     # the .NET GHIElectronics.Endpoint.Core.EPN256.* classes: Initialize loads
-    # the kernel driver (or binds a platform device via sysfs), the kernel's
-    # pinctrl framework claims the pins at probe time, and UnInitialize
-    # reverses it so unused pins return to free GPIO.
+    # the kernel driver (or binds a platform device via sysfs) and selects the
+    # peripheral's pins through endpoint-pinmux, and UnInitialize reverses both
+    # so unused pins return to free GPIO. The board DTS strips pinctrl-0 from
+    # every peripheral node, so the kernel never mux's a pin for us.
 
     class Spi:
-        """MA35D1 SPI controllers. Initialize modprobes spi-ma35d1-spi + spidev,
-        which triggers probe + pinctrl mux so /dev/spidev<N>.0 appears for
-        userspace. Mirrors .NET's EPN256.Spi.
+        """MA35D1 SPI controllers. Initialize modprobes spi-ma35d1-spi + spidev
+        so /dev/spidev<N>.0 appears for userspace, and mux's the bus's four
+        pins. Mirrors .NET's EPN256.Spi.
 
             SpiController.Initialize(EPN256.Spi.Spi0)
         """
@@ -302,6 +347,17 @@ class EPN256:
         Spi1 = 1  # PC8 (SS0), PC9 (CLK), PC10 (MOSI), PC11 (MISO)
         Spi2 = 2  # PG8 (SS0), PG9 (CLK), PG10 (MOSI), PK4 (MISO)
         Spi3 = 3  # PL8 (SS0), PL9 (CLK), PL4 (MOSI), PL5 (MISO)
+
+        # SPI is MFP 0x5 on every one of these pins (ma35d1-pinfunc.h).
+        _mfp = 0x5
+
+        # (SS, CLK, MOSI, MISO) per bus. Same table as .NET's EPN256.Spi.
+        _pins = {
+            0: (24, 25, 26, 27),     # PB8, PB9, PB10, PB11
+            1: (40, 41, 42, 43),     # PC8, PC9, PC10, PC11
+            2: (104, 105, 106, 164), # PG8, PG9, PG10, PK4
+            3: (184, 185, 180, 181), # PL8, PL9, PL4, PL5
+        }
 
         _controller_module = "spi-ma35d1-spi"
         _spidev_module = "spidev"
@@ -322,12 +378,13 @@ class EPN256:
                     _run("/sbin/modprobe", cls._controller_module)
                     _run("/sbin/modprobe", cls._spidev_module)
                     cls._module_loaded = True
+                first = cls._open_count.get(bus, 0) == 0
                 cls._open_count[bus] = cls._open_count.get(bus, 0) + 1
+                if first:
+                    _mux_pins([(pin, cls._mfp) for pin in cls._pins[bus]])
             dev = f"/dev/spidev{bus}.0"
             if not _wait_path(dev, timeout_s=1.0):
-                raise OSError(
-                    f"spi-ma35d1 loaded but {dev} did not appear within 1 s. "
-                    "Have you added a pinctrl_spi group to the device tree for your board?")
+                raise OSError(f"spi-ma35d1 loaded but {dev} did not appear within 1 s.")
 
         @classmethod
         def UnInitialize(cls, bus):
@@ -338,6 +395,7 @@ class EPN256:
                     return
                 if n == 1:
                     cls._open_count.pop(bus, None)
+                    _unmux_pins(cls._pins[bus])
                 else:
                     cls._open_count[bus] = n - 1
                 if not cls._open_count and cls._module_loaded:
@@ -346,13 +404,22 @@ class EPN256:
                     cls._module_loaded = False
 
     class I2c:
-        """MA35D1 I2C buses. Initialize modprobes i2c-ma35d1; pinctrl claims the
-        bus's pins at probe. Mirrors .NET's EPN256.I2c."""
+        """MA35D1 I2C buses. Initialize modprobes i2c-ma35d1 and mux's the
+        bus's SCL / SDA pins. Mirrors .NET's EPN256.I2c."""
         I2c1 = 1
         I2c2 = 2
         I2c3 = 3
         I2c4 = 4
         I2c5 = 5  # Default on EPN256 reference touch panel
+
+        # (SCL, SDA, MFP) per bus. Same table as .NET's EPN256.I2c.
+        _pins = {
+            1: (27, 26, 0xC),    # PB11, PB10
+            2: (25, 24, 0x4),    # PB9, PB8
+            3: (207, 206, 0x6),  # PM15, PM14
+            4: (181, 180, 0x4),  # PL5, PL4
+            5: (157, 156, 0x4),  # PJ13, PJ12
+        }
 
         _module_name = "i2c-ma35d1"
         _gate = threading.Lock()
@@ -373,7 +440,11 @@ class EPN256:
                 if not cls._module_loaded:
                     _run("/sbin/modprobe", cls._module_name)
                     cls._module_loaded = True
+                first = cls._open_count.get(bus, 0) == 0
                 cls._open_count[bus] = cls._open_count.get(bus, 0) + 1
+                if first:
+                    scl, sda, mfp = cls._pins[bus]
+                    _mux_pins([(scl, mfp), (sda, mfp)], PULL_UP)
             dev = f"/dev/i2c-{bus}"
             if not _wait_path(dev, timeout_s=1.0):
                 raise OSError(f"i2c-ma35d1 loaded but {dev} did not appear within 1 s.")
@@ -387,6 +458,8 @@ class EPN256:
                     return
                 if n == 1:
                     cls._open_count.pop(bus, None)
+                    scl, sda, _mfp = cls._pins[bus]
+                    _unmux_pins((scl, sda))
                 else:
                     cls._open_count[bus] = n - 1
                 if not cls._open_count and cls._module_loaded:
@@ -444,17 +517,16 @@ class EPN256:
             PB9  = 25   # EPWM2 channel 4
             PB10 = 26   # EPWM2 channel 5
 
-        # One PWM pin and how it maps: (controller 0..2, channel 0..5).
-        # MFP values from include/dt-bindings/pinctrl/ma35d1-pinfunc.h are
-        # applied by the kernel's pinctrl framework via the DTS pwm pinctrl
-        # groups, so we only need the pin -> (controller, channel) map.
+        # One PWM pin and how it maps: (controller 0..2, channel 0..5, MFP).
+        # MFP values from include/dt-bindings/pinctrl/ma35d1-pinfunc.h; the
+        # board DTS has no pwm pinctrl group, so Initialize applies them.
         _outputs = {
-            54:  (0, 0), 55:  (0, 1), 56:  (0, 2),
-            57:  (0, 3), 58:  (0, 4), 59:  (0, 5),
-            100: (1, 0), 165: (1, 1), 102: (1, 2),
-            103: (1, 3), 104: (1, 4), 205: (1, 5),
-            40:  (2, 0), 41:  (2, 1), 42:  (2, 2),
-            43:  (2, 3), 25:  (2, 4), 26:  (2, 5),
+            54:  (0, 0, 0x8), 55:  (0, 1, 0x8), 56:  (0, 2, 0x8),
+            57:  (0, 3, 0x8), 58:  (0, 4, 0x8), 59:  (0, 5, 0x8),
+            100: (1, 0, 0x1), 165: (1, 1, 0x1), 102: (1, 2, 0x1),
+            103: (1, 3, 0x1), 104: (1, 4, 0x1), 205: (1, 5, 0x1),
+            40:  (2, 0, 0x1), 41:  (2, 1, 0x1), 42:  (2, 2, 0x1),
+            43:  (2, 3, 0x1), 25:  (2, 4, 0x1), 26:  (2, 5, 0x1),
         }
 
         # MMIO base per EPWM controller (arch/arm64/.../ma35d1.dtsi).
@@ -475,12 +547,15 @@ class EPN256:
         def Initialize(cls, pin):
             """Loads the EPWM driver so /sys/class/pwm/pwmchipN appears for
             the pin's controller, and mux's the pin to its channel."""
-            controller, _channel = cls._get(pin)
+            controller, _channel, mfp = cls._get(pin)
             with cls._gate:
                 if not cls._module_loaded:
                     _run("/sbin/modprobe", cls._module_name)
                     cls._module_loaded = True
+                first = cls._open_count.get(pin, 0) == 0
                 cls._open_count[pin] = cls._open_count.get(pin, 0) + 1
+                if first:
+                    _mux_pin(pin, mfp)
             for _ in range(50):
                 if cls._try_get_chip_id(controller) is not None:
                     return
@@ -498,6 +573,7 @@ class EPN256:
                     return
                 if n == 1:
                     cls._open_count.pop(pin, None)
+                    _unmux_pin(pin)
                 else:
                     cls._open_count[pin] = n - 1
                 if not cls._open_count and cls._module_loaded:
@@ -508,7 +584,7 @@ class EPN256:
         def GetChipId(cls, pin):
             """The PWM chip of the pin's controller (/sys/class/pwm/pwmchipN),
             for the standard PwmChannel constructor. Only valid after Initialize."""
-            controller, _channel = cls._get(pin)
+            controller, _channel, _mfp = cls._get(pin)
             chip = cls._try_get_chip_id(controller)
             if chip is None:
                 raise OSError(f"EPWM{controller} is not enabled in this firmware; call Initialize first.")
@@ -517,7 +593,7 @@ class EPN256:
         @classmethod
         def GetChannelId(cls, pin):
             """The pin's channel in its PWM chip, for the standard PwmChannel constructor."""
-            _controller, channel = cls._get(pin)
+            _controller, channel, _mfp = cls._get(pin)
             return channel
 
         @classmethod
@@ -548,6 +624,13 @@ class EPN256:
         Can0 = "can0"
         Can1 = "can1"
 
+        # (RXD, TXD, MFP) per interface. can0 is the DTS alias for CAN1
+        # silicon, can1 for CAN3. Same table as .NET's EPN256.Can.
+        _pins = {
+            "can0": (190, 191, 0x4),  # PL14, PL15
+            "can1": (186, 187, 0x3),  # PL10, PL11
+        }
+
         _module_name = "m_can_platform"
         _gate = threading.Lock()
         _open_count = {}
@@ -567,12 +650,21 @@ class EPN256:
                 if not cls._module_loaded:
                     _run("/sbin/modprobe", cls._module_name)
                     cls._module_loaded = True
+                first = cls._open_count.get(iface, 0) == 0
                 cls._open_count[iface] = cls._open_count.get(iface, 0) + 1
             if not _wait_path(f"/sys/class/net/{iface}", is_dir=True, timeout_s=1.0):
                 raise OSError(f"m_can_platform loaded but {iface} did not appear within 1 s.")
-            _run("/sbin/ip", "link", "set", iface, "down")
-            _run("/sbin/ip", "link", "set", iface, "type", "can", "bitrate", str(bitrate))
-            _run("/sbin/ip", "link", "set", iface, "up")
+            rxd, txd, mfp = cls._pins[iface]
+            if first:
+                _mux_pins([(rxd, mfp), (txd, mfp)])
+            try:
+                _run("/sbin/ip", "link", "set", iface, "down")
+                _run("/sbin/ip", "link", "set", iface, "type", "can", "bitrate", str(bitrate))
+                _run("/sbin/ip", "link", "set", iface, "up")
+            except BaseException:
+                if first:
+                    _unmux_pins((rxd, txd))
+                raise
 
         @classmethod
         def UnInitialize(cls, iface):
@@ -585,6 +677,8 @@ class EPN256:
                 if n == 1:
                     cls._open_count.pop(iface, None)
                     _try_run("/sbin/ip", "link", "set", iface, "down")
+                    rxd, txd, _mfp = cls._pins[iface]
+                    _unmux_pins((rxd, txd))
                 else:
                     cls._open_count[iface] = n - 1
                 if not cls._open_count and cls._module_loaded:
@@ -593,9 +687,8 @@ class EPN256:
 
     class SerialPort:
         """MA35D1 user UARTs (UART0 is the console, not exposed). Initialize
-        sysfs-binds the UART's platform device to the ma35d1-uart driver, which
-        re-applies pinctrl and claims the TX/RX pins. Mirrors .NET's
-        EPN256.SerialPort."""
+        sysfs-binds the UART's platform device to the ma35d1-uart driver and
+        mux's the port's pins. Mirrors .NET's EPN256.SerialPort."""
         Uart11 = "/dev/ttyS11"
         Uart12 = "/dev/ttyS12"
         Uart14 = "/dev/ttyS14"
@@ -607,17 +700,22 @@ class EPN256:
             "/dev/ttyS14": "407e0000.serial",
         }
 
+        # (RXD, TXD, RTS, CTS, MFP) per port; -1 means the signal is not
+        # bonded out on EPN256. Same table as .NET's EPN256.SerialPort.
+        _pins = {
+            "/dev/ttyS11": (178, 179, 177, 176, 0x2),  # PL2, PL3, PL1, PL0
+            "/dev/ttyS12": (130, 131, 129, -1, 0x2),   # PI2, PI3, PI1
+            "/dev/ttyS14": (134, 135, 133, -1, 0x2),   # PI6, PI7, PI5
+        }
+
         _gate = threading.Lock()
         _open_count = {}
 
         @classmethod
         def Initialize(cls, device, enableHardwareFlowControl=False):
-            """Binds the UART's platform device so TX/RX (and RTS/CTS where
-            declared in the board DTS) are muxed. enableHardwareFlowControl is
-            accepted for signature parity with SerialPortController; on EPN256
-            pin muxing is driven by DTS at bind time, so the flag has no
-            runtime effect here."""
-            _ = enableHardwareFlowControl
+            """Binds the UART's platform device, then mux's RXD and TXD.
+            enableHardwareFlowControl adds RTS and CTS where they are bonded
+            out; UART12 and UART14 have no CTS pin, so CTS is skipped there."""
             platform = cls._device_name.get(device)
             if platform is None:
                 raise ValueError(f"Must be EPN256.SerialPort.Uart11 / Uart12 / Uart14, got {device}")
@@ -628,6 +726,18 @@ class EPN256:
                 cls._open_count[device] = n + 1
             if not _wait_path(device, timeout_s=1.0):
                 raise OSError(f"Bound {platform} but {device} did not appear within 1 s.")
+            if n != 0:
+                return
+            # The ma35d1-uart driver auto-binds at boot, but the board DTS
+            # strips its pinctrl-0, so binding alone leaves the pins as GPIO.
+            rxd, txd, rts, cts, mfp = cls._pins[device]
+            wanted = [(rxd, mfp), (txd, mfp)]
+            if enableHardwareFlowControl:
+                if rts >= 0:
+                    wanted.append((rts, mfp))
+                if cts >= 0:
+                    wanted.append((cts, mfp))
+            _mux_pins(wanted)
 
         @classmethod
         def UnInitialize(cls, device):
@@ -640,6 +750,8 @@ class EPN256:
                     return
                 if n == 1:
                     cls._open_count.pop(device, None)
+                    rxd, txd, rts, cts, _mfp = cls._pins[device]
+                    _unmux_pins(p for p in (rxd, txd, rts, cts) if p >= 0)
                     try:
                         cls._write_sysfs(f"{cls._driver_path}/unbind", platform)
                     except OSError:
