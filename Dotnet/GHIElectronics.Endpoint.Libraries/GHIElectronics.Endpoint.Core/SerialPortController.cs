@@ -6,8 +6,8 @@ namespace GHIElectronics.Endpoint.Core {
     /// </summary>
     /// <example>
     /// <code>
-    /// SerialPortController.Initialize(EPN256.SerialPort.Uart2);
-    /// using var port = new SerialPort(EPN256.SerialPort.Uart2, 115200);
+    /// SerialPortController.Initialize(EPN256.SerialPort.Uart5);
+    /// using var port = new SerialPort(EPN256.SerialPort.Uart5, 115200);
     /// port.Open();
     /// port.WriteLine("Hello");
     /// </code>

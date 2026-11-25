@@ -5,7 +5,7 @@ namespace GHIElectronics.Endpoint.Pins {
         /// <summary>
         /// The user-facing serial ports (UARTs) bundled with EPN256, for
         /// <c>System.IO.Ports.SerialPort</c>. The console UART is reserved for
-        /// the kernel and not exposed here. The three ports below have stable
+        /// the kernel and not exposed here. The four ports below have stable
         /// names, so <see cref="Uart11"/> is always <c>/dev/ttyS11</c>.
         /// <see cref="Initialize"/> muxes the TX / RX pins (plus RTS / CTS
         /// when flow control is on); <see cref="UnInitialize"/> returns them
@@ -19,6 +19,8 @@ namespace GHIElectronics.Endpoint.Pins {
         /// </code>
         /// </example>
         public static class SerialPort {
+            /// <summary>UART5: PG6 (RXD), PG7 (TXD), PG5 (RTS), PG4 (CTS); /dev/ttyS5. On CON10.</summary>
+            public const string Uart5 = "/dev/ttyS5";
             /// <summary>UART11: PL2 (RXD), PL3 (TXD), PL0 (CTS), PL1 (RTS); /dev/ttyS11.</summary>
             public const string Uart11 = "/dev/ttyS11";
             /// <summary>UART12: PI2 (RXD), PI3 (TXD), PI1 (RTS); /dev/ttyS12. CTS pin not bonded out.</summary>
@@ -35,6 +37,7 @@ namespace GHIElectronics.Endpoint.Pins {
             // MMIO addresses from arch/arm64/.../ma35d1.dtsi; pin assignments
             // from the vendor board DTS (ma35d1-som-256m.dts).
             private static readonly Dictionary<string, Port> Ports = new() {
+                [Uart5]  = new Port(Uart5,  0x40750000, Gpio.Pin.PG6, Gpio.Pin.PG7, Gpio.Pin.PG5, Gpio.Pin.PG4, 0x2),
                 [Uart11] = new Port(Uart11, 0x407B0000, Gpio.Pin.PL2, Gpio.Pin.PL3, Gpio.Pin.PL1, Gpio.Pin.PL0, 0x2),
                 [Uart12] = new Port(Uart12, 0x407C0000, Gpio.Pin.PI2, Gpio.Pin.PI3, Gpio.Pin.PI1, -1,            0x2),
                 [Uart14] = new Port(Uart14, 0x407E0000, Gpio.Pin.PI6, Gpio.Pin.PI7, Gpio.Pin.PI5, -1,            0x2),
@@ -46,7 +49,7 @@ namespace GHIElectronics.Endpoint.Pins {
             /// the <c>/dev/ttyS*</c> device is ready for
             /// <c>System.IO.Ports.SerialPort</c>.
             /// </summary>
-            /// <param name="device">One of <see cref="Uart11"/>, <see cref="Uart12"/>, <see cref="Uart14"/>.</param>
+            /// <param name="device">One of <see cref="Uart5"/>, <see cref="Uart11"/>, <see cref="Uart12"/>, <see cref="Uart14"/>.</param>
             /// <param name="enableHardwareFlowControl">Mux RTS / CTS too. UART12 and UART14 have no
             /// CTS pin bonded out; CTS is skipped silently on those.</param>
             public static void Initialize(string device, bool enableHardwareFlowControl = false) {
@@ -86,7 +89,7 @@ namespace GHIElectronics.Endpoint.Pins {
             private static Port Get(string device) =>
                 Ports.TryGetValue(device, out var p) ? p
                     : throw new ArgumentOutOfRangeException(nameof(device), device,
-                        "Must be one of EPN256.SerialPort.Uart11 / Uart12 / Uart14");
+                        "Must be one of EPN256.SerialPort.Uart5 / Uart11 / Uart12 / Uart14");
         }
     }
 }

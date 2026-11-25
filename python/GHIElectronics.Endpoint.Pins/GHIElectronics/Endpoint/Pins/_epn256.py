@@ -697,14 +697,21 @@ class EPN256:
 
     class SerialPort:
         """MA35D1 user UARTs (UART0 is the console, not exposed). Initialize
-        sysfs-binds the UART's platform device to the ma35d1-uart driver and
-        mux's the port's pins. Mirrors .NET's EPN256.SerialPort."""
+        mux's the port's pins; the ma35d1-uart driver is built in and has
+        already bound every enabled port at boot. Then use pyserial:
+
+            SerialPortController.Initialize(EPN256.SerialPort.Uart5)
+            port = serial.Serial(EPN256.SerialPort.Uart5, 115200)
+
+        Mirrors .NET's EPN256.SerialPort."""
+        Uart5 = "/dev/ttyS5"
         Uart11 = "/dev/ttyS11"
         Uart12 = "/dev/ttyS12"
         Uart14 = "/dev/ttyS14"
 
         _driver_path = "/sys/bus/platform/drivers/ma35d1-uart"
         _device_name = {
+            "/dev/ttyS5": "40750000.serial",
             "/dev/ttyS11": "407b0000.serial",
             "/dev/ttyS12": "407c0000.serial",
             "/dev/ttyS14": "407e0000.serial",
@@ -713,6 +720,7 @@ class EPN256:
         # (RXD, TXD, RTS, CTS, MFP) per port; -1 means the signal is not
         # bonded out on EPN256. Same table as .NET's EPN256.SerialPort.
         _pins = {
+            "/dev/ttyS5": (102, 103, 101, 100, 0x2),   # PG6, PG7, PG5, PG4
             "/dev/ttyS11": (178, 179, 177, 176, 0x2),  # PL2, PL3, PL1, PL0
             "/dev/ttyS12": (130, 131, 129, -1, 0x2),   # PI2, PI3, PI1
             "/dev/ttyS14": (134, 135, 133, -1, 0x2),   # PI6, PI7, PI5
@@ -720,6 +728,10 @@ class EPN256:
 
         _gate = threading.Lock()
         _open_count = {}
+        # The pins Initialize actually muxed, so UnInitialize releases those
+        # and no others: with flow control off, RTS / CTS were never saved and
+        # asking endpoint-pinmux to restore them prints an error.
+        _muxed_pins = {}
 
         @classmethod
         def Initialize(cls, device, enableHardwareFlowControl=False):
@@ -728,7 +740,7 @@ class EPN256:
             out; UART12 and UART14 have no CTS pin, so CTS is skipped there."""
             platform = cls._device_name.get(device)
             if platform is None:
-                raise ValueError(f"Must be EPN256.SerialPort.Uart11 / Uart12 / Uart14, got {device}")
+                raise ValueError(f"Must be EPN256.SerialPort.Uart5 / Uart11 / Uart12 / Uart14, got {device}")
             with cls._gate:
                 n = cls._open_count.get(device, 0)
                 if n == 0 and not os.path.exists(f"{cls._driver_path}/{platform}"):
@@ -748,11 +760,15 @@ class EPN256:
                 if cts >= 0:
                     wanted.append((cts, mfp))
             _mux_pins(wanted)
+            with cls._gate:
+                cls._muxed_pins[device] = [pin for pin, _mfp in wanted]
 
         @classmethod
         def UnInitialize(cls, device):
-            platform = cls._device_name.get(device)
-            if platform is None:
+            """Puts the port's pins back to free GPIO. The driver stays bound:
+            unbinding would delete /dev/ttySN for every other process on the
+            board until the next boot, and .NET does not unbind either."""
+            if device not in cls._device_name:
                 return
             with cls._gate:
                 n = cls._open_count.get(device, 0)
@@ -760,12 +776,7 @@ class EPN256:
                     return
                 if n == 1:
                     cls._open_count.pop(device, None)
-                    rxd, txd, rts, cts, _mfp = cls._pins[device]
-                    _unmux_pins(p for p in (rxd, txd, rts, cts) if p >= 0)
-                    try:
-                        cls._write_sysfs(f"{cls._driver_path}/unbind", platform)
-                    except OSError:
-                        pass
+                    _unmux_pins(cls._muxed_pins.pop(device, ()))
                 else:
                     cls._open_count[device] = n - 1
 
@@ -788,54 +799,19 @@ class EPN256:
         UsbHostMassStorage = "EPN256.StorageController.UsbHostMassStorage"
 
     class Adc:
-        """MA35D1 Enhanced ADC via Linux IIO. No modprobe needed (controller
-        is bundled). Mirrors .NET's EPN256.Adc."""
-        Eadc0 = "eadc0"
+        """The analog inputs, for GHIElectronics.Endpoint.Devices.Adc's
+        AdcController. MA35D1's EADC0 is the general-purpose 12-bit ADC, 8
+        channels on PB0..PB7. The resistive touchscreen uses a separate ADC,
+        so the whole EADC range is free for application code. No modprobe
+        needed (the controller is bundled). Mirrors .NET's EPN256.Adc."""
 
-        _iio_root = "/sys/bus/iio/devices"
-
-        @classmethod
-        def ReadRaw(cls, bank, channel):
-            """Raw ADC code (0..4095 for the 12-bit eadc0)."""
-            iio_dir = cls._resolve_iio_dir(bank)
-            path = f"{iio_dir}/in_voltage{channel}_raw"
-            if not os.path.exists(path):
-                raise OSError(f"ADC channel {channel} not available on {bank} ({path} missing).")
-            with open(path) as f:
-                return int(f.read().strip())
-
-        @classmethod
-        def ReadMillivolts(cls, bank, channel):
-            """Raw * (scale, if present in IIO) + offset, in mV. Fallback: 3.3 V / 4096."""
-            iio_dir = cls._resolve_iio_dir(bank)
-            raw = cls.ReadRaw(bank, channel)
-            scale = (cls._try_read_float(f"{iio_dir}/in_voltage_scale")
-                     or cls._try_read_float(f"{iio_dir}/in_voltage{channel}_scale")
-                     or (3300.0 / 4096.0))
-            offset = cls._try_read_float(f"{iio_dir}/in_voltage_offset") or 0.0
-            return int(round((raw + offset) * scale))
-
-        @classmethod
-        def _resolve_iio_dir(cls, bank):
-            if bank != cls.Eadc0:
-                raise ValueError(f"Only EPN256.Adc.Eadc0 is supported on this chip, got {bank}")
-            if not os.path.isdir(cls._iio_root):
-                raise OSError("IIO subsystem not available: CONFIG_IIO is not enabled.")
-            for entry in os.listdir(cls._iio_root):
-                name_path = os.path.join(cls._iio_root, entry, "name")
-                try:
-                    with open(name_path) as f:
-                        name = f.read().strip()
-                except OSError:
-                    continue
-                if name.lower() in ("40430000.adc", "ma35d1-eadc"):
-                    return os.path.join(cls._iio_root, entry)
-            raise OSError(f"IIO device for {bank} not found under {cls._iio_root}.")
-
-        @staticmethod
-        def _try_read_float(path):
-            try:
-                with open(path) as f:
-                    return float(f.read().strip())
-            except OSError:
-                return None
+        class Pin:
+            """The pins with an analog input (the EADC0 channel is in the comment)"""
+            PB0 = 16  # EADC0 channel 0
+            PB1 = 17  # EADC0 channel 1
+            PB2 = 18  # EADC0 channel 2
+            PB3 = 19  # EADC0 channel 3
+            PB4 = 20  # EADC0 channel 4
+            PB5 = 21  # EADC0 channel 5
+            PB6 = 22  # EADC0 channel 6
+            PB7 = 23  # EADC0 channel 7

@@ -8,6 +8,9 @@
 // run their own static initializer in user code to install their
 // BoardSupport.
 
+#include <cstddef>
+#include <iterator>
+
 #include "endpoint/BoardSupport.h"
 #include "endpoint/Core.h"
 #include "endpoint/EPM815.h"
@@ -27,6 +30,66 @@ namespace {
 struct Stm32StyleGpio : UnknownBoardSupport {
     int GpioChipId(int pin) override { return Internal::GpioChips::Find(pin / 16); }
     int GpioLineId(int pin) override { return pin % 16; }
+};
+
+// The analog-input tables. These live here rather than in the public per-chip
+// headers because the mux value and the IIO device name are internal detail
+// that only Analog.cpp consumes; the headers expose just the pin constants.
+// Mirrors .NET's EPM815.Adc.Inputs / EPN256.Adc.Inputs / EPN128.Adc.Inputs.
+template <std::size_t N>
+const AnalogInput* FindIn(const AnalogInput (&table)[N], int pin) {
+    for (const auto& i : table) {
+        if (i.pin == pin) return &i;
+    }
+    return nullptr;
+}
+
+// STM32MP1 ADC1 and ADC2 are two sub-devices of one peripheral, so they get
+// separate IIO names. `alternate` is -1 for every row: STM32 pins reach the
+// ADC through the pad's analog mode, not through an alternate function.
+// ANA0 / ANA1 are dedicated analog pads with no GPIO, hence hasOwnPin false.
+constexpr const char* Epm815Adc1Iio = "48003000.adc:adc@0";
+constexpr const char* Epm815Adc2Iio = "48003000.adc:adc@100";
+
+const AnalogInput Epm815Inputs[] = {
+    {EPM815::Adc::Pin::ANA0,  0, -1, false, "ANA0", Epm815Adc1Iio},
+    {EPM815::Adc::Pin::ANA1,  1, -1, false, "ANA1", Epm815Adc1Iio},
+    {EPM815::Adc::Pin::PF11,  2, -1, true,  "PF11", Epm815Adc1Iio},
+    {EPM815::Adc::Pin::PA6,   3, -1, true,  "PA6",  Epm815Adc1Iio},
+    {EPM815::Adc::Pin::PF12,  6, -1, true,  "PF12", Epm815Adc1Iio},
+    {EPM815::Adc::Pin::PB0,   9, -1, true,  "PB0",  Epm815Adc1Iio},
+    {EPM815::Adc::Pin::PC0,  10, -1, true,  "PC0",  Epm815Adc1Iio},
+    {EPM815::Adc::Pin::PC3,  13, -1, true,  "PC3",  Epm815Adc1Iio},
+    {EPM815::Adc::Pin::PA3,  15, -1, true,  "PA3",  Epm815Adc1Iio},
+    {EPM815::Adc::Pin::PA0,  16, -1, true,  "PA0",  Epm815Adc1Iio},
+    {EPM815::Adc::Pin::PA4,  18, -1, true,  "PA4",  Epm815Adc1Iio},
+    {EPM815::Adc::Pin::PA5,  19, -1, true,  "PA5",  Epm815Adc1Iio},
+    {EPM815::Adc::Pin::PF13,  2, -1, true,  "PF13", Epm815Adc2Iio},
+    {EPM815::Adc::Pin::PF14,  6, -1, true,  "PF14", Epm815Adc2Iio},
+};
+
+// MA35 has no analog pad mode: an ADC input is selected by the pin's MFP like
+// any other peripheral function. 0x8 is EADC0_CHn per the vendor kernel's
+// include/dt-bindings/pinctrl/ma35d1-pinfunc.h.
+constexpr const char* Epn256AdcIio = "ma35d1-eadc";
+
+const AnalogInput Epn256Inputs[] = {
+    {EPN256::Adc::Pin::PB0, 0, 0x8, true, "PB0", Epn256AdcIio},
+    {EPN256::Adc::Pin::PB1, 1, 0x8, true, "PB1", Epn256AdcIio},
+    {EPN256::Adc::Pin::PB2, 2, 0x8, true, "PB2", Epn256AdcIio},
+    {EPN256::Adc::Pin::PB3, 3, 0x8, true, "PB3", Epn256AdcIio},
+    {EPN256::Adc::Pin::PB4, 4, 0x8, true, "PB4", Epn256AdcIio},
+    {EPN256::Adc::Pin::PB5, 5, 0x8, true, "PB5", Epn256AdcIio},
+    {EPN256::Adc::Pin::PB6, 6, 0x8, true, "PB6", Epn256AdcIio},
+    {EPN256::Adc::Pin::PB7, 7, 0x8, true, "PB7", Epn256AdcIio},
+};
+
+// MA35D0's ADC driver names its IIO device after the DT node.
+constexpr const char* Epn128AdcIio = "40420000.adc";
+
+const AnalogInput Epn128Inputs[] = {
+    {EPN128::Adc::Pin::PB10, 2, 0x8, true, "PB10", Epn128AdcIio},
+    {EPN128::Adc::Pin::PB11, 3, 0x8, true, "PB11", Epn128AdcIio},
 };
 
 struct EPM815BoardSupport : Stm32StyleGpio {
@@ -56,6 +119,12 @@ struct EPM815BoardSupport : Stm32StyleGpio {
     void SerialPortUnInitialize(const std::string& portName) override {
         EPM815::SerialPort::UnInitialize(portName);
     }
+
+    const AnalogInput* AdcInputs(int* count) override {
+        *count = static_cast<int>(std::size(Epm815Inputs));
+        return Epm815Inputs;
+    }
+    const AnalogInput* AdcFind(int pin) override { return FindIn(Epm815Inputs, pin); }
 };
 
 struct EPN256BoardSupport : Stm32StyleGpio {
@@ -85,6 +154,12 @@ struct EPN256BoardSupport : Stm32StyleGpio {
     void SerialPortUnInitialize(const std::string& portName) override {
         EPN256::SerialPort::UnInitialize(portName);
     }
+
+    const AnalogInput* AdcInputs(int* count) override {
+        *count = static_cast<int>(std::size(Epn256Inputs));
+        return Epn256Inputs;
+    }
+    const AnalogInput* AdcFind(int pin) override { return FindIn(Epn256Inputs, pin); }
 };
 
 // EPN128 (Chili Pro): no SPI / PWM bonded out — inherit UnknownBoardSupport's
@@ -109,6 +184,12 @@ struct EPN128BoardSupport : Stm32StyleGpio {
     void SerialPortUnInitialize(const std::string& portName) override {
         EPN128::SerialPort::UnInitialize(portName);
     }
+
+    const AnalogInput* AdcInputs(int* count) override {
+        *count = static_cast<int>(std::size(Epn128Inputs));
+        return Epn128Inputs;
+    }
+    const AnalogInput* AdcFind(int pin) override { return FindIn(Epn128Inputs, pin); }
 };
 
 // Pick + register the matching BoardSupport at libendpoint load. Runs once

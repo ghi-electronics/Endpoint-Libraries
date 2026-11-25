@@ -9,7 +9,10 @@
 #include <filesystem>
 #include <fstream>
 #include <map>
+#include <optional>
 #include <thread>
+
+#include "endpoint/BoardSupport.h"
 
 #include "EndpointDevices.h"
 #include "Errors.h"
@@ -19,37 +22,25 @@
 
 namespace GHIElectronics::Endpoint::Internal {
 
+// The registered board's analog inputs. Core has no chip knowledge: the
+// per-chip tables live in BoardSupportInit.cpp and dispatch through
+// BoardSupport, the same split as .NET's AdcController and
+// BoardSupport.Current.AdcInputs.
+using Core::AnalogInput;
+
 namespace {
 
 constexpr int P(char port, int line) { return (port - 'A') * 16 + line; }
 
-// An analog input: its converter (1 or 2) and channel there
-struct Input {
-    int pin, converter, channel;
+const AnalogInput* FindInput(int pin) { return Core::BoardSupport::Current().AdcFind(pin); }
 
-    bool IsGpio() const { return pin <= Pins::Last; }
-
-    std::string Name() const {
-        if (pin == AdcPins::ANA0) return "ANA0";
-        if (pin == AdcPins::ANA1) return "ANA1";
-        return Pins::Name(pin);
+const AnalogInput& GetInput(int pin) {
+    auto* input = FindInput(pin);
+    if (!input) {
+        // The same check and message as .NET's AnalogController.OpenPin
+        ThrowNotSupported("Pin " + std::to_string(pin) + " is not supporting analog input.");
     }
-};
-
-const Input Inputs[] = {
-    {AdcPins::ANA0, 1, 0}, {AdcPins::ANA1, 1, 1}, {P('F', 11), 1, 2}, {P('A', 6), 1, 3},
-    {P('F', 12), 1, 6},    {P('B', 0), 1, 9},     {P('C', 0), 1, 10}, {P('C', 3), 1, 13},
-    {P('A', 3), 1, 15},    {P('A', 0), 1, 16},    {P('A', 4), 1, 18}, {P('A', 5), 1, 19},
-    {P('F', 13), 2, 2},    {P('F', 14), 2, 6},
-};
-
-const Input* FindInput(int pin) {
-    for (const auto& input : Inputs) {
-        if (input.pin == pin) {
-            return &input;
-        }
-    }
-    return nullptr;
+    return *input;
 }
 
 std::string ReadText(const std::string& path) {
@@ -59,7 +50,9 @@ std::string ReadText(const std::string& path) {
     return text;
 }
 
-// The sample format, for example "le:u16/16>>0": 16 bits
+// The sample format is "<endian>:<sign><real bits>/<storage bits>>><shift>".
+// The real bits are the resolution: the MA35D1 EADC reports "le:u12/16>>0",
+// 12 meaningful bits padded into a 16-bit word.
 int ReadBits(const std::string& folder) {
     std::error_code error;
     for (const auto& entry : std::filesystem::directory_iterator(folder + "/scan_elements", error)) {
@@ -68,13 +61,47 @@ int ReadBits(const std::string& folder) {
             continue;
         }
         auto format = ReadText(entry.path().string());
+        auto sign = format.find(':');
         auto slash = format.find('/');
-        auto shift = format.find(">>");
-        if (slash != std::string::npos && shift != std::string::npos && shift > slash) {
-            return std::stoi(format.substr(slash + 1, shift - slash - 1));
+        if (sign != std::string::npos && slash != std::string::npos && slash > sign + 2) {
+            try {
+                return std::stoi(format.substr(sign + 2, slash - sign - 2));
+            } catch (...) {
+            }
         }
     }
-    return 16;  // the STM32MP1 converters' resolution unless the device tree lowers it
+    return 16;  // only reached for a driver that publishes no sample format at all
+}
+
+// A number from a sysfs attribute, or nothing if it is missing or not a number.
+std::optional<double> ReadDouble(const std::string& path) {
+    auto text = ReadText(path);
+    if (text.empty()) {
+        return std::nullopt;
+    }
+    try {
+        return std::stod(text);
+    } catch (...) {
+        return std::nullopt;
+    }
+}
+
+// The first in_voltage*_<suffix> in the folder, for drivers that publish scale
+// and offset per channel rather than per device.
+std::optional<double> FirstPerChannelDouble(const std::string& folder, const std::string& suffix) {
+    std::error_code error;
+    auto tail = "_" + suffix;
+    for (const auto& entry : std::filesystem::directory_iterator(folder, error)) {
+        auto name = entry.path().filename().string();
+        if (name.rfind("in_voltage", 0) != 0 || name.size() < tail.size() ||
+            name.substr(name.size() - tail.size()) != tail) {
+            continue;
+        }
+        if (auto value = ReadDouble(entry.path().string())) {
+            return value;
+        }
+    }
+    return std::nullopt;
 }
 
 uint32_t ParseNumber(const char* text, size_t length, const std::string& what) {
@@ -90,71 +117,92 @@ uint32_t ParseNumber(const char* text, size_t length, const std::string& what) {
 
 // ---------------------------------------------------------------- ADC
 
-const Converter& Converter::Get(int number) {
+const Converter& Converter::Get(const std::string& iioName) {
     static std::mutex gate;
-    static std::map<int, Converter> cache;
+    static std::map<std::string, Converter> cache;
     std::lock_guard lock(gate);
-    auto found = cache.find(number);
+    auto found = cache.find(iioName);
     if (found != cache.end()) {
         return found->second;
     }
 
-    auto folder = EndpointDevices::FindIio(number == 1 ? "48003000.adc:adc@0" : "48003000.adc:adc@100");
+    auto folder = EndpointDevices::FindIio(iioName);
     if (!folder) {
-        ThrowInvalidOperation("ADC" + std::to_string(number) + " is not enabled in this firmware: update the board's firmware");
+        ThrowInvalidOperation("IIO device '" + iioName + "' is not enabled in this firmware: update the board's firmware");
     }
     Converter c;
     c.folder = *folder;
-    c.scaleMillivolts = std::stod(ReadText(c.folder + "/in_voltage_scale"));
-    if (std::filesystem::exists(c.folder + "/in_voltage_offset")) {
-        c.offset = std::stoi(ReadText(c.folder + "/in_voltage_offset"));
-    }
     c.bits = ReadBits(c.folder);
-    return cache.emplace(number, c).first->second;
+
+    // Scale and offset can be per-device (STM32) or per-channel (some MA35
+    // kernels). Try the device-wide ones first, then the first per-channel
+    // entry so either layout works. The MA35D1 EADC driver publishes neither,
+    // so the last resort is the supply the converter actually references,
+    // which is 3.3 V on every Endpoint board.
+    auto scale = ReadDouble(c.folder + "/in_voltage_scale");
+    if (!scale) scale = FirstPerChannelDouble(c.folder, "scale");
+    c.scaleMillivolts = scale.value_or(3300.0 / (1LL << c.bits));
+
+    auto offset = ReadDouble(c.folder + "/in_voltage_offset");
+    if (!offset) offset = FirstPerChannelDouble(c.folder, "offset");
+    c.offset = static_cast<int>(offset.value_or(0));
+
+    return cache.emplace(iioName, c).first->second;
 }
 
 namespace AdcController {
 
-int PinCount() { return static_cast<int>(std::size(Inputs)); }
+int PinCount() {
+    int count = 0;
+    Core::BoardSupport::Current().AdcInputs(&count);
+    return count;
+}
 
 bool SupportsAnalogInput(int pin) { return FindInput(pin) != nullptr; }
 
 int ConvertPinNumberToAnalogChannelNumber(int pin) {
     auto input = FindInput(pin);
     if (!input) {
-        ThrowArgument("Pin " + std::to_string(pin) + " has no analog input: use the EPM815.Adc.Pin constants");
+        ThrowArgument("Pin " + std::to_string(pin) + " has no analog input: use the chip's Adc.Pin constants");
     }
     return input->channel;
 }
 
-double VoltageReferenceMillivolts() { return Converter::Get(1).ReferenceMillivolts(); }
+// The voltage reference comes from the chip's primary converter: ADC1 on
+// EPM815, EADC0 on EPN256 / EPN128. Either chip reports 3.3 V in practice; it
+// is read from the IIO driver so there is no hidden assumption.
+double VoltageReferenceMillivolts() {
+    int count = 0;
+    auto* inputs = Core::BoardSupport::Current().AdcInputs(&count);
+    if (count == 0) {
+        ThrowNotSupported("This board has no analog inputs");
+    }
+    return Converter::Get(inputs[0].iioName).ReferenceMillivolts();
+}
 
 }  // namespace AdcController
 
-AnalogInputPinImpl::AnalogInputPinImpl(int pin)
-    : name_(FindInput(pin) ? FindInput(pin)->Name() : ""),
-      gpio_(FindInput(pin) && FindInput(pin)->IsGpio()),
-      converter_([pin]() -> const Converter& {
-          auto input = FindInput(pin);
-          if (!input) {
-              // The same check and message as .NET's AnalogController.OpenPin
-              ThrowNotSupported("Pin " + std::to_string(pin) + " is not supporting analog input.");
-          }
-          return Converter::Get(input->converter);
-      }()) {
-    auto input = FindInput(pin);
-    auto path = converter_.folder + "/in_voltage" + std::to_string(input->channel) + "_raw";
+AnalogInputPinImpl::AnalogInputPinImpl(int pin) : AnalogInputPinImpl(pin, GetInput(pin)) {}
+
+AnalogInputPinImpl::AnalogInputPinImpl(int pin, const AnalogInput& input)
+    : name_(input.name), hasOwnPin_(input.hasOwnPin), converter_(Converter::Get(input.iioName)) {
+    auto path = converter_.folder + "/in_voltage" + std::to_string(input.channel) + "_raw";
     if (!std::filesystem::exists(path)) {
-        ThrowInvalidOperation("The analog input on " + name_ + " (ADC" + std::to_string(input->converter) + " channel " +
-                              std::to_string(input->channel) + ") is not enabled in this firmware: update the board's firmware");
+        ThrowInvalidOperation("The analog input on " + name_ + " (channel " + std::to_string(input.channel) +
+                              ") is not enabled in this firmware: update the board's firmware");
     }
-    if (gpio_ && !PeripheralPins::Connect("ADC " + name_, {PinFunction::Analog(pin)})) {
+    // hasOwnPin is false for dedicated analog pads (STM32's ANA0 / ANA1),
+    // which are not GPIO and so have nothing to mux or reserve. For the rest,
+    // `alternate` is -1 on STM32 (the pad's analog mode) and the MFP value on
+    // MA35, which has no analog mode and selects ADC inputs like any other
+    // peripheral function; PeripheralPins::Apply handles both.
+    if (hasOwnPin_ && !PeripheralPins::Connect("ADC " + name_, {PinFunction{pin, input.alternate}})) {
         ThrowInvalidOperation("The analog input on " + name_ + " is already open");
     }
     fd_ = open(path.c_str(), O_RDONLY | O_CLOEXEC);
     if (fd_ < 0) {
         auto error = errno;
-        if (gpio_) {
+        if (hasOwnPin_) {
             PeripheralPins::Disconnect("ADC " + name_);
         }
         errno = error;
@@ -166,7 +214,7 @@ AnalogInputPinImpl::~AnalogInputPinImpl() {
     if (fd_ >= 0) {
         close(fd_);
     }
-    if (gpio_) {
+    if (hasOwnPin_) {
         PeripheralPins::Disconnect("ADC " + name_);
     }
 }

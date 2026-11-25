@@ -209,7 +209,7 @@ inline void UnmuxPin(int pin) {
 }
 
 // All or nothing: if one pin fails to mux, roll back the ones already done.
-inline void MuxPins(std::initializer_list<std::pair<int, int>> pinsAndMfps, int pull = PullNone) {
+inline void MuxPins(const std::vector<std::pair<int, int>>& pinsAndMfps, int pull = PullNone) {
     std::vector<int> done;
     try {
         for (auto [pin, mfp] : pinsAndMfps) {
@@ -223,7 +223,7 @@ inline void MuxPins(std::initializer_list<std::pair<int, int>> pinsAndMfps, int 
     }
 }
 
-inline void UnmuxPins(std::initializer_list<int> pins) {
+inline void UnmuxPins(const std::vector<int>& pins) {
     for (int pin : pins) UnmuxPin(pin);
 }
 
@@ -637,12 +637,14 @@ inline void UnInitialize(const std::string& iface) {
 
 namespace GHIElectronics::Endpoint::Core::EPN256::SerialPort {
 
+inline constexpr const char* Uart5 = "/dev/ttyS5";
 inline constexpr const char* Uart11 = "/dev/ttyS11";
 inline constexpr const char* Uart12 = "/dev/ttyS12";
 inline constexpr const char* Uart14 = "/dev/ttyS14";
 
 inline const std::map<std::string, std::string>& DeviceName() {
     static const std::map<std::string, std::string> m = {
+        {"/dev/ttyS5", "40750000.serial"},
         {"/dev/ttyS11", "407b0000.serial"},
         {"/dev/ttyS12", "407c0000.serial"},
         {"/dev/ttyS14", "407e0000.serial"},
@@ -656,6 +658,7 @@ struct PortPins { int rxd, txd, rts, cts, mfp; };
 
 inline PortPins PinsOf(const std::string& device) {
     using P = EPN256::Gpio::Pin;
+    if (device == "/dev/ttyS5")  return {P::PG6, P::PG7, P::PG5, P::PG4, 0x2};
     if (device == "/dev/ttyS11") return {P::PL2, P::PL3, P::PL1, P::PL0, 0x2};
     if (device == "/dev/ttyS12") return {P::PI2, P::PI3, P::PI1, -1,     0x2};
     return {P::PI6, P::PI7, P::PI5, -1, 0x2};
@@ -663,6 +666,14 @@ inline PortPins PinsOf(const std::string& device) {
 
 inline std::mutex& Gate() { static std::mutex g; return g; }
 inline std::map<std::string, int>& OpenCount() { static std::map<std::string, int> m; return m; }
+
+// The pins Initialize actually muxed, so UnInitialize releases those and no
+// others: with flow control off, RTS / CTS were never saved and asking
+// endpoint-pinmux to restore them prints an error.
+inline std::map<std::string, std::vector<int>>& MuxedPins() {
+    static std::map<std::string, std::vector<int>> m;
+    return m;
+}
 
 inline void WriteSysfs(const std::string& path, const std::string& value) {
     std::string cmd = "echo " + value + " > " + path;
@@ -674,7 +685,7 @@ inline void WriteSysfs(const std::string& path, const std::string& value) {
 inline void Initialize(const std::string& device, bool enableHardwareFlowControl = false) {
     auto it = DeviceName().find(device);
     if (it == DeviceName().end())
-        throw std::out_of_range("Must be EPN256::SerialPort::Uart11/Uart12/Uart14");
+        throw std::out_of_range("Must be EPN256::SerialPort::Uart5/Uart11/Uart12/Uart14");
     const std::string& platform = it->second;
     bool first;
     {
@@ -696,33 +707,35 @@ inline void Initialize(const std::string& device, bool enableHardwareFlowControl
     // The ma35d1-uart driver is built in and auto-binds at boot, but the board
     // DTS strips its pinctrl-0, so binding alone leaves the pins free GPIO.
     auto p = PinsOf(device);
-    if (!enableHardwareFlowControl) {
-        detail::MuxPins({{p.rxd, p.mfp}, {p.txd, p.mfp}});
+    std::vector<std::pair<int, int>> pins{{p.rxd, p.mfp}, {p.txd, p.mfp}};
+    if (enableHardwareFlowControl) {
+        if (p.rts >= 0) pins.push_back({p.rts, p.mfp});
+        if (p.cts >= 0) pins.push_back({p.cts, p.mfp});
     }
-    else if (p.cts < 0) {
-        detail::MuxPins({{p.rxd, p.mfp}, {p.txd, p.mfp}, {p.rts, p.mfp}});
-    }
-    else {
-        detail::MuxPins({{p.rxd, p.mfp}, {p.txd, p.mfp}, {p.rts, p.mfp}, {p.cts, p.mfp}});
-    }
+    detail::MuxPins(pins);
+
+    std::vector<int> muxed;
+    for (auto [pin, mfp] : pins) muxed.push_back(pin);
+    std::lock_guard lock(Gate());
+    MuxedPins()[device] = std::move(muxed);
 }
 
+// The pins are the pay-for-use resource and they go back to free GPIO here.
+// The driver stays bound: unbinding would delete /dev/ttySN for every other
+// process on the board until the next boot, and .NET's EPN256.SerialPort
+// does not unbind either.
 inline void UnInitialize(const std::string& device) {
-    auto it = DeviceName().find(device);
-    if (it == DeviceName().end()) return;
-    const std::string& platform = it->second;
+    if (DeviceName().find(device) == DeviceName().end()) return;
     std::lock_guard lock(Gate());
     auto cnt = OpenCount().find(device);
     if (cnt == OpenCount().end() || cnt->second <= 0) return;
     if (--cnt->second == 0) {
         OpenCount().erase(cnt);
-        auto p = PinsOf(device);
-        detail::UnmuxPins({p.rxd, p.txd});
-        if (p.rts >= 0) detail::UnmuxPin(p.rts);
-        if (p.cts >= 0) detail::UnmuxPin(p.cts);
-        try {
-            WriteSysfs("/sys/bus/platform/drivers/ma35d1-uart/unbind", platform);
-        } catch (...) {}
+        auto muxed = MuxedPins().find(device);
+        if (muxed != MuxedPins().end()) {
+            detail::UnmuxPins(muxed->second);
+            MuxedPins().erase(muxed);
+        }
     }
 }
 
@@ -730,51 +743,27 @@ inline void UnInitialize(const std::string& device) {
 
 namespace GHIElectronics::Endpoint::Core::EPN256::Adc {
 
-inline constexpr const char* Eadc0 = "eadc0";
-
-inline std::string ResolveIioDir(const std::string& bank) {
-    if (bank != "eadc0")
-        throw std::out_of_range("Only EPN256::Adc::Eadc0 is supported");
-    DIR* dir = opendir("/sys/bus/iio/devices");
-    if (!dir)
-        throw std::runtime_error("IIO subsystem not available");
-    while (auto* ent = readdir(dir)) {
-        if (ent->d_name[0] == '.') continue;
-        std::string dirName = ent->d_name;
-        std::string name = detail::ReadTrim("/sys/bus/iio/devices/" + dirName + "/name");
-        if (detail::ToLower(name) == "40430000.adc" || detail::ToLower(name) == "ma35d1-eadc") {
-            closedir(dir);
-            return "/sys/bus/iio/devices/" + dirName;
-        }
-    }
-    closedir(dir);
-    throw std::runtime_error("IIO device for eadc0 not found");
-}
-
-inline int ReadRaw(const std::string& bank, int channel) {
-    std::string path = ResolveIioDir(bank) + "/in_voltage" + std::to_string(channel) + "_raw";
-    std::string s = detail::ReadTrim(path);
-    if (s.empty())
-        throw std::runtime_error("ADC channel not available: " + path);
-    return std::stoi(s);
-}
-
-inline int ReadMillivolts(const std::string& bank, int channel) {
-    std::string dir = ResolveIioDir(bank);
-    int raw = ReadRaw(bank, channel);
-    double scale = 3300.0 / 4096.0;
-    double offset = 0.0;
-    auto try_read = [](const std::string& p, double& out) {
-        std::string s = detail::ReadTrim(p);
-        if (s.empty()) return false;
-        try { out = std::stod(s); return true; } catch (...) { return false; }
-    };
-    double v;
-    if (try_read(dir + "/in_voltage_scale", v)) scale = v;
-    else if (try_read(dir + "/in_voltage" + std::to_string(channel) + "_scale", v)) scale = v;
-    try_read(dir + "/in_voltage_offset", offset);
-    return static_cast<int>((raw + offset) * scale + 0.5);
-}
+// The analog inputs bundled with EPN256, for Devices::Adc::AdcController.
+// MA35D1's EADC0 is the general-purpose 12-bit ADC, 8 channels on PB0..PB7.
+// The resistive touchscreen uses a separate ADC, so the whole EADC range is
+// free for application code. Mirrors .NET's EPN256.Adc.
+//
+//   AdcController adc;
+//   auto input = adc.OpenPin(EPN256::Adc::Pin::PB0);
+//   printf("%.3f V\n", input->ReadVoltage().Volts());
+//
+// The pin-to-channel map and the MFP values live in BoardSupportInit.cpp,
+// next to the dispatch that consumes them.
+struct Pin {
+    static constexpr int PB0 = Gpio::Pin::PB0;  // EADC0 channel 0
+    static constexpr int PB1 = Gpio::Pin::PB1;  // EADC0 channel 1
+    static constexpr int PB2 = Gpio::Pin::PB2;  // EADC0 channel 2
+    static constexpr int PB3 = Gpio::Pin::PB3;  // EADC0 channel 3
+    static constexpr int PB4 = Gpio::Pin::PB4;  // EADC0 channel 4
+    static constexpr int PB5 = Gpio::Pin::PB5;  // EADC0 channel 5
+    static constexpr int PB6 = Gpio::Pin::PB6;  // EADC0 channel 6
+    static constexpr int PB7 = Gpio::Pin::PB7;  // EADC0 channel 7
+};
 
 }  // namespace Adc
 

@@ -4,18 +4,17 @@
 #include <mutex>
 #include <string>
 
+namespace GHIElectronics::Endpoint::Core {
+struct AnalogInput;  // endpoint/BoardSupport.h
+}
+
 namespace GHIElectronics::Endpoint::Internal {
 
-// The EPM815's analog inputs, the same as the .NET library's EPM815.Adc.Pin:
-// GPIO pin numbers, plus ANA0 and ANA1 (dedicated analog inputs, no GPIO)
-namespace AdcPins {
-constexpr int ANA0 = 0x1000;
-constexpr int ANA1 = 0x1001;
-}  // namespace AdcPins
-
-// One of the chip's two converters (ADC1, ADC2) as the system's ADC driver
-// shows it. The driver calibrates the converter and takes the samples; its
-// scale and resolution give the exact voltage.
+// One ADC converter as the Linux IIO subsystem presents it. The driver
+// calibrates the converter and takes the samples; its scale and resolution
+// give the exact voltage. One instance is cached per IIO name (for example
+// "48003000.adc:adc@0" on EPM815 or "ma35d1-eadc" on EPN256). Mirrors .NET's
+// GHIElectronics.Endpoint.Devices.Adc.Converter.
 struct Converter {
     std::string folder;
     double scaleMillivolts = 0;  // per step
@@ -24,7 +23,7 @@ struct Converter {
 
     double ReferenceMillivolts() const { return scaleMillivolts * (1LL << bits); }
 
-    static const Converter& Get(int number);
+    static const Converter& Get(const std::string& iioName);
 };
 
 // As .NET's System.Device.Analog.AnalogInputPin from the Endpoint's
@@ -42,8 +41,12 @@ public:
     double ReadMillivolts();
 
 private:
+    // The pin's entry comes from the registered board, so it is looked up
+    // once and handed to the real constructor.
+    AnalogInputPinImpl(int pin, const Core::AnalogInput& input);
+
     std::string name_;
-    bool gpio_;
+    bool hasOwnPin_;
     const Converter& converter_;
     int fd_ = -1;
     std::mutex gate_;

@@ -28,6 +28,23 @@
 
 namespace GHIElectronics::Endpoint::Core {
 
+// One of the chip's ADC inputs, in a form the STM32 MP1 and MA35 tables share.
+// Mirrors .NET's GHIElectronics.Endpoint.Core.Internal.AnalogInput.
+//
+// `alternate` is the pin's mux value: -1 puts the pin in analog mode (STM32
+// MP1), and any non-negative value is the MFP peripheral function (MA35, which
+// has no analog mode and selects ADC inputs like any other function).
+// `hasOwnPin` is false for dedicated analog pads (STM32's ANA0 / ANA1), which
+// are not GPIO and so skip the pin reservation.
+struct AnalogInput {
+    int pin;
+    int channel;
+    int alternate;
+    bool hasOwnPin;
+    const char* name;
+    const char* iioName;
+};
+
 struct IBoardSupport {
     virtual ~IBoardSupport() = default;
 
@@ -62,6 +79,12 @@ struct IBoardSupport {
 
     virtual void SerialPortInitialize(const std::string& portName, bool enableHardwareFlowControl) = 0;
     virtual void SerialPortUnInitialize(const std::string& portName) = 0;
+
+    // The board's analog inputs, and the one on a given pin or nullptr. A
+    // board with no ADC returns an empty table rather than throwing, so
+    // AdcController::PinCount and SupportsAnalogInput stay answerable.
+    virtual const AnalogInput* AdcInputs(int* count) = 0;
+    virtual const AnalogInput* AdcFind(int pin) = 0;
 };
 
 // Default board support: every method throws with a helpful message. Lives
@@ -92,6 +115,9 @@ struct UnknownBoardSupport : IBoardSupport {
 
     void SerialPortInitialize(const std::string&, bool) override { Nope("serial port"); }
     void SerialPortUnInitialize(const std::string&) override     { Nope("serial port"); }
+
+    const AnalogInput* AdcInputs(int* count) override { *count = 0; return nullptr; }
+    const AnalogInput* AdcFind(int) override          { return nullptr; }
 
 protected:
     [[noreturn]] void Nope(const char* what) const {

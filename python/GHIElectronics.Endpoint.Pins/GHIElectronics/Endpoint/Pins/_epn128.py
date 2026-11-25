@@ -504,6 +504,10 @@ class EPN128:
 
         _gate = threading.Lock()
         _open_count = {}
+        # The pins Initialize actually muxed, so UnInitialize releases those
+        # and no others: with flow control off, RTS / CTS were never saved and
+        # asking endpoint-pinmux to restore them prints an error.
+        _muxed_pins = {}
 
         @classmethod
         def Initialize(cls, device, enableHardwareFlowControl=False):
@@ -533,6 +537,7 @@ class EPN128:
                 except BaseException:
                     cls._open_count.pop(device, None)
                     raise
+                cls._muxed_pins[device] = [pin for pin, _mfp in wanted]
 
         @classmethod
         def UnInitialize(cls, device):
@@ -544,80 +549,20 @@ class EPN128:
                     return
                 if n == 1:
                     cls._open_count.pop(device, None)
-                    rxd, txd, rts, cts, _mfp = cls._pins[device]
-                    _unmux_pins(p for p in (rxd, txd, rts, cts) if p >= 0)
+                    _unmux_pins(cls._muxed_pins.pop(device, ()))
                 else:
                     cls._open_count[device] = n - 1
 
     class Adc:
-        """MA35D0 ADC on Chili Pro via Linux IIO. 4-channel 10-bit ADC
-        (compatible nuvoton,ma35d1-adc); only CH2 and CH3 are bonded out.
-        No modprobe needed (controller is bundled). Mirrors .NET's EPN128.Adc."""
+        """The analog inputs, for GHIElectronics.Endpoint.Devices.Adc's
+        AdcController. MA35D0's ADC is a 4-channel 10-bit converter
+        (compatible nuvoton,ma35d1-adc); only CH2 and CH3 are bonded out. No
+        modprobe needed (the controller is bundled). Mirrors .NET's EPN128.Adc."""
 
         class Pin:
             """The pins with an analog input (ADC0 channel is in the comment)."""
             PB10 = 26  # ADC0 channel 2
             PB11 = 27  # ADC0 channel 3
-
-        IioName = "40420000.adc"
-        """IIO name of the MA35D0 ADC. The ma35_adc driver sets
-        indio_dev->name = dev_name(pdev), i.e. the DT node name."""
-
-        _iio_root = "/sys/bus/iio/devices"
-
-        _channels = {26: 2, 27: 3}  # PB10 -> CH2, PB11 -> CH3
-
-        @classmethod
-        def ReadRaw(cls, pin):
-            """Raw ADC code (0..1023 for the 10-bit MA35D0 ADC)."""
-            channel = cls._channel(pin)
-            iio_dir = cls._resolve_iio_dir()
-            path = f"{iio_dir}/in_voltage{channel}_raw"
-            if not os.path.exists(path):
-                raise OSError(f"ADC channel {channel} not available ({path} missing).")
-            with open(path) as f:
-                return int(f.read().strip())
-
-        @classmethod
-        def ReadMillivolts(cls, pin):
-            """Raw * (scale, if present in IIO) + offset, in mV. Fallback: 3.3 V / 1024."""
-            channel = cls._channel(pin)
-            iio_dir = cls._resolve_iio_dir()
-            raw = cls.ReadRaw(pin)
-            scale = (cls._try_read_float(f"{iio_dir}/in_voltage_scale")
-                     or cls._try_read_float(f"{iio_dir}/in_voltage{channel}_scale")
-                     or (3300.0 / 1024.0))
-            offset = cls._try_read_float(f"{iio_dir}/in_voltage_offset") or 0.0
-            return int(round((raw + offset) * scale))
-
-        @classmethod
-        def _channel(cls, pin):
-            if pin not in cls._channels:
-                raise ValueError(f"Must be EPN128.Adc.Pin.PB10 or PB11, got {pin}")
-            return cls._channels[pin]
-
-        @classmethod
-        def _resolve_iio_dir(cls):
-            if not os.path.isdir(cls._iio_root):
-                raise OSError("IIO subsystem not available: CONFIG_IIO is not enabled.")
-            for entry in os.listdir(cls._iio_root):
-                name_path = os.path.join(cls._iio_root, entry, "name")
-                try:
-                    with open(name_path) as f:
-                        name = f.read().strip()
-                except OSError:
-                    continue
-                if name.lower() == cls.IioName.lower():
-                    return os.path.join(cls._iio_root, entry)
-            raise OSError(f"IIO device {cls.IioName} not found under {cls._iio_root}.")
-
-        @staticmethod
-        def _try_read_float(path):
-            try:
-                with open(path) as f:
-                    return float(f.read().strip())
-            except OSError:
-                return None
 
     class Watchdog:
         """The watchdog, for GHIElectronics.Endpoint.Devices.Watchdog

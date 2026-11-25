@@ -9,8 +9,27 @@ namespace GHIElectronics.Endpoint.Core.Internal {
         /// to the peripheral at <paramref name="address"/> (for example i2c-0 and 0x40012000)
         /// </summary>
         public static bool IsAt(string cls, string name, ulong address) {
-            var target = File.ResolveLinkTarget($"/sys/class/{cls}/{name}", returnFinalTarget: false)?.FullName;
-            return target is not null && target.Contains($"/{address:x}.", StringComparison.Ordinal);
+            var target = File.ResolveLinkTarget($"/sys/class/{cls}/{name}", returnFinalTarget: true)?.FullName;
+            if (target is null) {
+                return false;
+            }
+            // Most subsystems keep the platform device in the path, as in
+            // /sys/devices/platform/40630000.spi/spi_master/spi3/spi3.0/spidev/spidev3.0
+            if (target.Contains($"/{address:x}.", StringComparison.Ordinal)) {
+                return true;
+            }
+            // The i2c core does not: an adapter lands at /sys/devices/i2c-1, whose
+            // name carries the bus number instead of the address. The device tree
+            // node is then the only authority, and it hangs off a parent folder.
+            for (var folder = target; folder is not null; folder = Path.GetDirectoryName(folder)) {
+                // LinkTarget is relative, which is all the comparison needs, and
+                // it answers null instead of throwing when there is no of_node.
+                var node = new FileInfo(Path.Combine(folder, "of_node")).LinkTarget;
+                if (node is not null) {
+                    return node.EndsWith($"@{address:x}", StringComparison.Ordinal);
+                }
+            }
+            return false;
         }
 
         /// <summary>

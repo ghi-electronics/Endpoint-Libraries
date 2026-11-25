@@ -32,17 +32,19 @@ namespace GHIElectronics.Endpoint.Devices.Adc {
                 ?? throw new InvalidOperationException(
                     $"IIO device '{iioName}' is not enabled in this firmware: update the board's firmware");
 
+            this.Bits = ReadBits(this.Folder);
+
             // Scale and offset can be per-device (STM32) or per-channel (some
-            // MA35 kernels). Try the device-wide ones first, then fall back
-            // to the first per-channel entry so either layout works.
+            // MA35 kernels). Try the device-wide ones first, then the first
+            // per-channel entry so either layout works. The MA35D1 EADC driver
+            // publishes neither, so the last resort is the supply the converter
+            // actually references, which is 3.3 V on every Endpoint board.
             this.ScaleMillivolts = ReadDouble(Path.Combine(this.Folder, "in_voltage_scale"))
                                    ?? FirstPerChannelDouble(this.Folder, "scale")
-                                   ?? throw new InvalidOperationException(
-                                       $"IIO device '{iioName}' exposes no in_voltage*_scale");
+                                   ?? 3300.0 / (1L << this.Bits);
             this.Offset = (int)(ReadDouble(Path.Combine(this.Folder, "in_voltage_offset"))
                                 ?? FirstPerChannelDouble(this.Folder, "offset")
                                 ?? 0);
-            this.Bits = ReadBits(this.Folder);
         }
 
         /// <summary>Returns the cached <see cref="Converter"/> for the given IIO device name.</summary>
@@ -55,23 +57,24 @@ namespace GHIElectronics.Endpoint.Devices.Adc {
             }
         }
 
-        // Sample format, e.g. "le:u16/16>>0" → 16 bits.
+        // Sample format is "<endian>:<sign><real bits>/<storage bits>>><shift>".
+        // The real bits are the resolution: the MA35D1 EADC reports "le:u12/16>>0",
+        // 12 meaningful bits padded into a 16-bit word.
         private static int ReadBits(string folder) {
             var formats = Path.Combine(folder, "scan_elements");
             if (Directory.Exists(formats)) {
                 foreach (var file in Directory.EnumerateFiles(formats, "in_voltage*_type")) {
-                    var format = File.ReadAllText(file);
+                    var format = File.ReadAllText(file).Trim();
+                    var sign = format.IndexOf(':') + 1;
                     var slash = format.IndexOf('/');
-                    var shift = format.IndexOf(">>", StringComparison.Ordinal);
-                    if (slash > 0 && shift > slash &&
-                        int.TryParse(format.AsSpan(slash + 1, shift - slash - 1),
+                    if (sign > 0 && slash > sign + 1 &&
+                        int.TryParse(format.AsSpan(sign + 1, slash - sign - 1),
                                      NumberStyles.None, CultureInfo.InvariantCulture, out var bits)) {
                         return bits;
                     }
                 }
             }
-            // Default: STM32 MP1 ADC is 16 bits. MA35 EADC is 12 bits but
-            // exposes scan_elements, so we only hit this path for unknowns.
+            // Only reached for a driver that publishes no sample format at all.
             return 16;
         }
 

@@ -336,6 +336,14 @@ inline PortPins PinsOf(const std::string& device) {
 inline std::mutex& Gate() { static std::mutex g; return g; }
 inline std::map<std::string, int>& OpenCount() { static std::map<std::string, int> m; return m; }
 
+// The pins Initialize actually muxed, so UnInitialize releases those and no
+// others: with flow control off, RTS / CTS were never saved and asking
+// endpoint-pinmux to restore them prints an error.
+inline std::map<std::string, std::vector<int>>& MuxedPins() {
+    static std::map<std::string, std::vector<int>> m;
+    return m;
+}
+
 // The ma35d1-uart driver auto-binds at boot, but the board DTS strips its
 // pinctrl-0, so the pins stay free GPIO until Initialize selects them.
 // enableHardwareFlowControl adds RTS and CTS where they are bonded out.
@@ -349,17 +357,21 @@ inline void Initialize(const std::string& device, bool enableHardwareFlowControl
     std::lock_guard lock(Gate());
     if (OpenCount()[device]++ != 0) return;
     auto p = PinsOf(device);
+    std::vector<std::pair<int, int>> pins{{p.rxd, p.mfp}, {p.txd, p.mfp}};
+    if (enableHardwareFlowControl) {
+        if (p.rts >= 0) pins.push_back({p.rts, p.mfp});
+        if (p.cts >= 0) pins.push_back({p.cts, p.mfp});
+    }
     try {
-        detail::MuxPins({{p.rxd, p.mfp}, {p.txd, p.mfp}});
-        if (enableHardwareFlowControl) {
-            if (p.rts >= 0) detail::MuxPin(p.rts, p.mfp);
-            if (p.cts >= 0) detail::MuxPin(p.cts, p.mfp);
-        }
+        detail::MuxPins(pins);
     }
     catch (...) {
         OpenCount().erase(device);
         throw;
     }
+    std::vector<int> muxed;
+    for (auto [pin, mfp] : pins) muxed.push_back(pin);
+    MuxedPins()[device] = std::move(muxed);
 }
 
 inline void UnInitialize(const std::string& device) {
@@ -369,10 +381,11 @@ inline void UnInitialize(const std::string& device) {
     if (cnt == OpenCount().end() || cnt->second <= 0) return;
     if (--cnt->second == 0) {
         OpenCount().erase(cnt);
-        auto p = PinsOf(device);
-        detail::UnmuxPins({p.rxd, p.txd});
-        if (p.rts >= 0) detail::UnmuxPin(p.rts);
-        if (p.cts >= 0) detail::UnmuxPin(p.cts);
+        auto muxed = MuxedPins().find(device);
+        if (muxed != MuxedPins().end()) {
+            detail::UnmuxPins(muxed->second);
+            MuxedPins().erase(muxed);
+        }
     }
 }
 
@@ -380,66 +393,17 @@ inline void UnInitialize(const std::string& device) {
 
 namespace GHIElectronics::Endpoint::Core::EPN128::Adc {
 
-// MA35D0 ADC on Chili Pro via Linux IIO. 4-channel 10-bit ADC (compatible
-// nuvoton,ma35d1-adc); only CH2 and CH3 are bonded out.
+// The analog inputs bundled with EPN128 (Chili Pro), for
+// Devices::Adc::AdcController. MA35D0's ADC is a 4-channel 10-bit converter
+// (compatible nuvoton,ma35d1-adc); only CH2 and CH3 are bonded out.
+// Mirrors .NET's EPN128.Adc.
+//
+// The pin-to-channel map and the MFP values live in BoardSupportInit.cpp,
+// next to the dispatch that consumes them.
 struct Pin {
     static constexpr int PB10 = 26;  // ADC0 channel 2
     static constexpr int PB11 = 27;  // ADC0 channel 3
 };
-
-// IIO name of the MA35D0 ADC. The ma35_adc driver sets
-// indio_dev->name = dev_name(pdev), i.e. the DT node name.
-inline constexpr const char* IioName = "40420000.adc";
-
-inline int ChannelOf(int pin) {
-    if (pin == Pin::PB10) return 2;
-    if (pin == Pin::PB11) return 3;
-    throw std::out_of_range("Must be EPN128::Adc::Pin::PB10 or PB11");
-}
-
-inline std::string ResolveIioDir() {
-    DIR* dir = opendir("/sys/bus/iio/devices");
-    if (!dir)
-        throw std::runtime_error("IIO subsystem not available");
-    while (auto* ent = readdir(dir)) {
-        if (ent->d_name[0] == '.') continue;
-        std::string dirName = ent->d_name;
-        std::string name = detail::ReadTrim("/sys/bus/iio/devices/" + dirName + "/name");
-        if (detail::ToLower(name) == detail::ToLower(std::string(IioName))) {
-            closedir(dir);
-            return "/sys/bus/iio/devices/" + dirName;
-        }
-    }
-    closedir(dir);
-    throw std::runtime_error(std::string("IIO device ") + IioName + " not found");
-}
-
-inline int ReadRaw(int pin) {
-    int channel = ChannelOf(pin);
-    std::string path = ResolveIioDir() + "/in_voltage" + std::to_string(channel) + "_raw";
-    std::string s = detail::ReadTrim(path);
-    if (s.empty())
-        throw std::runtime_error("ADC channel not available: " + path);
-    return std::stoi(s);
-}
-
-inline int ReadMillivolts(int pin) {
-    int channel = ChannelOf(pin);
-    std::string dir = ResolveIioDir();
-    int raw = ReadRaw(pin);
-    double scale = 3300.0 / 1024.0;  // 10-bit ADC fallback
-    double offset = 0.0;
-    auto try_read = [](const std::string& p, double& out) {
-        std::string s = detail::ReadTrim(p);
-        if (s.empty()) return false;
-        try { out = std::stod(s); return true; } catch (...) { return false; }
-    };
-    double v;
-    if (try_read(dir + "/in_voltage_scale", v)) scale = v;
-    else if (try_read(dir + "/in_voltage" + std::to_string(channel) + "_scale", v)) scale = v;
-    try_read(dir + "/in_voltage_offset", offset);
-    return static_cast<int>((raw + offset) * scale + 0.5);
-}
 
 }  // namespace Adc
 
