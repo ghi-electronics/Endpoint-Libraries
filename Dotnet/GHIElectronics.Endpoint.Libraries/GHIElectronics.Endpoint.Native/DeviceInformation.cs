@@ -1,5 +1,6 @@
 using System.Device.Gpio;
 using System.Diagnostics;
+using System.Text.Json;
 using GHIElectronics.Endpoint.Core;
 
 namespace GHIElectronics.Endpoint.Native {
@@ -129,9 +130,10 @@ namespace GHIElectronics.Endpoint.Native {
             }
 
             if (dtWakeup != System.DateTime.MaxValue) {
-                script = new Script("rtcwake_clear.sh", "./", "");
-                script.Start();
-
+                // Cancel any alarm still pending, otherwise rtcwake refuses to set a
+                // new one. Written directly rather than through a board script so
+                // every board behaves the same way.
+                File.WriteAllText("/sys/class/rtc/rtc0/wakealarm", "0");
 
                 var dt = dtWakeup.Year.ToString("d4") + "-" + dtWakeup.Month.ToString("d2") + "-" + dtWakeup.Day.ToString("d2");
 
@@ -158,80 +160,76 @@ namespace GHIElectronics.Endpoint.Native {
     /// <summary>Board identity, firmware version, and boot/auto-run configuration helpers.</summary>
     public static class DeviceInformation {
 
-        /// <summary>Firmware version string as reported by <c>get_version.sh</c>, with any trailing newline stripped.</summary>
-        public static string Version => GetVersion();
-        private static string GetVersion() {
+        /// <summary>Firmware version, for example <c>0.5.5.4</c>. Empty if the firmware did not stamp one.</summary>
+        public static string Version => OsRelease("VERSION_ID");
 
+        /// <summary>Date the firmware was built, as <c>yyyy-MM-dd</c>. Empty if the firmware did not stamp one.</summary>
+        public static string Build => OsRelease("BUILD_ID");
 
-            var script = new Script("get_version.sh", "./", "");
-            script.Start();
+        // The same file and keys endpoint-agent reports through "endpoint-cli info",
+        // so every board and every language answers with one string.
+        private static string OsRelease(string key) {
+            foreach (var line in File.ReadLines("/etc/os-release")) {
+                if (!line.StartsWith(key + "=")) continue;
 
-            var version = script.Output.Replace("\n", "");
-            return version;
+                var value = line.Substring(key.Length + 1);
+                return value.Length >= 2 && value[0] == '"' ? value.Substring(1, value.Length - 2) : value;
+            }
 
+            return "";
+        }
+
+        // endpoint-agent reads this at boot and starts whatever it names. Writing it
+        // is all "endpoint-cli autostart" does, so a program can set itself to run at
+        // boot without a board script and the same way on every board.
+        private const string AutoRunFile = "/data/config/autostart.json";
+
+        /// <summary>
+        /// Makes the given program start at boot. Replaces any program already set.
+        /// </summary>
+        /// <param name="path">Full path to the program on the board, for example <c>/data/apps/my-app/my-app</c>.</param>
+        public static void EnableAutoRun(string path) {
+            Directory.CreateDirectory(Path.GetDirectoryName(AutoRunFile));
+            File.WriteAllText(AutoRunFile,
+                $"{{\"path\":\"{JsonEncodedText.Encode(path)}\",\"args\":[],\"env\":{{}},\"cwd\":\"\"}}");
+        }
+
+        /// <summary>Stops any program from starting at boot.</summary>
+        public static void DisableAutoRun() => File.Delete(AutoRunFile);
+
+        /// <summary>The program set to start at boot, or <c>null</c> if there is none.</summary>
+        public static string AutoRun {
+            get {
+                if (!File.Exists(AutoRunFile)) return null;
+
+                using var settings = JsonDocument.Parse(File.ReadAllText(AutoRunFile));
+                return settings.RootElement.TryGetProperty("path", out var path) ? path.GetString() : null;
+            }
         }
 
         /// <summary>
-        /// Installs an init.d entry (<c>/etc/init.d/S29custom</c>) that starts the given deployed .NET application at boot.
-        /// The application is expected at <c>/root/.epdata/{applicationName}/{applicationName}.dll</c>.
+        /// Returns <c>true</c> when the board booted from a removable SD card,
+        /// <c>false</c> when it booted from the on-board eMMC.
         /// </summary>
-        /// <param name="applicationName">Folder and assembly name (without <c>.dll</c>) under <c>/root/.epdata/</c>.</param>
-        public static void EnableAutoRun(string applicationName) {
-            var application_fullpath = "/root/.epdata/" + applicationName + "/" + applicationName + ".dll";
-
-                var script = new Script("csharp_generate_startup.sh", "./", "1 /etc/init.d/S29custom " + application_fullpath);
-
-                script.Start();
-        }
-
-        /// <summary>Removes the auto-run init.d entry installed by <see cref="EnableAutoRun(string)"/>.</summary>
-        public static void DisableAutoRun() {
-            var script = new Script("csharp_generate_startup.sh", "./", "0 /etc/init.d/S29custom");
-
-            script.Start();
-        }
-
-        /// <summary>
-        /// Permanently removes the SSH (<c>S50dropbear</c>) and USB gadget (<c>S30usbgadget</c>) init.d entries,
-        /// so neither service starts at the next boot. Intended for release builds only.
-        /// </summary>
-        public static void DisableSSH() {
-
-            var script = new Script("rm", "./", "/etc/init.d/S50dropbear");
-
-            script.Start();
-
-            script = new Script("rm", "./", "/etc/init.d/S30usbgadget");
-
-            script.Start();
-
-        }
-
-        //public static double GetCpuUsageStatistic() {
-        //    var script = new Script("get_cpu_usage.sh", "./", "");
-
-        //    script.Start();
-
-        //    var ret = double.Parse(script.Output);
-
-        //    return ret;
-        //}
-
-        
-        /// <summary>
-        /// Returns <c>true</c> when the board booted from the SD card, <c>false</c>
-        /// when it booted from the on-board eMMC.
-        /// </summary>
+        /// <remarks>
+        /// Asks the card itself rather than the bootloader configuration, which is
+        /// a different file on every board. Same answer as "endpoint-cli info".
+        /// </remarks>
         public static bool SdBoot() {
-            var script = new Script("cat", "./", "/boot/extlinux/extlinux.conf");
+            // "/dev/mmcblk1p4 / ext4 ..." -> mmcblk1p4 -> the disk mmcblk1
+            var root = File.ReadLines("/proc/mounts")
+                .Select(line => line.Split(' '))
+                .FirstOrDefault(fields => fields.Length > 1 && fields[1] == "/");
+            if (root == null || !root[0].StartsWith("/dev/")) return false;
 
-            script.Start();
+            var partition = root[0].Substring("/dev/".Length);
+            var disk = Directory.EnumerateDirectories("/sys/block")
+                .Select(Path.GetFileName)
+                .FirstOrDefault(name => partition == name || Directory.Exists($"/sys/block/{name}/{partition}"));
+            if (disk == null) return false;
 
-            if (script.Output.Contains("mmcblk1"))
-                return true;
-
-            return false;
-
+            var type = $"/sys/block/{disk}/device/type";
+            return File.Exists(type) && File.ReadAllText(type).TrimEnd().StartsWith("SD");
         }
     }
 }

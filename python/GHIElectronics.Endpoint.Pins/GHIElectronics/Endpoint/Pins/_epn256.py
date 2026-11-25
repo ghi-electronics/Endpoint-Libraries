@@ -782,11 +782,16 @@ class EPN256:
 
         @staticmethod
         def _write_sysfs(path, value):
-            # Use the shell for the single-write semantics sysfs bind requires.
-            result = subprocess.run(["/bin/sh", "-c", f"echo {value} > {path}"],
-                                    capture_output=True, text=True)
-            if result.returncode != 0:
-                raise OSError(f"Writing '{value}' to {path} failed: {result.stderr.strip()}")
+            # sysfs bind needs the value to arrive as one write(), which os.write on a
+            # raw descriptor guarantees. open().write() would buffer it, and a shell
+            # would mean interpolating the value into a command line.
+            fd = os.open(path, os.O_WRONLY)
+            try:
+                os.write(fd, value.encode())
+            except OSError as e:
+                raise OSError(f"Writing '{value}' to {path} failed: {e}") from e
+            finally:
+                os.close(fd)
 
     class StorageController:
         """Storage controller name strings, for

@@ -223,10 +223,13 @@ PinMode GpioControllerImpl::GetPinMode(int pin) {
         return static_cast<PinMode>(found->second.mode);
     }
 
-    // Not set yet: what the line is now
+    // Not set yet: what the line is now. Resolve (chip, line) through
+    // BoardSupport like OpenLine does; the STM32-style pin/16 math is wrong
+    // on boards that put every pin on one chip, such as the Pi.
     gpio_v2_line_info info{};
-    info.offset = Pins::ToChip(pin).line;
-    if (ioctl(chips.at(pin / 16), GPIO_V2_GET_LINEINFO_IOCTL, &info) < 0) {
+    info.offset = Core::BoardSupport::Current().GpioLineId(pin);
+    if (ioctl(chips.at(Core::BoardSupport::Current().GpioChipId(pin)),
+              GPIO_V2_GET_LINEINFO_IOCTL, &info) < 0) {
         ThrowSystemError("Cannot read the mode of " + PinName(pin));
     }
     if (info.flags & GPIO_V2_LINE_FLAG_OUTPUT) return PinMode::Output;

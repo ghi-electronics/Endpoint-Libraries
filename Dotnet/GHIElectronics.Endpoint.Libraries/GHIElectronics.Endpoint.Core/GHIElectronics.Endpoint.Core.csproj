@@ -35,7 +35,6 @@
     <InternalsVisibleTo Include="GHIElectronics.Endpoint.Drawing" />
     <InternalsVisibleTo Include="GHIElectronics.Endpoint.UI" />
     <InternalsVisibleTo Include="GHIElectronics.Endpoint.Native" />
-    <InternalsVisibleTo Include="GHIElectronics.Endpoint.Update" />
   </ItemGroup>
 
   <!-- libendpoint (Endpoint-Libraries/native, built for the board), for the

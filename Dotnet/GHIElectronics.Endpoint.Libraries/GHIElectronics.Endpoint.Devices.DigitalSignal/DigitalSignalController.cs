@@ -149,6 +149,18 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
         private int pin;
 
         internal static bool InitLibCount = false;
+
+        // The coprocessor firmware is what creates /dev/rpmsg_ctrl0. Starting it is a
+        // one-line sysfs write, done here rather than through a board script so that
+        // every board behaves the same way and nothing has to ship in /usr/sbin.
+        internal static void StartCoprocessor() {
+            if (File.Exists("/dev/rpmsg_ctrl0")) return;
+
+            File.WriteAllText("/sys/class/remoteproc/remoteproc0/state", "start");
+
+            while (!File.Exists("/dev/rpmsg_ctrl0")) ;
+        }
+
         /// <summary>
         /// Reserves the given GPIO pin, starts the timing helper (loading it if needed),
         /// and subscribes to its data stream. The constructor returns once the helper is reachable;
@@ -167,13 +179,7 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
 
            
 
-            if (!File.Exists("/dev/rpmsg_ctrl0")) { // load remoteproc.sh
-                var script = new Script("sremoteproc.sh", "./", "start");
-
-                script.Start();
-
-                while (!File.Exists("/dev/rpmsg_ctrl0")) ;
-            }
+            StartCoprocessor();
 
             if (!InitLibCount) {
 
@@ -619,13 +625,7 @@ namespace GHIElectronics.Endpoint.Devices.DigitalSignal {
             //this.pulsePin.SetDriveMode(GpioPinDriveMode.Input);
             //this.echoPin?.SetDriveMode(GpioPinDriveMode.Input);
 
-            if (!File.Exists("/dev/rpmsg_ctrl0")) { // load remoteproc.sh
-                var script = new Script("sremoteproc.sh", "./", "start");
-
-                script.Start();
-
-                while (!File.Exists("/dev/rpmsg_ctrl0")) ;
-            }
+            DigitalSignalController.StartCoprocessor();
 
             if (!DigitalSignalController.InitLibCount) {
 
