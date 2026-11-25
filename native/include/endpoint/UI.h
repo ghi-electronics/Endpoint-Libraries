@@ -148,7 +148,7 @@ namespace Touch {
 /// fires inside Run()'s LVGL pump every periodMs milliseconds, so widget
 /// updates in the callback are safe:
 /// <code>
-///     auto t = std::make_unique<UI::Timer>(100, [this]{
+///     auto t = std::make_unique<UI::UiTimer>(100, [this]{
 ///         this->_gauge->Value(static_cast<int>(1650 + 1450 * std::sin(this->_phase)));
 ///         this->_phase += 0.12;
 ///     });
@@ -184,6 +184,10 @@ private:
     void* handle_ = nullptr;
     Callback callback_;
 };
+
+/// The name .NET and Python use for this type, so the same program reads the
+/// same way in all three languages.
+using UiTimer = Timer;
 
 /// Base class for every widget. Holds the native handle; destructor releases
 /// the underlying LVGL object. Not copyable (widgets own their handle).

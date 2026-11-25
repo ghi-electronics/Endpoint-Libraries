@@ -1,5 +1,6 @@
 #nullable enable
 using System.Reflection;
+using System.Runtime.CompilerServices;
 using GHIElectronics.Endpoint.Core.Internal;
 
 namespace GHIElectronics.Endpoint.Core {
@@ -157,10 +158,15 @@ namespace GHIElectronics.Endpoint.Core {
             }
         }
 
-        // Loading the assembly runs its module initializer, which calls
-        // Register on this class before Load returns.
+        // Assembly.Load on its own is not enough: CoreCLR defers the module
+        // initializer to the first access of a type in the module, and an app
+        // that only used a const from the package never makes one. Running the
+        // module constructor explicitly is what calls Register.
         private static void TryLoad(string assemblyName) {
-            try { Assembly.Load(assemblyName); }
+            try {
+                var assembly = Assembly.Load(assemblyName);
+                RuntimeHelpers.RunModuleConstructor(assembly.ManifestModule.ModuleHandle);
+            }
             catch { /* package not referenced by this project */ }
         }
 

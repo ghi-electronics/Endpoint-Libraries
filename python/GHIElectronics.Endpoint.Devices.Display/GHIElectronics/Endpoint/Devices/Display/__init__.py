@@ -407,32 +407,17 @@ def _read_backlight(o):
 
 
 def _chip_get_chip_id(pin):
-    """Dispatch pin -> gpiochip number via the chip detected at import.
+    """Dispatch pin -> gpiochip number through the registered board.
     Chip-neutral mirror of .NET's PeripheralPins.ChipGetChipId."""
     # Import lazily to avoid a circular import at package init time.
-    from GHIElectronics.Endpoint.Core._chip_detect import Current, Chip
-    if Current == Chip.Epn256:
-        from GHIElectronics.Endpoint.Core._epn256 import EPN256
-        return EPN256.Gpio.GetChipId(pin)
-    if Current == Chip.Epn128:
-        from GHIElectronics.Endpoint.Core._epn128 import EPN128
-        return EPN128.Gpio.GetChipId(pin)
-    # Epm815 and Unknown both fall back to EPM815 (its layout).
-    from GHIElectronics.Endpoint.Core._epm815 import EPM815
-    return EPM815.Gpio.GetChipId(pin)
+    from GHIElectronics.Endpoint.Core import BoardSupport
+    return BoardSupport.Current().GpioChipId(pin)
 
 
 def _chip_get_line_id(pin):
-    """Dispatch pin -> line number via the chip detected at import."""
-    from GHIElectronics.Endpoint.Core._chip_detect import Current, Chip
-    if Current == Chip.Epn256:
-        from GHIElectronics.Endpoint.Core._epn256 import EPN256
-        return EPN256.Gpio.GetLineId(pin)
-    if Current == Chip.Epn128:
-        from GHIElectronics.Endpoint.Core._epn128 import EPN128
-        return EPN128.Gpio.GetLineId(pin)
-    from GHIElectronics.Endpoint.Core._epm815 import EPM815
-    return EPM815.Gpio.GetLineId(pin)
+    """Dispatch pin -> line number through the registered board."""
+    from GHIElectronics.Endpoint.Core import BoardSupport
+    return BoardSupport.Current().GpioLineId(pin)
 
 
 def _write_backlight(b):

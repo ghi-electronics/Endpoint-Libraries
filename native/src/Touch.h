@@ -39,9 +39,6 @@ public:
     int Width() const { return width_; }
     int Height() const { return height_; }
 
-    // Fills out (ids, xs, ys) with up to max active points; returns the count.
-    int CurrentPoints(int* ids, int* xs, int* ys, int max) const;
-
 private:
     void Run();
 
@@ -57,7 +54,6 @@ private:
     volatile bool connected_ = true;
     volatile bool stop_ = false;
     void* threadHandle_ = nullptr;
-    mutable void* stateMutex_;  // actual type hidden to avoid pulling <mutex> into header
 };
 
 // Returns the /dev/input/eventN path of the first built-in (non-USB)

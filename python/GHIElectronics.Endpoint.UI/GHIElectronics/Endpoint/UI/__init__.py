@@ -320,15 +320,13 @@ class Widget:
                     f"SetBackgroundImage(Image): source format {source.PixelFormat} "
                     "not yet supported (Rgb888 only).")
             w, h = source.Width, source.Height
-            src = source._pixels
-            rgb565 = bytearray(w * h * 2)
-            j = 0
-            for i in range(0, len(src), 3):
-                r, g, b = src[i], src[i + 1], src[i + 2]
-                px = ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3)
-                rgb565[j]     = px & 0xFF
-                rgb565[j + 1] = (px >> 8) & 0xFF
-                j += 2
+            src = bytes(source._pixels)
+            # libendpoint does the per-pixel pass. It is one iteration per
+            # pixel, so a 1024x600 wallpaper is 614,400 of them: about eleven
+            # seconds written out in Python, milliseconds in C.
+            source_buffer = (ctypes.c_uint8 * len(src)).from_buffer_copy(src)
+            rgb565 = (ctypes.c_uint8 * (w * h * 2))()
+            native.image_rgb888_to_rgb565(source_buffer, w * h, rgb565)
             self._set_bg_image_bytes(rgb565, w, h)
             return
 
@@ -337,11 +335,14 @@ class Widget:
             raise ArgumentException("width and height are required when passing raw pixel bytes")
         self._set_bg_image_bytes(source, int(width), int(height))
 
-    def _set_bg_image_bytes(self, rgb565_bytes, width, height):
-        self._bg_pixels = bytes(rgb565_bytes)  # kept alive on the widget
-        buf = (ctypes.c_ubyte * len(self._bg_pixels)).from_buffer_copy(self._bg_pixels)
-        self._bg_pixels_buf = buf
-        native.ui_widget_set_bg_image(self._native, buf, len(self._bg_pixels), width, height)
+    def _set_bg_image_bytes(self, rgb565_pixels, width, height):
+        if isinstance(rgb565_pixels, ctypes.Array):
+            buf = rgb565_pixels
+        else:
+            data = bytes(rgb565_pixels)
+            buf = (ctypes.c_uint8 * len(data)).from_buffer_copy(data)
+        self._bg_pixels_buf = buf  # kept alive on the widget
+        native.ui_widget_set_bg_image(self._native, buf, len(buf), width, height)
 
     @property
     def Font(self):

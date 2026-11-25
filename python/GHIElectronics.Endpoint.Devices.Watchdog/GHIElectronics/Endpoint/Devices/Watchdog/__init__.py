@@ -2,7 +2,7 @@
 GHIElectronics.Endpoint.Devices.Watchdog):
 
     from datetime import timedelta
-    from GHIElectronics.Endpoint.Core import EPM815
+    from GHIElectronics.Endpoint.Pins import EPM815
     from GHIElectronics.Endpoint.Devices.Watchdog import WatchdogController
 
     watchdog = WatchdogController.FromName(EPM815.Watchdog.Id)

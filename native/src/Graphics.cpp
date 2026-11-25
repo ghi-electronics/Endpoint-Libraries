@@ -59,6 +59,30 @@ ENDPOINT_API void endpoint_image_free(uint8_t* pixels) {
     if (pixels != nullptr) stbi_image_free(pixels);
 }
 
+// RGB888 -> RGB565 little-endian, into a buffer the caller owns.
+//
+// The loop itself is trivial, but it runs once per pixel: a 1024x600 wallpaper
+// is 614,400 iterations. Interpreted that is about eleven seconds on the
+// board, so Python (and any other wrapper without a JIT) calls in here
+// instead and gets the same wallpaper in milliseconds.
+ENDPOINT_API int endpoint_image_rgb888_to_rgb565(const uint8_t* source, int pixelCount,
+                                                 uint8_t* destination) {
+    return Call([&] {
+        if (source == nullptr || destination == nullptr || pixelCount <= 0) {
+            throw EndpointError(ErrorKind::Argument,
+                                "rgb888 to rgb565 needs a source, a destination and a pixel count");
+        }
+        for (int i = 0; i < pixelCount; i++) {
+            const uint32_t r = source[i * 3 + 0];
+            const uint32_t g = source[i * 3 + 1];
+            const uint32_t b = source[i * 3 + 2];
+            const uint16_t px = static_cast<uint16_t>(((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3));
+            destination[i * 2 + 0] = static_cast<uint8_t>(px & 0xFF);
+            destination[i * 2 + 1] = static_cast<uint8_t>(px >> 8);
+        }
+    });
+}
+
 // ----------------------------------------------------------------- font
 
 ENDPOINT_API int endpoint_font_init(const uint8_t* ttfData, int length, void** out_handle) {

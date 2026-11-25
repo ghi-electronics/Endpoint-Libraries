@@ -1,7 +1,7 @@
 """The analog inputs of Endpoint, with the same API as .NET's
 System.Device.Analog and Endpoint's AdcController:
 
-    from GHIElectronics.Endpoint.Core import EPM815
+    from GHIElectronics.Endpoint.Pins import EPM815
     from GHIElectronics.Endpoint.Devices.Adc import AdcController
 
     adc = AdcController()

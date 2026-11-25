@@ -35,6 +35,10 @@ class _EPM815BoardSupport:
 
     Name = "EPM815"
 
+    def GpioChipId(self, pin): return EPM815.Gpio.GetChipId(pin)
+    def GpioLineId(self, pin): return EPM815.Gpio.GetLineId(pin)
+    def GpioName(self, pin): return EPM815.Gpio.Name(pin)
+
     def I2cInitialize(self, bus, frequency): EPM815.I2c.Initialize(bus, frequency)
     def I2cUnInitialize(self, bus): EPM815.I2c.UnInitialize(bus)
     def I2cGetFrequency(self, bus): return EPM815.I2c.GetFrequency(bus)
@@ -61,6 +65,10 @@ class _EPN256BoardSupport:
     """
 
     Name = "EPN256"
+
+    def GpioChipId(self, pin): return EPN256.Gpio.GetChipId(pin)
+    def GpioLineId(self, pin): return EPN256.Gpio.GetLineId(pin)
+    def GpioName(self, pin): return EPN256.Gpio.Name(pin)
 
     def I2cInitialize(self, bus, frequency): EPN256.I2c.Initialize(bus, frequency)
     def I2cUnInitialize(self, bus): EPN256.I2c.UnInitialize(bus)
@@ -89,6 +97,10 @@ class _EPN128BoardSupport:
     """
 
     Name = "EPN128"
+
+    def GpioChipId(self, pin): return EPN128.Gpio.GetChipId(pin)
+    def GpioLineId(self, pin): return EPN128.Gpio.GetLineId(pin)
+    def GpioName(self, pin): return EPN128.Gpio.Name(pin)
 
     def I2cInitialize(self, bus, frequency): EPN128.I2c.Initialize(bus, frequency)
     def I2cUnInitialize(self, bus): EPN128.I2c.UnInitialize(bus)

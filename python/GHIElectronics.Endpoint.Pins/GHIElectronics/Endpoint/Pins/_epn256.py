@@ -317,6 +317,16 @@ class EPN256:
             PN15 = 223
             NONE = -1
 
+        # Declared after Pin because a Python class body runs top to bottom.
+        # .NET lists Led first; the value is the same.
+        Led = Pin.PJ14
+        """User LED on PJ14"""
+
+        @staticmethod
+        def Name(pin):
+            """The pin's name, for example "PJ14\""""
+            return _name(pin)
+
         @staticmethod
         def GetChipId(pin):
             """Linux gpiochip number for the pin, as exposed under

@@ -1,6 +1,6 @@
 """GPIO for Endpoint, with the same API as .NET's System.Device.Gpio:
 
-    from GHIElectronics.Endpoint.Core import EPM815
+    from GHIElectronics.Endpoint.Pins import EPM815
     from GHIElectronics.Endpoint.Devices.Gpio import GpioController, PinMode, PinValue
 
     gpio = GpioController()

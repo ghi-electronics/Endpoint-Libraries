@@ -152,6 +152,16 @@ void ApplyBacklight(const nlohmann::json& section, bool on) {
         // backlight down with it; -m signal makes gpioset hold the line
         // until it receives SIGTERM.
         setsid();
+        // Drop the inherited stdio. gpioset outlives the program, so holding
+        // the program's stdout open would keep whoever is reading it (the
+        // USB agent, a shell pipeline) waiting for an EOF that never comes.
+        int devnull = open("/dev/null", O_RDWR | O_CLOEXEC);
+        if (devnull >= 0) {
+            dup2(devnull, STDIN_FILENO);
+            dup2(devnull, STDOUT_FILENO);
+            dup2(devnull, STDERR_FILENO);
+            if (devnull > STDERR_FILENO) close(devnull);
+        }
         execl("/usr/bin/gpioset", "gpioset",
               "-m", "signal", chip_arg, line_arg, nullptr);
         _exit(127);

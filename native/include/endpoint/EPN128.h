@@ -85,6 +85,9 @@ struct Gpio {
         static constexpr int NONE = -1;  // no pin
     };
 
+    // User LED on PB8
+    static constexpr int Led = Pin::PB8;
+
     // The pin's name, for example "PC0"
     static std::string Name(int pin) {
         if (pin < 0 || pin > Pin::PN15) {

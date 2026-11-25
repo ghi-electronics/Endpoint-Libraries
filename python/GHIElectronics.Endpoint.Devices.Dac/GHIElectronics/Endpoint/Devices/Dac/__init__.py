@@ -1,7 +1,7 @@
 """The analog outputs of Endpoint, with the same API as TinyCLR (and the
 .NET GHIElectronics.Endpoint.Devices.Dac):
 
-    from GHIElectronics.Endpoint.Core import EPM815
+    from GHIElectronics.Endpoint.Pins import EPM815
     from GHIElectronics.Endpoint.Devices.Dac import DacController
 
     dac = DacController.FromName(EPM815.Dac.Id)

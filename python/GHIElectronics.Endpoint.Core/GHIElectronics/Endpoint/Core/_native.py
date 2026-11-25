@@ -344,7 +344,11 @@ _FUNCTIONS = {
     # Drawing.Image / Drawing.Font / Canvas. image_decode allocates the pixel
     # buffer; the caller frees it with image_free. font_rasterize's bitmap
     # also frees with image_free (same stbi_image_free() underneath).
+    # image_rgb888_to_rgb565 writes into a buffer the caller allocates. It is
+    # here because the loop is one pass per pixel: a 1024x600 wallpaper takes
+    # about eleven seconds in interpreted Python and milliseconds in C.
     "image_decode": [_bytes_ptr, _int, _out_bytes_ptr, _out_int, _out_int],
+    "image_rgb888_to_rgb565": [_bytes_ptr, _int, _bytes_ptr],
     "font_init": [_bytes_ptr, _int, _out_handle],
     "font_metrics": [_handle, _int, _out_int, _out_int, _out_int],
     "font_rasterize": [_handle, _int, _int, _out_bytes_ptr, _out_int, _out_int, _out_int, _out_int, _out_int],

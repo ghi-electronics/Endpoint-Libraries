@@ -1,7 +1,8 @@
 """SD cards and USB drives of Endpoint, with the same API as .NET's
 GHIElectronics.Endpoint.Devices.Storage:
 
-    from GHIElectronics.Endpoint.Core import EPM815, DeviceConnectionStatus
+    from GHIElectronics.Endpoint.Core import DeviceConnectionStatus
+    from GHIElectronics.Endpoint.Pins import EPM815
     from GHIElectronics.Endpoint.Devices.Storage import FileSystem, StorageController
 
     usb = StorageController.FromName(EPM815.StorageController.UsbHostMassStorage)

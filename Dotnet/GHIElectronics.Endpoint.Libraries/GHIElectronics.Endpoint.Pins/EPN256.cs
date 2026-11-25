@@ -62,6 +62,10 @@ namespace GHIElectronics.Endpoint.Pins {
                 public const int NONE = -1;
             }
 
+            /// <summary>The pin's name, for example "PJ14"</summary>
+            public static string Name(int pin) =>
+                pin >= 0 && pin <= Pin.PN15 ? $"P{(char)('A' + pin / 16)}{pin % 16}" : $"#{pin}";
+
             /// <summary>
             /// Linux gpiochip number for the pin, as exposed under
             /// <c>/dev/gpiochipN</c> and <c>/sys/class/gpio/gpiochipN</c>.

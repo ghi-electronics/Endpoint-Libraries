@@ -12,7 +12,6 @@
 #include <array>
 #include <cstring>
 #include <fstream>
-#include <mutex>
 #include <sstream>
 #include <string>
 #include <thread>
@@ -140,7 +139,6 @@ TouchImpl::TouchImpl(const std::string& deviceName, Callback callback, void* con
     height_ = ReadAbsMax(fd_, 1 /* ABS_Y */) + 1;
 
     wakeFd_ = eventfd(0, EFD_CLOEXEC);
-    stateMutex_ = new std::mutex();
     threadHandle_ = new std::thread(&TouchImpl::Run, this);
 }
 
@@ -164,19 +162,6 @@ TouchImpl::~TouchImpl() {
     if (fd_ >= 0) {
         close(fd_);
     }
-    delete static_cast<std::mutex*>(stateMutex_);
-}
-
-int TouchImpl::CurrentPoints(int* ids, int* xs, int* ys, int max) const {
-    (void)ids;
-    (void)xs;
-    (void)ys;
-    (void)max;
-    // Snapshot of the slot state is held by the reader; this is a convenience
-    // for polling callers. For brevity in this iteration, polling returns 0;
-    // event-driven use is the main path. The reader fires Pressed/Moved/Released
-    // with full point sets, so UI code should not need polling.
-    return 0;
 }
 
 void TouchImpl::Run() {
@@ -256,8 +241,14 @@ void TouchImpl::Run() {
                     somethingChanged = true;
                 } else if (e.code == ABS_X && !haveMtEventsSeen) {
                     stX = e.value;
+                    // A single-touch panel reports a drag as ABS_X/ABS_Y with no
+                    // further BTN_TOUCH, so movement has to count as a change on
+                    // its own or the frame below is dropped and the caller sees
+                    // only Pressed and Released.
+                    somethingChanged = true;
                 } else if (e.code == ABS_Y && !haveMtEventsSeen) {
                     stY = e.value;
+                    somethingChanged = true;
                 }
             } else if (e.type == EV_KEY && e.code == BTN_TOUCH && !haveMtEventsSeen) {
                 stDown = (e.value != 0);
@@ -280,6 +271,13 @@ void TouchImpl::Run() {
                 } else if (stDown) {
                     active[0] = {0, stX, stY};
                     count = 1;
+                }
+
+                // Nothing down now and nothing down before carries no
+                // information, and a panel that keeps sampling after the lift
+                // would otherwise emit an endless run of empty Moved frames.
+                if (count == 0 && previousPointCount == 0) {
+                    continue;
                 }
 
                 EventType eventType;
